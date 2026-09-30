@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="blunted — a private, offline writing-clarity app. No accounts, no network.">
+<title>blunted — private writing clarity</title>
+<!--BLUNTED:STYLES-->
+</head>
+<body data-review="review" data-theme="system">
+<a class="skip" href="#editor">Skip to editor</a>
+<a class="skip" href="#issues">Skip to notes</a>
+
+<div class="page">
+  <header class="masthead">
+    <span class="wordmark">blunted</span>
+    <div class="view-toggle" role="group" aria-label="Editor view">
+      <button type="button" id="viewWrite" aria-pressed="false">Write</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" id="viewReview" aria-pressed="true">Review</button>
+    </div>
+  </header>
+
+  <nav aria-label="Writing modes">
+    <div class="tabs" role="tablist" aria-label="Modes" id="modeTabs"></div>
+  </nav>
+
+  <div class="layout">
+    <main class="editor-col" aria-label="Editor">
+      <input type="text" id="docTitle" maxlength="120" autocomplete="off"
+        placeholder="Title" aria-label="Title (optional)">
+      <div id="subjectWrap" hidden>
+        <input type="text" id="docSubject" maxlength="200" autocomplete="off"
+          placeholder="Subject" aria-label="Email subject (local only, never sent)">
+      </div>
+
+      <div class="editor-wrap" id="editorWrap">
+        <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+        <textarea id="editor" rows="20" wrap="soft" spellcheck="true"
+          aria-label="Document body. Plain text, Markdown-friendly."
+          aria-describedby="legend"
+          placeholder="Start writing. Everything stays on this device."></textarea>
+      </div>
+      <p class="doc-notice" id="docNotice" role="status" hidden></p>
+
+      <footer class="statusbar" aria-label="Document status">
+        <span id="gradeMain">—</span>
+        <span id="statusGrade" hidden>—</span>
+        <span id="statusWords">0 words</span>
+        <span id="statusTime"></span>
+        <span id="statusSave" role="status">—</span>
+      </footer>
+      <p class="legend" id="legend">
+        <span class="lg"><span class="sw sw-y" aria-hidden="true"></span>lengthy</span>
+        <span class="lg"><span class="sw sw-r" aria-hidden="true"></span>long</span>
+        <span class="lg"><span class="sw sw-u" aria-hidden="true"></span><u>word note</u></span>
+        <span class="lg">— a highlight means review, not wrong.</span>
+      </p>
+
+      <div class="doc-actions" role="group" aria-label="Document actions">
+        <button type="button" id="btnNew">New</button>
+        <button type="button" id="btnOpen">Open</button>
+        <input type="file" id="filePick" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
+        <button type="button" id="btnCopy">Copy</button>
+        <button type="button" id="btnCopyEmail" hidden>Copy email</button>
+        <button type="button" id="btnDownload">Download</button>
+        <button type="button" id="btnSample">Sample</button>
+      </div>
+      <p class="copy-note" id="copyNote" role="status" aria-live="polite"></p>
+    </main>
+
+    <aside class="rail" aria-label="Review">
+      <section class="notes" aria-labelledby="issuesH">
+        <div class="notes-head">
+          <h2 id="issuesH">Notes <span id="issueCount"></span></h2>
+          <div class="issue-nav">
+            <button type="button" id="prevIssue">← Prev</button>
+            <button type="button" id="nextIssue">Next →</button>
+          </div>
+        </div>
+        <ol class="issues" id="issues" aria-label="Writing notes"></ol>
+      </section>
+
+      <details class="fold" id="detailsBox">
+        <summary>Details</summary>
+        <p class="grade-sub" id="gradeSub"></p>
+        <dl class="details" id="detailsList"></dl>
+      </details>
+
+      <details class="fold">
+        <summary>Preferences <span class="muted" id="customNote"></span></summary>
+        <div class="prefs">
+          <label class="prow">Theme
+            <select id="themeSel" aria-label="Color theme">
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+          <label class="prow">Text size <span id="fontVal"></span>
+            <input type="range" id="fontSize" min="13" max="24" step="1" value="16">
+          </label>
+          <label class="prow">Reading speed (words/min)
+            <input type="number" id="wpm" min="100" max="400" step="10" value="200">
+          </label>
+          <label class="check"><input type="checkbox" id="optQuotes"> Include block quotes in checks</label>
+          <label class="check" id="replyWrap" hidden><input type="checkbox" id="optReply"> Reply mode (skip greeting/sign-off notes)</label>
+          <label class="check"><input type="checkbox" id="optPrivate"> Private session (no draft saving)</label>
+          <details>
+            <summary>Rules for this mode</summary>
+            <div class="rules" id="ruleToggles"></div>
+            <button type="button" id="btnResetMode" class="quiet">Reset this mode to defaults</button>
+          </details>
+          <details>
+            <summary>Ignored words</summary>
+            <p class="muted">Comma-separated. Matching notes are hidden without touching neighbours.</p>
+            <input type="text" id="ignoredTerms" autocomplete="off" placeholder="e.g. onboarding, kubectl">
+          </details>
+          <button type="button" id="btnClearData" class="quiet">Clear local data…</button>
+        </div>
+      </details>
+
+      <details class="fold">
+        <summary>About</summary>
+        <p class="muted">English-first analysis. Other scripts stay editable and export intact, but English scores are suppressed for clearly non-English input. Grades are estimates from surface counts — they don’t judge truth, argument, or necessary terms.</p>
+        <p class="muted" id="versionLine"></p>
+      </details>
+    </aside>
+  </div>
+</div>
+
+<div class="sr-status" id="srStatus" role="status" aria-live="polite"></div>
+
+<!--BLUNTED:ENGINE-->
+<!--BLUNTED:WORKER-->
+<!--BLUNTED:APP-->
+</body>
+</html>

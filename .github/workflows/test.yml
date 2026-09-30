@@ -1,0 +1,25 @@
+name: tests
+on:
+  push:
+  pull_request:
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm test
+      - run: npm run build
+      - name: verify artifact is self-contained
+        run: |
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('dist/index.html', 'utf8');
+            const bad = /src=\"https?:|href=\"https?:|@import|from \"https?:|import\( \"https?:/i.test(html);
+            if (bad) { console.error('remote reference found in dist/index.html'); process.exit(1); }
+            if (!html.includes('BluntedEngine') || !html.includes('BluntedWorkerSrc')) { console.error('engine/worker missing'); process.exit(1); }
+            console.log('artifact self-contained OK, bytes:', html.length);
+          "

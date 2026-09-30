@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "blunted",
+  "version": "0.1.0",
+  "identifier": "app.blunted.dev-preview",
+  "build": {
+    "frontendDist": "frontend",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "npm run build && node scripts/bundle-tauri.mjs"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "blunted",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 360,
+        "minHeight": 480
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Utility",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    },
+    "resources": []
+  }
+}

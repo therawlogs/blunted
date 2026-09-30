@@ -1,0 +1,32 @@
+name: mac-build
+# Unsigned Apple-Silicon dev preview. No release secrets. PR builds never sign.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - run: npm test
+      - run: npm run build
+      - run: npm run bundle:tauri
+      - run: npx tauri build --target aarch64-apple-darwin
+      - name: record sizes
+        run: |
+          du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg || true
+          du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blunted-macos-aarch64-unsigned
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            dist/index.html
