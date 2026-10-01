@@ -15,7 +15,7 @@ Developer ID signing/notarization), Rust stable, Node 20+.
 npm test
 npm run build            # dist/index.html
 npm run bundle:tauri     # src-tauri/frontend/ (+ shell-only adapter)
-npx tauri build --target aarch64-apple-darwin   # Apple Silicon only
+npm run build:tauri:mac  # Apple Silicon .dmg (bundles dmg only)
 ```
 
 Minimum system version: macOS 13.0 (pinned in `tauri.conf.json` from the
@@ -40,6 +40,30 @@ Tag releases (`v0.1.1`), attach the `.dmg` + checksums, and state the
 unsigned status prominently. Release the portable `dist/index.html` first if
 the bundle is not ready — but do not present the HTML as the Mac install
 experience.
+
+## Measured — v0.1.1 dev preview (01 Oct 2026, build machine only)
+
+Built with Tauri CLI 2.12.0 (pinned devDependency), Rust 1.98.0, Node
+26.8.1, CommandLineTools SDK (no full Xcode). Target
+`aarch64-apple-darwin`, `--bundles dmg`. Release size profile active
+(`lto`, `opt-level="s"`, `strip`).
+
+| Artifact | Size | SHA-256 |
+|---|---|---|
+| `dist/index.html` | 163076 bytes | `181d674e…27c82591` (see release notes for full hash) |
+| `blunted` Mach-O binary (arm64, thin) | 5.1M | — |
+| `blunted_0.1.1_aarch64.dmg` (compressed) | 2.2M | `8048947e…76c82db4e57` (see release notes for full hash) |
+
+- Signature: ad-hoc only, no Developer ID. Gatekeeper warning on other
+  machines is expected and unverified.
+- `dist/index.html` is byte-identical to the macOS CI build (LF checkouts
+  enforced repo-wide; the Windows CI copy differs only in line endings).
+- Smoke test (build machine): DMG mounted, app launched, process stayed
+  alive, quit cleanly. Note: with an older copy installed in
+  `/Applications` (same bundle id), opening the DMG copy may activate the
+  installed one instead — quit the old copy first when smoke-testing.
+- Not done: clean-Mac install, cold-startup timing, idle memory,
+  screenshot. The Rust bundle is not expected to be bit-reproducible.
 
 ## Measured — v0.1.0 dev preview (30 Sep 2026, build machine only)
 

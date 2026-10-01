@@ -49,3 +49,19 @@ Tag releases (`v0.1.1`), attach the `-setup.exe` + portable `.zip` +
 SHA-256 checksums, and state the unsigned status prominently. Release the
 portable `dist/index.html` first if the bundle is not ready — but do not
 present the HTML as the Windows install experience.
+
+## Measured — v0.1.1 dev preview (01 Oct 2026, CI only, never local)
+
+Built on GitHub-hosted `windows-latest` (x64, stable Rust, Node 22 — see
+the v0.1.1 `win-build` run for the exact toolchain), `--bundles nsis`.
+
+| Artifact | Size | SHA-256 |
+|---|---|---|
+| `blunted_0.1.1_x64-setup.exe` | 3.6M | `03b449e8…b0ff103` (see release notes for full hash) |
+| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.6M | `a4196f98…4ea039d6bd0d` (see release notes for full hash) |
+| `dist/index.html` | 163076 bytes + CRLF | functionally identical to the macOS build; differs only in line endings (Windows checkout) |
+
+- Signature: none. SmartScreen warning on download is expected and unverified.
+- Engine tests pass on the Windows runner before bundling.
+- Not done: clean-PC install, 100%/125%/150% scaling check, IME/TSF,
+  NVDA/JAWS pass, cold startup, CRLF round-trip on a real machine.

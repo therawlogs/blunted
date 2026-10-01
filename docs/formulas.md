@@ -9,7 +9,7 @@ Y = estimated syllables · P = words with ≥3 estimated syllables.
 | ARI | 4.71·C/W + 0.5·W/S − 21.43 | Primary | Long technical names inflate it; counting conventions matter |
 | Flesch-Kincaid | 0.39·W/S + 11.8·Y/W − 15.59 | Optional detail | Syllable errors affect results |
 | Coleman-Liau | 0.0588·L − 0.296·T − 15.8 | Optional detail | Length ≠ familiarity |
-| SMOG | 1.0430·√(P·30/S) + 3.1291 | Research detail, ≥30 sentences | Developed for longer samples |
+| SMOG | 1.0430·√(P·30/S) + 3.1291 | Detail, ≥30 sentences | Developed for longer samples |
 
 Display: `Estimated reading grade: 8` (U.S. school-grade scale), raw value to
 one decimal in details only. Primary ARI is rounded **up**, floored at 1,

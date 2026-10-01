@@ -7,13 +7,12 @@ telemetry, no sync — forever free. Copy, Download (`.md` / `.txt`), Print,
 and a settings file are the only outward actions. Find (Cmd/Ctrl+F) and
 Download (Cmd/Ctrl+S) work from the keyboard.
 
-> Screenshot: pending — the UI is built but no screenshot has been captured
-> yet. The README will carry a real screenshot of the built app before any
-> public release. Do not ship with a placeholder image.
+> Screenshot: still pending — v0.1.1 shipped without one. The README will
+> use a real screenshot of the built app, never a placeholder image.
 
 ## One focus
 
-Single clarity preset (target grade 8; see `docs/presets.md`). A highlight
+Single clarity preset (target grade 8; see `docs/clarity.md`). A highlight
 means **review**, not wrong.
 
 ## Download & run (unsigned dev preview)
@@ -23,9 +22,9 @@ this project stays free). Your OS will warn on first run; that is
 expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
 path is the portable file:
 
-1. Download `index.html` from the release.
+1. Download the portable HTML file from the release (e.g. `blunted-0.1.1.html`).
 2. Turn networking off if you like — double-click it. Everything works.
-3. Write. Copy or Download `.md` when done. Nothing leaves the device.
+3. Write. Copy or Download (`.md` / `.txt`) when done. Nothing leaves the device.
 
 Mac: Gatekeeper warns about an unidentified developer (details:
 `docs/mac-release.md`). Windows: SmartScreen warns about an unrecognized
@@ -34,8 +33,9 @@ app; verify the SHA-256 hash first (details: `docs/win-release.md`).
 ## Offline / privacy (with limits)
 
 Analysis runs on-device; there is nothing to phone home to. Draft recovery
-(localStorage on web, app-data file on desktop) is convenience storage,
-**not** encrypted sync — anyone with device access may read it. There is
+(localStorage on web, app-data file on desktop) is convenience storage —
+a 3-slot rotating backup restores automatically with a visible notice —
+**not** encrypted sync. Anyone with device access may read it. There is
 no sync and there will never be one: your backup is your sync — copy the
 exported `.md` where you like. Details: `docs/privacy.md`.
 
@@ -44,10 +44,10 @@ exported `.md` where you like. Details: `docs/privacy.md`.
 ```sh
 node --version   # >= 20
 npm test         # engine fixtures (20 tests)
-npm run build    # -> dist/index.html (~150 KB, deterministic)
+npm run build    # -> dist/index.html (~163 KB, deterministic)
 ```
 
-Mac shell (Apple Silicon; needs Xcode + Rust):
+Mac shell (Apple Silicon; needs Xcode Command Line Tools + Rust):
 
 ```sh
 npm run build:tauri:mac

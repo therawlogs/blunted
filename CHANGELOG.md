@@ -34,6 +34,10 @@ All notable changes to blunted will be documented here. Format follows
   value-splice last resort).
 - Layout: status line + highlight legend moved above the editor (glanceable
   while writing) instead of below it.
+- Build/CI: `npm ci` in all workflows, explicit test-file list (Node 22
+  rejects a bare directory arg), LF checkouts enforced (`.gitattributes`)
+  plus a deterministic-rebuild check — the portable HTML is byte-identical
+  across macOS local + CI builds.
 
 ## [0.1.0] — 2026-09-30 (planned)
 

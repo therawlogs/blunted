@@ -29,14 +29,16 @@ src-tauri/         Desktop shell (macOS + Windows): main.rs commands + menus,
                     capabilities/main.json (least privilege), adapter.js
                     (shell-only bridge, injected by bundle-tauri.mjs)
 tests/             node:test fixtures (engine + preset)
-docs/              formulas, rules, presets, privacy, a11y, mac/win-release
+docs/              formulas, rules, clarity, privacy, a11y, mac/win-release
 ```
 
 Data flow: `textarea → debounce 150ms → (Blob Worker | main-thread fallback)
-→ analyze({text, mode, overrides…}) → render backdrop + score + issue list`.
+→ analyze({text, overrides…}) → render backdrop + score + issue list`.
 Revision counters discard stale results. The engine never touches the DOM;
 the UI never implements analysis.
 
-Storage: web adapter uses localStorage (`blunted.doc.v1`, prefs, last-good
-backup) with honest status; Tauri adapter overrides via
-`window.__BLUNTED_TAURI__` backed by atomic app-data writes + backup.
+Storage: web adapter uses localStorage (main doc + prefs + 3-slot rotating
+backup) with honest status; unreadable saves restore from the newest
+working backup with a visible notice. Tauri adapter overrides via
+`window.__BLUNTED_TAURI__` backed by atomic app-data writes + the same
+3-slot rotation. Stored prefs are allow-list sanitized on load/import.

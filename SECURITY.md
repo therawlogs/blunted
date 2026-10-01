@@ -15,11 +15,13 @@ update channels to attack — that is the point.
 ## What is not promised
 
 - Storage is **unencrypted local data**. Anyone with device access may read it.
-- The unsigned dev preview shows a Gatekeeper warning. Do not disable
-  Gatekeeper system-wide or run blanket quarantine-removal commands.
+- The unsigned dev preview shows a Gatekeeper warning on Mac and a
+  SmartScreen warning on Windows. Do not disable either system-wide or run
+  blanket quarantine-removal commands.
 
 ## Reporting
 
 Open a private issue with the repository owner including: app version
-(engine version from the About panel), artifact (HTML hash or `.dmg` name),
-macOS version, and reproduction text that contains no personal data.
+(engine version from the About panel), artifact (portable HTML hash,
+`.dmg` / `-setup.exe` name), OS + version, and reproduction text that
+contains no personal data.
