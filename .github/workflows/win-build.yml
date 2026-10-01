@@ -17,6 +17,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+      - run: npm ci
+        shell: pwsh
       - run: npm test
         shell: pwsh
       - run: npm run build
