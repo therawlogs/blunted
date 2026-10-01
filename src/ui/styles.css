@@ -9,6 +9,8 @@
   --ed-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
+body[data-font="serif"] { --ed-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }
+body[data-font="mono"] { --ed-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 [data-theme="dark"] {
   --bg: #161513; --ink: #ece7dd; --muted: #97907f;
   --line: #2e2b26; --accent: #7aa5ff; --focus: #7aa5ff;
@@ -70,39 +72,20 @@ input:focus-visible, textarea:focus-visible, summary:focus-visible {
 /* Masthead: wordmark + Write/Review toggle */
 .masthead {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.75rem;
+  margin-bottom: 2.5rem;
 }
 .wordmark { font-weight: 650; font-size: 15px; letter-spacing: -0.01em; }
 .view-toggle { display: flex; align-items: center; gap: 0.6rem; font-size: 14px; color: var(--muted); }
 .view-toggle button { color: var(--muted); padding: 10px 2px; }
 .view-toggle button[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
 
-/* Modes: quiet text tabs on a hairline */
-.tabs {
-  display: flex; gap: 1.4rem; overflow-x: auto;
-  border-bottom: 1px solid var(--line); margin-bottom: 2.5rem;
-  scrollbar-width: none;
-}
-.tabs::-webkit-scrollbar { display: none; }
-.tabs [role="tab"] {
-  color: var(--muted); white-space: nowrap; padding: 10px 2px;
-  box-shadow: inset 0 -2px 0 transparent;
-}
-.tabs [role="tab"][aria-selected="true"] {
-  color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--ink);
-}
-
-/* Title + subject: borderless */
+/* Title: borderless */
 #docTitle {
   width: 100%; border: none; background: transparent; padding: 0;
   font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em;
   margin-bottom: 0.35rem;
 }
 #docTitle::placeholder { color: var(--muted); opacity: 0.7; }
-#subjectWrap input {
-  width: 100%; border: none; background: transparent; padding: 0;
-  font-size: 1rem; color: var(--muted); margin-bottom: 0.5rem;
-}
 
 /* Editor: chromeless */
 .editor-wrap { position: relative; overflow: hidden; }
@@ -129,10 +112,24 @@ body[data-review="write"] .backdrop { visibility: hidden; }
 
 .doc-notice { font-size: 13px; color: var(--muted); margin: 1rem 0 0; }
 
-/* Status: one quiet line on a hairline */
+/* Find bar: quiet row above the editor */
+.findbar {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-bottom: 0.6rem; font-size: 14px;
+}
+.findbar input[type="text"] {
+  flex: 1; min-width: 0; background: transparent; border: none;
+  border-bottom: 1px solid var(--line); border-radius: 0;
+  padding: 8px 0; min-height: var(--tap);
+}
+.findbar #findCount { color: var(--muted); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.findbar button { color: var(--muted); padding: 8px 6px; min-height: var(--tap); }
+.findbar button:hover { color: var(--ink); }
+
+/* Status: one quiet line under the title, above the editor */
 .statusbar {
   display: flex; flex-wrap: wrap; gap: 0.4rem 1rem;
-  border-top: 1px solid var(--line); margin-top: 2rem; padding-top: 0.7rem;
+  border-bottom: 1px solid var(--line); padding-bottom: 0.7rem; margin-bottom: 0.6rem;
   color: var(--muted); font-size: 13px;
 }
 #statusGrade { color: var(--ink); }
@@ -140,7 +137,7 @@ body[data-review="write"] .backdrop { visibility: hidden; }
 
 .legend {
   display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem;
-  color: var(--muted); font-size: 12.5px; margin: 0.4rem 0 0;
+  color: var(--muted); font-size: 12.5px; margin: 0 0 0.8rem;
 }
 .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
 .sw-y { background: var(--mark-y); }
@@ -224,4 +221,19 @@ button.quiet:hover { color: var(--ink); text-decoration: underline; text-underli
   .backdrop .mk-y, .backdrop .mk-r { background: transparent; outline: 2px dotted ButtonText; }
   .backdrop .u { text-decoration-thickness: 3px; }
   .issue::before { outline: 1px solid ButtonText; }
+}
+
+/* Print: textareas print as empty boxes, so only the print-only sheet
+   (filled on beforeprint) is shown. No highlights, no chrome. */
+#printDoc { display: none; }
+@media print {
+  @page { margin: 2cm; }
+  .page, .sr-status { display: none !important; }
+  #printDoc { display: block; color: #000; background: #fff; }
+  #printDoc h1 { font-size: 20pt; margin: 0 0 4pt; }
+  #printDoc .print-meta { font-size: 10pt; color: #555; margin: 0 0 16pt; }
+  #printDoc .print-body {
+    font-family: var(--ed-family); font-size: 12pt; line-height: 1.6;
+    white-space: pre-wrap; overflow-wrap: break-word;
+  }
 }

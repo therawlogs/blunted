@@ -9,21 +9,28 @@
   var editor = $("editor"), backdrop = $("backdrop"), editorWrap = $("editorWrap");
   var issuesEl = $("issues"), issueCount = $("issueCount");
   var gradeMain = $("gradeMain"), gradeSub = $("gradeSub"), detailsList = $("detailsList");
-  var statusWords = $("statusWords"), statusGrade = $("statusGrade"),
+  var statusWords = $("statusWords"), statusGrade = $("statusGrade"), statusSent = $("statusSent"),
       statusTime = $("statusTime"), statusSave = $("statusSave");
   var copyNote = $("copyNote"), srStatus = $("srStatus");
 
   var MODES = Engine.MODES;
-  var MODE_ORDER = ["essays", "social", "message", "email", "research"];
+  var SINGLE_MODE = "clear";
+
+  // Migrate legacy stored mode ids (essays/social/message/email/research)
+  // to the single preset. Unknown values also fall through to "clear".
+  function normalizeMode(id) {
+    if (id && MODES[id]) return id;
+    return SINGLE_MODE;
+  }
 
   // ---------- state ----------
   var state = {
     id: "doc-" + Date.now().toString(36),
-    title: "", modeId: "essays", body: "", subject: "",
+    title: "", modeId: SINGLE_MODE, body: "",
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [],
   };
-  var prefs = { theme: "system", fontSize: 16, wpm: 200, review: "review", privateSession: false, includeQuotes: false, replyMode: false };
+  var prefs = { theme: "system", fontSize: 16, fontFamily: "system", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, includeQuotes: false, includeHeader: false };
   var dirty = false;            // unsaved changes vs storage
   var lastAnalysis = null;
   var currentRev = 0;           // text revision counter (local)
@@ -32,51 +39,95 @@
   var composing = false;
 
   // ---------- storage adapter ----------
-  var LS_DOC = "blunted.doc.v1", LS_PREFS = "blunted.prefs.v1", LS_BACKUP = "blunted.backup.v1";
+  // Web backups rotate across three slots (newest first). The slots are
+  // READ on corrupt/missing main docs — a backup is only useful if it can
+  // restore. Tauri shells keep the same 3-slot rotation in app-data files.
+  var LS_DOC = "blunted.doc.v1", LS_PREFS = "blunted.prefs.v1";
+  var LS_BACKUPS = ["blunted.backup.v1a", "blunted.backup.v1b", "blunted.backup.v1c"];
   var storageOK = true, storageMsg = "";
 
   function tauri() { return window.__BLUNTED_TAURI__ || null; }
 
+  function parseDoc(s) {
+    if (!s) return null;
+    try {
+      var d = JSON.parse(s);
+      return (d && typeof d.body === "string") ? d : null;
+    } catch (e) { return null; }
+  }
+
   var store = {
     load: function () {
       var t = tauri();
-      if (t && t.loadDoc) return t.loadDoc(); // {doc, prefs} or null; may throw
+      if (t && t.loadDoc) return t.loadDoc(); // {doc, prefs, recovered?} or null; may throw
+      var prefsOut = null;
       try {
-        var d = localStorage.getItem(LS_DOC), p = localStorage.getItem(LS_PREFS);
-        return {
-          doc: d ? JSON.parse(d) : null,
-          prefs: p ? JSON.parse(p) : null,
-        };
-      } catch (e) {
-        storageOK = false; storageMsg = "Recovery unavailable: download a copy.";
-        return { doc: null, prefs: null, corrupt: true };
+        var p = localStorage.getItem(LS_PREFS);
+        prefsOut = p ? JSON.parse(p) : null;
+      } catch (e) { prefsOut = null; }
+      var doc = null, recovered = false;
+      try {
+        doc = parseDoc(localStorage.getItem(LS_DOC));
+        if (!doc) {
+          for (var i = 0; i < LS_BACKUPS.length; i++) {
+            try { doc = parseDoc(localStorage.getItem(LS_BACKUPS[i])); } catch (e) { doc = null; }
+            if (doc) { recovered = true; break; }
+          }
+        }
+      } catch (e) { doc = null; }
+      if (!doc && !prefsOut) {
+        // nothing stored at all — fresh start, not a failure
+        return { doc: null, prefs: null };
       }
+      if (!doc) {
+        storageOK = false; storageMsg = "Saved draft unreadable and no backup worked: download a copy before writing.";
+        return { doc: null, prefs: prefsOut, corrupt: true };
+      }
+      return { doc: doc, prefs: prefsOut, recovered: recovered };
     },
     save: function () {
       if (prefs.privateSession) { setSaveState("Private session — not saved"); return; }
       var t = tauri();
       var payload = { doc: state, prefs: prefs };
       if (t && t.saveDoc) {
-        try { t.saveDoc(payload); setSaveState("Saved"); dirty = false; }
-        catch (e) { setSaveState("Saving failed"); }
+        try {
+          var r = t.saveDoc(payload);
+          // adapter returns a promise in the shell; failures surface async
+          if (r && r.then) r.then(function () { setSaveState("Saved"); dirty = false; }, function () { setSaveState("Saving failed — Download .md to keep a copy."); });
+          else { setSaveState("Saved"); dirty = false; }
+        }
+        catch (e) { setSaveState("Saving failed — Download .md to keep a copy."); }
         return;
       }
       try {
-        var prev = localStorage.getItem(LS_DOC);
-        if (prev) localStorage.setItem(LS_BACKUP, prev); // last-good backup
+        var prev = null;
+        try { prev = localStorage.getItem(LS_DOC); } catch (e) { prev = null; }
+        if (prev) {
+          // rotate: c <- b <- a <- previous main doc
+          try {
+            localStorage.setItem(LS_BACKUPS[2], localStorage.getItem(LS_BACKUPS[1]) || "");
+            localStorage.setItem(LS_BACKUPS[1], localStorage.getItem(LS_BACKUPS[0]) || "");
+            localStorage.setItem(LS_BACKUPS[0], prev);
+          } catch (e) { /* rotation best-effort; main save matters most */ }
+        }
         localStorage.setItem(LS_DOC, JSON.stringify(state));
         localStorage.setItem(LS_PREFS, JSON.stringify(prefs));
         setSaveState("Saved"); dirty = false;
       } catch (e) {
         storageOK = false;
         setSaveState("Saving failed");
-        storageMsg = "Recovery unavailable: download a copy.";
+        storageMsg = "Saving failed (storage full or blocked): Download .md to keep a copy.";
       }
     },
     clear: function () {
       var t = tauri();
       if (t && t.clearAll) { try { t.clearAll(); } catch (e) {} }
-      try { localStorage.removeItem(LS_DOC); localStorage.removeItem(LS_PREFS); localStorage.removeItem(LS_BACKUP); } catch (e) {}
+      try {
+        localStorage.removeItem(LS_DOC); localStorage.removeItem(LS_PREFS);
+        for (var i = 0; i < LS_BACKUPS.length; i++) localStorage.removeItem(LS_BACKUPS[i]);
+        // legacy single-slot backup from v1
+        localStorage.removeItem("blunted.backup.v1");
+      } catch (e) {}
     },
   };
 
@@ -110,10 +161,10 @@
     var rev = currentRev;
     updateLargeDocNotice();
     var req = {
-      text: editor.value, mode: state.modeId,
+      text: editor.value, mode: SINGLE_MODE,
       overrides: buildOverrides(), ignoredTerms: state.ignoredTerms,
-      ignoredRuleIds: state.ignoredRuleIds, subject: state.subject,
-      emailReply: prefs.replyMode, textRevision: rev,
+      ignoredRuleIds: state.ignoredRuleIds,
+      textRevision: rev,
     };
     if (workerOK && worker) {
       lastWorkerRev = rev;
@@ -130,9 +181,9 @@
 
   function analyzeMainThread(req, rev) {
     req = req || {
-      text: editor.value, mode: state.modeId, overrides: buildOverrides(),
+      text: editor.value, mode: SINGLE_MODE, overrides: buildOverrides(),
       ignoredTerms: state.ignoredTerms, ignoredRuleIds: state.ignoredRuleIds,
-      subject: state.subject, emailReply: prefs.replyMode, textRevision: currentRev,
+      textRevision: currentRev,
     };
     rev = rev || currentRev;
     if (rev < currentRev) return; // stale
@@ -161,7 +212,6 @@
     var o = Object.assign({}, state.ruleOverrides);
     o.readingWpm = prefs.wpm;
     if (prefs.includeQuotes) o.excludeQuotes = false;
-    if (state.modeId === "email") o.emailChecks = { mode: "new", greeting: true, signoff: true, subjectBudget: 60 };
     return o;
   }
 
@@ -239,12 +289,13 @@
     var m = r.metrics;
     var wc = m.eligibleWords, tw = m.totalWords;
     statusWords.textContent = tw === wc ? wc + " words" : wc + " prose words (" + tw + " total)";
+    statusSent.textContent = m.proseSentences === 1 ? "1 sentence" : m.proseSentences + " sentences";
     statusTime.textContent = m.readingTime + " read";
     if (m.grade) {
       var g = m.grade;
       gradeMain.textContent = g.label === "College+" ? "College+ reading level" : "Estimated reading grade: " + g.label;
       gradeMain.title = "U.S. school-grade scale (ARI" + (m.rawAri != null ? " " + m.rawAri.toFixed(1) : "") + "). An estimate — not a verdict.";
-      gradeSub.textContent = "Target for " + (MODES[state.modeId] ? MODES[state.modeId].label : state.modeId) + ": grade " + r.config.targetGrade + ".";
+      gradeSub.textContent = "Target: grade " + r.config.targetGrade + ".";
       statusGrade.textContent = "Grade " + g.label;
     } else {
       gradeMain.textContent = "Too little text for a steady estimate";
@@ -280,7 +331,7 @@
     sentence: "Sentence length", passive: "Passive voice", adverb: "Adverb",
     wordiness: "Wordiness", hedge: "Hedge", simpler: "Simpler word",
     repeated: "Repeated word", paragraph: "Paragraph", length: "Length",
-    email: "Email", todo: "Placeholder",
+    todo: "Placeholder",
   };
 
   function renderIssues(r) {
@@ -392,8 +443,14 @@
     } catch (e) {}
     var ok = false;
     try { ok = document.execCommand("insertText", false, issue.fix.replacement); } catch (e) { ok = false; }
+    if (!ok && editor.setRangeText) {
+      // setRangeText stays inside the browser's undo history (one step),
+      // unlike a value splice which breaks it.
+      try { editor.setRangeText(issue.fix.replacement, issue.from, issue.to, "end"); ok = true; }
+      catch (e) { ok = false; }
+    }
     if (!ok) {
-      // fallback: value splice (single undo step may not hold everywhere; documented)
+      // last resort: value splice (undo grouping may not hold everywhere)
       editor.value = cur.slice(0, issue.from) + issue.fix.replacement + cur.slice(issue.to);
     }
     onTextInput();
@@ -409,6 +466,108 @@
     srStatus.textContent = g + ", " + n + " issues, " + m.eligibleWords + " prose words.";
   }
 
+  // ---------- find in document ----------
+  // Plain case-insensitive substring search (no regex — predictable).
+  // Native menu (Tauri) reaches this via the "blunted-find" window event.
+  var findQuery = "", findMatches = [], findIdx = -1;
+  var FIND_CAP = 1000;
+
+  function recomputeFind() {
+    findMatches = [];
+    var q = findQuery;
+    if (!q) { renderFindCount(); return; }
+    var lower = editor.value.toLowerCase(), needle = q.toLowerCase();
+    var pos = 0;
+    while (findMatches.length < FIND_CAP) {
+      var at = lower.indexOf(needle, pos);
+      if (at === -1) break;
+      findMatches.push(at);
+      pos = at + Math.max(1, needle.length);
+    }
+    if (findIdx >= findMatches.length) findIdx = findMatches.length ? 0 : -1;
+    renderFindCount();
+  }
+
+  function renderFindCount() {
+    var el = $("findCount");
+    if (!findQuery) { el.textContent = ""; return; }
+    if (!findMatches.length) { el.textContent = "No matches"; return; }
+    el.textContent = (findIdx + 1) + " of " + findMatches.length + (findMatches.length >= FIND_CAP ? "+" : "");
+  }
+
+  function showFindMatch(n, focusEditor) {
+    if (!findMatches.length) return;
+    findIdx = ((n % findMatches.length) + findMatches.length) % findMatches.length;
+    var at = findMatches[findIdx];
+    if (focusEditor) editor.focus();
+    try { editor.setSelectionRange(at, at + findQuery.length); } catch (e) {}
+    scrollToOffset(at);
+    renderFindCount();
+  }
+
+  function updateFindFromInput() {
+    findQuery = $("findInput").value.replace(/[\r\n]+/g, "");
+    if ($("findInput").value !== findQuery) $("findInput").value = findQuery;
+    findIdx = -1;
+    recomputeFind();
+    if (findMatches.length) {
+      // land on the match at/after the caret (caret is untouched while
+      // typing in the find box, so this target is stable per keystroke)
+      var caret = 0;
+      try { caret = editor.selectionEnd || 0; } catch (e) {}
+      var n = 0;
+      while (n < findMatches.length && findMatches[n] < caret) n++;
+      if (n >= findMatches.length) n = 0;
+      showFindMatch(n, false);
+    }
+  }
+
+  function openFind() {
+    $("findBar").hidden = false;
+    var inp = $("findInput");
+    try {
+      var s = editor.selectionStart || 0, e = editor.selectionEnd || 0;
+      var sel = (s !== e) ? editor.value.slice(s, e) : "";
+      if (sel && sel.length <= 80 && sel.indexOf("\n") === -1) inp.value = sel;
+    } catch (err) {}
+    inp.focus();
+    try { inp.select(); } catch (err2) {}
+    updateFindFromInput();
+  }
+
+  function closeFind() {
+    $("findBar").hidden = true;
+    findQuery = ""; findMatches = []; findIdx = -1;
+    $("findCount").textContent = "";
+    editor.focus();
+  }
+
+  var findDeb = null;
+  $("findInput").addEventListener("input", function () {
+    clearTimeout(findDeb);
+    findDeb = setTimeout(updateFindFromInput, 120);
+  });
+  $("findInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!findMatches.length) updateFindFromInput();
+      else showFindMatch(findIdx + (e.shiftKey ? -1 : 1), false);
+    } else if (e.key === "Escape") {
+      e.preventDefault(); e.stopPropagation();
+      closeFind();
+    }
+  });
+  $("findNext").addEventListener("click", function () {
+    if (!findMatches.length) updateFindFromInput();
+    else showFindMatch(findIdx + 1, true);
+  });
+  $("findPrev").addEventListener("click", function () {
+    if (!findMatches.length) updateFindFromInput();
+    else showFindMatch(findIdx - 1, true);
+  });
+  $("findClose").addEventListener("click", closeFind);
+  window.addEventListener("blunted-find", openFind);
+
   // ---------- input / scroll sync ----------
   function syncScroll() {
     try {
@@ -423,6 +582,7 @@
     dirty = true;
     setSaveState(prefs.privateSession ? "Private session — not saved" : "Editing…");
     updateSampleVisibility();
+    if (!$("findBar").hidden) recomputeFind();
     scheduleAnalysis();
   }
 
@@ -441,57 +601,22 @@
   }
   window.addEventListener("resize", syncScroll);
 
-  // ---------- mode tabs ----------
-  var tabsEl = $("modeTabs");
-  MODE_ORDER.forEach(function (id) {
-    var t = document.createElement("button");
-    t.type = "button"; t.role = "tab"; t.id = "tab-" + id;
-    t.textContent = MODES[id].label;
-    t.setAttribute("aria-selected", id === state.modeId ? "true" : "false");
-    t.tabIndex = id === state.modeId ? 0 : -1;
-    t.addEventListener("click", function () { setMode(id); });
-    t.addEventListener("keydown", function (e) {
-      var i = MODE_ORDER.indexOf(id);
-      if (e.key === "ArrowRight") { var n = MODE_ORDER[(i + 1) % MODE_ORDER.length]; setMode(n); $("tab-" + n).focus(); }
-      if (e.key === "ArrowLeft") { var p = MODE_ORDER[(i - 1 + MODE_ORDER.length) % MODE_ORDER.length]; setMode(p); $("tab-" + p).focus(); }
-    });
-    tabsEl.appendChild(t);
-  });
-
-  function setMode(id) {
-    if (!MODES[id]) return;
-    state.modeId = id; // never rewrites body/subject/title/selection
-    var selS = null, selE = null;
-    try { selS = editor.selectionStart; selE = editor.selectionEnd; } catch (e) {}
-    for (var i = 0; i < MODE_ORDER.length; i++) {
-      var t = $("tab-" + MODE_ORDER[i]);
-      if (t) {
-        t.setAttribute("aria-selected", MODE_ORDER[i] === id ? "true" : "false");
-        t.tabIndex = MODE_ORDER[i] === id ? 0 : -1;
-      }
-    }
-    $("subjectWrap").hidden = id !== "email";
-    $("btnCopyEmail").hidden = id !== "email";
-    $("replyWrap").hidden = id !== "email";
-    buildRuleToggles();
-    updateCustomNote();
-    try { if (selS != null) editor.setSelectionRange(selS, selE); } catch (e) {}
-    runAnalysis();
-    store.saveSoon ? store.saveSoon() : scheduleSave();
-  }
+  // ---------- single preset ----------
+  // No mode tabs: one clarity preset. Legacy stored modeIds are migrated
+  // to "clear" on load; selection/body/title are never rewritten.
 
   // ---------- rule toggles / settings ----------
   var RULE_LABELS = [
     ["passive", "Passive voice notes"], ["adverb", "Adverb (-ly) notes"],
     ["intensifier", "Intensifier notes"], ["wordiness", "Wordiness"],
     ["filler", "Filler openings"], ["simpler", "Simpler words"],
-    ["repeated", "Repeated words"],
+    ["repeated", "Repeated words"], ["todo", "Placeholder markers (TODO)"],
   ];
 
   function buildRuleToggles() {
     var box = $("ruleToggles");
     box.textContent = "";
-    var cfg = MODES[state.modeId];
+    var cfg = MODES[SINGLE_MODE];
     RULE_LABELS.forEach(function (pair) {
       var key = pair[0];
       if (!(key in cfg.rules)) return;
@@ -503,12 +628,7 @@
       var cb = document.createElement("input");
       cb.type = "checkbox"; cb.checked = !!on; cb.dataset.rule = key;
       cb.addEventListener("change", function () {
-        var b = MODES[state.modeId].rules[key];
-        var val;
-        if (typeof b === "string") val = cb.checked ? (b === "off" ? "note" : b) : "off";
-        else val = cb.checked;
-        if (key === "intensifier" && typeof b === "string") val = cb.checked ? "selected" : false;
-        state.ruleOverrides[key] = val;
+        state.ruleOverrides[key] = cb.checked;
         updateCustomNote(); runAnalysis(); scheduleSave();
       });
       lab.appendChild(cb);
@@ -534,9 +654,9 @@
 
   function updateCustomNote() {
     var n = Object.keys(state.ruleOverrides).filter(function (k) {
-      return k !== "readingWpm" && k !== "excludeQuotes" && k !== "emailChecks";
+      return k !== "readingWpm" && k !== "excludeQuotes";
     }).length;
-    $("customNote").textContent = n ? "This preset is customized (" + n + " override" + (n > 1 ? "s" : "") + ")." : "";
+    $("customNote").textContent = n ? "Customized (" + n + " override" + (n > 1 ? "s" : "") + ")." : "";
   }
 
   $("btnResetMode").addEventListener("click", function () {
@@ -557,6 +677,18 @@
     prefs.fontSize = parseInt(e.target.value, 10) || 16;
     applyPrefs(); scheduleSave();
   });
+  $("fontFamily").addEventListener("change", function (e) {
+    prefs.fontFamily = e.target.value || "system";
+    applyPrefs(); scheduleSave();
+  });
+  $("lineHeight").addEventListener("change", function (e) {
+    var lh = parseFloat(e.target.value);
+    if (lh >= 1.2 && lh <= 2.5) { prefs.lineHeight = lh; applyPrefs(); scheduleSave(); }
+    else e.target.value = String(prefs.lineHeight || 1.8);
+  });
+  $("optHeader").addEventListener("change", function (e) {
+    prefs.includeHeader = e.target.checked; scheduleSave();
+  });
   $("wpm").addEventListener("change", function (e) {
     var v = parseInt(e.target.value, 10);
     if (v >= 100 && v <= 400) { prefs.wpm = v; runAnalysis(); scheduleSave(); }
@@ -564,9 +696,6 @@
   });
   $("optQuotes").addEventListener("change", function (e) {
     prefs.includeQuotes = e.target.checked; runAnalysis(); scheduleSave();
-  });
-  $("optReply").addEventListener("change", function (e) {
-    prefs.replyMode = e.target.checked; runAnalysis(); scheduleSave();
   });
   $("optPrivate").addEventListener("change", function (e) {
     prefs.privateSession = e.target.checked;
@@ -579,12 +708,16 @@
 
   function applyPrefs() {
     document.body.dataset.theme = prefs.theme;
+    document.body.dataset.font = prefs.fontFamily || "system";
     document.documentElement.style.setProperty("--ed-font", prefs.fontSize + "px");
+    document.documentElement.style.setProperty("--ed-lh", String(prefs.lineHeight || 1.8));
     $("fontVal").textContent = prefs.fontSize + "px";
     $("fontSize").value = prefs.fontSize;
+    $("fontFamily").value = prefs.fontFamily || "system";
+    $("lineHeight").value = String(prefs.lineHeight || 1.8);
     $("wpm").value = prefs.wpm;
     $("optQuotes").checked = !!prefs.includeQuotes;
-    $("optReply").checked = !!prefs.replyMode;
+    $("optHeader").checked = !!prefs.includeHeader;
     $("optPrivate").checked = !!prefs.privateSession;
     $("themeSel").value = prefs.theme;
     syncScroll();
@@ -610,7 +743,7 @@
 
   $("btnNew").addEventListener("click", function () {
     if (!confirmReplace()) return;
-    state = freshDoc(state.modeId);
+    state = freshDoc();
     loadDocIntoUI(); runAnalysis(); store.save();
   });
 
@@ -622,7 +755,9 @@
     var rd = new FileReader();
     rd.onload = function () {
       var text = String(rd.result || "");
-      state = freshDoc(state.modeId);
+      // Normalize Windows CRLF to LF so offsets and counts stay stable.
+      text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      state = freshDoc();
       // strip HTML? accept plain text only — FileReader gives text; pasted HTML handled on paste
       state.body = text;
       state.title = (f.name || "").replace(/\.(txt|md|markdown)$/i, "");
@@ -640,19 +775,22 @@
     if (t == null) return;
     var ok = false;
     try { ok = document.execCommand("insertText", false, t); } catch (err) { ok = false; }
+    if (!ok && editor.setRangeText) {
+      try {
+        var s0 = editor.selectionStart || 0, e0 = editor.selectionEnd || 0;
+        editor.setRangeText(t, s0, e0, "end");
+        ok = true;
+      } catch (err2) { ok = false; }
+    }
     if (!ok) {
       var s = editor.selectionStart || 0, en = editor.selectionEnd || 0;
       editor.value = editor.value.slice(0, s) + t + editor.value.slice(en);
-      try { editor.setSelectionRange(s + t.length, s + t.length); } catch (err2) {}
+      try { editor.setSelectionRange(s + t.length, s + t.length); } catch (err3) {}
     }
     onTextInput();
   });
 
   $("btnCopy").addEventListener("click", function () { copyText(editor.value, "Body"); });
-  $("btnCopyEmail").addEventListener("click", function () {
-    var t = (state.subject ? state.subject + "\n\n" : "") + editor.value;
-    copyText(t, "Email");
-  });
 
   function copyText(text, what) {
     copyNote.textContent = "";
@@ -670,34 +808,132 @@
   }
 
   $("btnDownload").addEventListener("click", function () {
-    var name = (state.title || "untitled").replace(/[\\/:*?"<>|#%&{}$!'@+`=]/g, "").trim().slice(0, 80) || "untitled";
-    var blob = new Blob([editor.value], { type: "text/markdown;charset=utf-8" });
+    var name = downloadName();
+    var built = buildMarkdown();
+    var blob = new Blob([built], { type: "text/markdown;charset=utf-8" });
     if (tauri() && tauri().saveFile) {
-      tauri().saveFile(name + ".md", editor.value).then(
+      tauri().saveFile(name + ".md", built).then(
         function (ok) {
           if (ok === false) copyNote.textContent = "Save cancelled.";
           else copyNote.textContent = "Saved " + name + ".md.";
         },
-        function () { fallbackDownload(blob, name); });
+        function () { fallbackDownload(blob, name, "md", true); });
       return;
     }
-    fallbackDownload(blob, name);
+    fallbackDownload(blob, name, "md", true);
   });
 
-  function fallbackDownload(blob, name) {
+  $("btnDownloadTxt").addEventListener("click", function () {
+    var name = downloadName();
+    var blob = new Blob([editor.value], { type: "text/plain;charset=utf-8" });
+    if (tauri() && tauri().saveFile) {
+      tauri().saveFile(name + ".txt", editor.value).then(
+        function (ok) {
+          if (ok === false) copyNote.textContent = "Save cancelled.";
+          else copyNote.textContent = "Saved " + name + ".txt.";
+        },
+        function () { fallbackDownload(blob, name, "txt", false); });
+      return;
+    }
+    fallbackDownload(blob, name, "txt", false);
+  });
+
+  function downloadName() {
+    var name = (state.title || "untitled").replace(/[\\/:*?"<>|#%&{}$!'@+`=]/g, "").trim().slice(0, 80) || "untitled";
+    // Windows reserved names + trailing dots/spaces are not valid filenames.
+    name = name.replace(/[. ]+$/, "") || "untitled";
+    if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(name)) name = "_" + name;
+    return name;
+  }
+
+  // Optional YAML front-matter (title + export date) for the .md download.
+  // Off by default: the plain default stays content-only.
+  function buildMarkdown() {
+    var body = editor.value;
+    if (!prefs.includeHeader) return body;
+    var lines = ["---"];
+    var t = String(state.title || "").replace(/[\r\n]+/g, " ").replace(/---/g, "").trim().slice(0, 120);
+    if (t) lines.push("title: " + t);
+    try { lines.push("date: " + new Date().toISOString().slice(0, 10)); }
+    catch (e) { /* date best-effort */ }
+    lines.push("---", "", body);
+    return lines.join("\n");
+  }
+
+  function fallbackDownload(blob, name, ext, headerAware) {
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = name + ".md";
+    a.download = name + "." + ext;
     document.body.appendChild(a);
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-    copyNote.textContent = "Downloaded " + name + ".md (UTF-8, content only).";
+    copyNote.textContent = "Downloaded " + name + "." + ext + " (UTF-8" +
+      (headerAware && prefs.includeHeader ? ", with title/date header" : ", content only") + ").";
+  }
+
+  // ---------- settings export / import (manual file = the sync story) ----------
+  $("btnExportSettings").addEventListener("click", function () {
+    var data = {
+      app: "blunted", version: 1,
+      prefs: prefs, ruleOverrides: state.ruleOverrides, ignoredTerms: state.ignoredTerms,
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "blunted-settings.json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    copyNote.textContent = "Downloaded blunted-settings.json. Move it to your other device yourself and Import there.";
+  });
+
+  $("btnImportSettings").addEventListener("click", function () { $("settingsPick").click(); });
+  $("settingsPick").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var ok = false;
+      try {
+        var data = JSON.parse(String(rd.result || ""));
+        if (data && data.app === "blunted" && data.prefs) {
+          prefs = sanitizePrefs(data.prefs);
+          state.ruleOverrides = sanitizeOverrides(data.ruleOverrides);
+          state.ignoredTerms = Array.isArray(data.ignoredTerms)
+            ? data.ignoredTerms.filter(function (s) { return typeof s === "string"; }).map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 200)
+            : [];
+          ok = true;
+        }
+      } catch (err) { ok = false; }
+      if (ok) {
+        applyPrefs();
+        setReview(prefs.review === "write" ? "write" : "review");
+        loadDocIntoUI(); runAnalysis(); scheduleSave();
+        copyNote.textContent = "Settings imported.";
+      } else {
+        copyNote.textContent = "That file is not a blunted settings file — nothing changed.";
+      }
+    };
+    try { rd.readAsText(f); } catch (err) { copyNote.textContent = "Could not read that file — nothing changed."; }
+    e.target.value = "";
+  });
+
+  var KNOWN_RULES = ["passive", "adverb", "intensifier", "wordiness", "filler", "simpler", "repeated", "todo"];
+  function sanitizeOverrides(o) {
+    var out = {};
+    if (!o || typeof o !== "object") return out;
+    for (var i = 0; i < KNOWN_RULES.length; i++) {
+      var k = KNOWN_RULES[i];
+      if (o[k] === true || o[k] === false) out[k] = o[k];
+    }
+    if (o.hedge === "note" || o.hedge === "off") out.hedge = o.hedge;
+    return out;
   }
 
   var SAMPLE = "The Editor’s Test\n\nDr. Rao measured 3.14 ml on Tuesday. It was written in the lab notebook at 9 a.m.\n\nIt is important to note that the samples were collected in order to facilitate subsequent analysis. We utilize approximately 5 ml per run, and the results were surprising.\n\nFriendly staff reply quickly. Really very good.\n\nThe the report needs tightening before Friday.";
   $("btnSample").addEventListener("click", function () {
     if (editor.value && !window.confirm("Load the labelled sample? This replaces the current draft.")) return;
-    state = freshDoc(state.modeId);
+    state = freshDoc();
     state.title = "Sample";
     state.body = SAMPLE;
     loadDocIntoUI(); runAnalysis(); store.save();
@@ -709,29 +945,62 @@
   $("docTitle").addEventListener("input", function (e) {
     state.title = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; scheduleSave();
   });
-  $("docSubject").addEventListener("input", function (e) {
-    state.subject = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; scheduleAnalysis();
-  });
 
   $("btnClearData").addEventListener("click", function () {
     if (!window.confirm("Clear all local blunted data on this device (draft, backup, preferences)? This cannot be undone. Download a copy first if needed.")) return;
     store.clear();
-    state = freshDoc("essays");
+    state = freshDoc();
     loadDocIntoUI(); runAnalysis();
     setSaveState("Local data cleared");
   });
 
+  $("btnPrint").addEventListener("click", function () { window.print(); });
+  window.addEventListener("beforeprint", function () {
+    // A textarea prints as an empty box, so render the draft into the
+    // print-only sheet (title + date + plain text, no highlights).
+    var el = $("printDoc");
+    el.textContent = "";
+    var h = document.createElement("h1");
+    h.appendChild(document.createTextNode(state.title || "Untitled"));
+    var meta = document.createElement("p");
+    meta.className = "print-meta";
+    var dstr = "";
+    try { dstr = new Date().toISOString().slice(0, 10); } catch (e) {}
+    meta.appendChild(document.createTextNode(dstr ? dstr + " · blunted (local only)" : "blunted (local only)"));
+    var body = document.createElement("div");
+    body.className = "print-body";
+    body.appendChild(document.createTextNode(editor.value || ""));
+    el.appendChild(h); el.appendChild(meta); el.appendChild(body);
+  });
+
   document.addEventListener("keydown", function (e) {
+    var mod = e.metaKey || e.ctrlKey;
+    if (mod && (e.key === "s" || e.key === "S")) {
+      // Download .md — same path as the button (Tauri dialog or browser file).
+      // Skipped inside the desktop shell: the native Save As… menu owns
+      // Cmd/Ctrl+S there, and firing both would stack two dialogs.
+      if (tauri()) return;
+      e.preventDefault();
+      $("btnDownload").click();
+      return;
+    }
+    if (mod && (e.key === "f" || e.key === "F")) {
+      e.preventDefault();
+      if ($("findBar").hidden) openFind();
+      else { $("findInput").focus(); try { $("findInput").select(); } catch (err) {} }
+      return;
+    }
     if (e.key === "Escape") {
+      if (!$("findBar").hidden) { closeFind(); return; }
       var open = document.querySelector("details[open]");
       if (open && !/input|textarea|select/i.test(document.activeElement.tagName)) open.removeAttribute("open");
     }
   });
 
-  function freshDoc(modeId) {
+  function freshDoc() {
     return {
-      id: "doc-" + Date.now().toString(36), title: "", modeId: modeId || "essays",
-      body: "", subject: "", createdAt: new Date().toISOString(),
+      id: "doc-" + Date.now().toString(36), title: "", modeId: SINGLE_MODE,
+      body: "", createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(), ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [],
     };
   }
@@ -739,26 +1008,12 @@
   function loadDocIntoUI() {
     editor.value = state.body || "";
     $("docTitle").value = state.title || "";
-    $("docSubject").value = state.subject || "";
     $("ignoredTerms").value = (state.ignoredTerms || []).join(", ");
-    setModeSilent(state.modeId || "essays");
+    state.modeId = normalizeMode(state.modeId);
+    delete state.subject;
     buildRuleToggles(); updateCustomNote();
     updateSampleVisibility();
     dirty = false;
-  }
-
-  function setModeSilent(id) {
-    state.modeId = MODES[id] ? id : "essays";
-    for (var i = 0; i < MODE_ORDER.length; i++) {
-      var t = $("tab-" + MODE_ORDER[i]);
-      if (t) {
-        t.setAttribute("aria-selected", MODE_ORDER[i] === state.modeId ? "true" : "false");
-        t.tabIndex = MODE_ORDER[i] === state.modeId ? 0 : -1;
-      }
-    }
-    $("subjectWrap").hidden = state.modeId !== "email";
-    $("btnCopyEmail").hidden = state.modeId !== "email";
-    $("replyWrap").hidden = state.modeId !== "email";
   }
 
   function scheduleSave() {
@@ -770,19 +1025,59 @@
   function init() {
     var loaded = null;
     try { loaded = store.load(); } catch (e) { loaded = null; }
-    if (loaded && loaded.prefs) prefs = Object.assign(prefs, loaded.prefs);
+    // Tauri loadDoc is async (IPC promise); web load is sync.
+    if (loaded && typeof loaded.then === "function") {
+      loaded.then(function (v) { initWith(v); }, function () { initWith(null); });
+    } else {
+      initWith(loaded);
+    }
+  }
+
+  function initWith(loaded) {
+    var wasRecovered = !!(loaded && loaded.recovered);
+    var wasCorrupt = !!(loaded && loaded.corrupt);
+    if (loaded && loaded.prefs) {
+      prefs = sanitizePrefs(loaded.prefs);
+      delete prefs.replyMode; // removed with Email mode
+    }
     if (loaded && loaded.doc && typeof loaded.doc.body === "string") {
-      state = Object.assign(freshDoc("essays"), loaded.doc);
+      state = Object.assign(freshDoc(), loaded.doc);
+      state.modeId = normalizeMode(state.modeId);
+      delete state.subject;
     }
     applyPrefs();
     setReview(prefs.review === "write" ? "write" : "review");
     loadDocIntoUI();
-    if (!storageOK) setSaveState(storageMsg);
+    if (wasRecovered) {
+      dirty = true; // re-save the recovered draft over the bad main slot
+      setSaveState("Recovered from backup");
+      copyNote.textContent = "Recovered your draft from a local backup — the main save was unreadable. Download a copy to be safe.";
+      scheduleSave();
+    } else if (wasCorrupt || !storageOK) {
+      setSaveState(storageMsg || "Saved data unreadable");
+      copyNote.textContent = storageMsg || "Saved data unreadable. Download a copy before writing.";
+    }
     else if (prefs.privateSession) setSaveState("Private session — not saved");
     else setSaveState("—");
     // font sync for backdrop
     syncScroll();
     runAnalysis();
+  }
+
+  // Prefs from storage are untrusted input: keep known keys, sane ranges.
+  function sanitizePrefs(p) {
+    var out = {};
+    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "includeQuotes", "includeHeader"];
+    for (var i = 0; i < allow.length; i++) {
+      if (p[allow[i]] !== undefined) out[allow[i]] = p[allow[i]];
+    }
+    if (["system", "light", "dark"].indexOf(out.theme) === -1) delete out.theme;
+    if (!Number.isFinite(out.fontSize) || out.fontSize < 13 || out.fontSize > 24) delete out.fontSize;
+    if (["system", "serif", "mono"].indexOf(out.fontFamily) === -1) delete out.fontFamily;
+    if (!Number.isFinite(out.lineHeight) || out.lineHeight < 1.2 || out.lineHeight > 2.5) delete out.lineHeight;
+    if (!Number.isFinite(out.wpm) || out.wpm < 100 || out.wpm > 400) delete out.wpm;
+    if (out.review !== "write" && out.review !== "review") delete out.review;
+    return Object.assign({}, prefs, out);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

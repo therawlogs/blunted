@@ -1,6 +1,6 @@
 [package]
 name = "blunted"
-version = "0.1.0"
+version = "0.1.1"
 description = "blunted — private offline writing-clarity app (unsigned development preview)"
 edition = "2021"
 rust-version = "1.77"
@@ -19,3 +19,9 @@ serde_json = "1"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+lto = true
+opt-level = "s"
+codegen-units = 1
+strip = true

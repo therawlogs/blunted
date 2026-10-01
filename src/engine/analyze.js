@@ -1,5 +1,9 @@
-// Pure engine: analyze({text, mode, overrides, ignoredTerms, subject?})
+// Pure engine: analyze({text, overrides, ignoredTerms})
 // No DOM, storage, clipboard, filesystem, or network calls.
+// Single clarity preset ("clear"). `mode` is accepted for backward
+// compatibility (legacy Essay/Social/Message/Email/Research ids map to
+// "clear") and otherwise ignored. `subject`/`emailReply` are accepted but
+// ignored (email mode removed).
 import { scanDocument, rangeOverlap } from "./markdown.js";
 import { tokenize, countLettersDigits } from "./tokenizer.js";
 import { segmentSentences } from "./segmenter.js";
@@ -15,7 +19,7 @@ import { countGraphemes } from "./graphemes.js";
 
 let revisionCounter = 0;
 
-export function analyze({ text = "", mode = "essays", overrides = {}, ignoredTerms = [], ignoredRuleIds = [], subject = "", emailReply = false, textRevision = null, segmenterFallback = false } = {}) {
+export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerms = [], ignoredRuleIds = [], subject = "", emailReply = false, textRevision = null, segmenterFallback = false } = {}) {
   const src = String(text ?? "");
   const modeCfg = applyOverrides(mode, overrides);
   const rev = textRevision ?? ++revisionCounter;
@@ -161,7 +165,7 @@ export function analyze({ text = "", mode = "essays", overrides = {}, ignoredTer
         }
       }
     }
-    // hedges: note in most modes, off in research
+    // hedges: kept as notes (single preset); "off" only via override
     if (modeCfg.rules.hedge === "note") {
       for (const h of HEDGES) {
         // single-word hedges need token-exact; phrases via findPhrases
@@ -224,7 +228,7 @@ export function analyze({ text = "", mode = "essays", overrides = {}, ignoredTer
         void gap;
       }
     }
-    // TODO scan (research + any mode with todo:true)
+    // TODO scan (placeholder markers — on in the single preset)
     if (modeCfg.rules.todo) {
       for (const m of findPhrases(src, TODO_PATTERNS)) {
         if (ignoredRules.has("todo")) continue;
@@ -259,11 +263,11 @@ export function analyze({ text = "", mode = "essays", overrides = {}, ignoredTer
       explanation: `${longParas} paragraph${longParas > 1 ? "s" : ""} over ${modeCfg.paragraphWords} words — advice, not an error.`,
     }));
   }
-  if (mode === "message" && modeCfg.maxParagraphs && paragraphs.length > modeCfg.maxParagraphs) {
+  if (modeCfg.maxParagraphs && paragraphs.length > modeCfg.maxParagraphs) {
     issues.push(makeIssue({
       ruleId: "message-paragraphs", category: "paragraph", severity: "info", confidence: "deterministic",
       from: 0, to: 0, text: src,
-      explanation: `Message has ${paragraphs.length} paragraphs — consider shortening for a message.`,
+      explanation: `Document has ${paragraphs.length} paragraphs — consider shortening.`,
     }));
   }
 
@@ -277,38 +281,23 @@ export function analyze({ text = "", mode = "essays", overrides = {}, ignoredTer
     }));
   }
 
-  // email checks (optional completeness notes, never grammar failures)
+  // email checks removed with the Email mode (single preset has no
+  // greeting/sign-off/subject notes). `email` stays null for compatibility.
   const warnings = [];
   if (segmenterFallback || seg.usedFallback) warnings.push({ code: "segmenter-fallback", message: "Using fallback sentence segmenter (Intl.Segmenter unavailable)." });
   if (!englishAllowed) warnings.push({ code: "non-english", message: "Non-English input detected — English scores and word rules suppressed." });
   if (suppressed) warnings.push({ code: "small-sample", message: "Too little text for a steady estimate." });
   if (rawSmog != null && S < 30) warnings.push({ code: "smog-suppressed", message: "SMOG suppressed below 30 sentences (conservative product choice)." });
 
-  let email = null;
-  if (mode === "email" && modeCfg.emailChecks) {
-    const ec = { ...modeCfg.emailChecks, ...(overrides.emailChecks || {}) };
-    const body = src;
-    const hasGreeting = /^\s*(hi|hello|hey|dear|good (morning|afternoon|evening))\b/i.test(body);
-    const hasSignoff = /(thanks|thank you|best|regards|cheers|sincerely|warmly)[,.]?\s*(\n|$)/i.test(body);
-    const subjLen = countGraphemes(subject || "");
-    email = { greeting: hasGreeting, signoff: hasSignoff, subjectLength: subjLen, replyMode: !!emailReply };
-    if (ec.greeting && !emailReply && !hasGreeting) {
-      issues.push(makeIssue({ ruleId: "email-greeting", category: "email", severity: "info", confidence: "heuristic", from: 0, to: 0, text: src, explanation: "No greeting detected (optional for new emails; off for replies)." }));
-    }
-    if (ec.signoff && !emailReply && !hasSignoff) {
-      issues.push(makeIssue({ ruleId: "email-signoff", category: "email", severity: "info", confidence: "heuristic", from: 0, to: 0, text: src, explanation: "No sign-off detected (optional)." }));
-    }
-    if (subject && subjLen > (ec.subjectBudget || 60)) {
-      issues.push(makeIssue({ ruleId: "email-subject", category: "email", severity: "info", confidence: "deterministic", from: 0, to: 0, text: src, explanation: `Subject over ${ec.subjectBudget} characters (product choice, not a universal limit).` }));
-    }
-  }
+  const email = null;
+  void subject; void emailReply; void mode;
 
   // reading time estimate
   const wpm = modeCfg.readingWpm || 200;
   const minutes = W / wpm;
   const readingTime = minutes < 1 ? "<1 min" : `${Math.max(1, Math.round(minutes))} min`;
 
-  const final = dedupeSort(issues.filter((i) => !(i.from === 0 && i.to === 0) || ["paragraph-long", "message-paragraphs", "character-budget", "email-greeting", "email-signoff", "email-subject"].includes(i.ruleId)));
+  const final = dedupeSort(issues.filter((i) => !(i.from === 0 && i.to === 0) || ["paragraph-long", "message-paragraphs", "character-budget"].includes(i.ruleId)));
 
   return {
     metrics: {

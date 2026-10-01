@@ -15,7 +15,7 @@ No code or word lists were copied from them:
 - Helge Sverre, “textarea overlay” article (2026) — backdrop alignment technique.
 - twitter-text (Apache-2.0) — why an X-exact counter was deliberately omitted from v1.
 
-The **Mac shell** (build-time/development only, never shipped inside
+The **desktop shell** (build-time/development only, never shipped inside
 `dist/index.html`) depends on pinned crates and tooling. Their licenses apply
 to the shell build, not to the web artifact:
 

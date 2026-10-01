@@ -1,4 +1,4 @@
-/* blunted Tauri adapter — loaded ONLY in the Mac shell (see
+/* blunted Tauri adapter — loaded ONLY in the desktop shell (see
    scripts/bundle-tauri.mjs). Never part of dist/index.html.
    Bridges window.__BLUNTED_TAURI__ using the raw __TAURI__ IPC globals so the
    shell needs no npm dependencies. */
@@ -20,6 +20,8 @@
     var t = document.getElementById("docTitle");
     var name = (t && t.value ? t.value : "untitled")
       .replace(/[\\/:*?"<>|#%&{}$!'@+`=]/g, "").trim().slice(0, 80) || "untitled";
+    name = name.replace(/[. ]+$/, "") || "untitled";
+    if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(name)) name = "_" + name;
     return name + ".md";
   }
 
@@ -59,7 +61,10 @@
         });
         break;
       case "find": {
-        var ta2 = document.getElementById("editor");
+        // In-page find UI (same as Cmd/Ctrl+F). Falls back to editor focus
+        // if the find bar is unavailable.
+        if (!window.dispatchEvent(new Event("blunted-find"))) break;
+        var ta2 = document.getElementById("findInput") || document.getElementById("editor");
         if (ta2) ta2.focus();
         break;
       }

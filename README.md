@@ -1,50 +1,62 @@
 # blunted — private writing clarity
 
-A local writing-clarity app: one English analysis engine, five writing
-presets, a dependency-free downloadable HTML app, and a Tauri v2 Mac wrapper
-(Apple Silicon). No accounts, no network, no telemetry. Copy and Download
-`.md` are the only outward actions.
+A local writing-clarity app: one English analysis engine, one clarity
+preset, a dependency-free downloadable HTML app, and Tauri v2 desktop
+shells (Mac Apple Silicon + Windows x64). No accounts, no network, no
+telemetry, no sync — forever free. Copy, Download (`.md` / `.txt`), Print,
+and a settings file are the only outward actions. Find (Cmd/Ctrl+F) and
+Download (Cmd/Ctrl+S) work from the keyboard.
 
 > Screenshot: pending — the UI is built but no screenshot has been captured
 > yet. The README will carry a real screenshot of the built app before any
 > public release. Do not ship with a placeholder image.
 
-## Five modes
+## One focus
 
-Essays · Social Media · Message · Email · Research. Each has its own grade
-target, sentence thresholds, paragraph advice, and rule set
-(see `docs/presets.md`). A highlight means **review**, not wrong.
+Single clarity preset (target grade 8; see `docs/presets.md`). A highlight
+means **review**, not wrong.
 
 ## Download & run (unsigned dev preview)
 
-The Mac build is **unsigned**: Gatekeeper will warn about an unidentified
-developer. That is expected for this preview — do not disable Gatekeeper
-system-wide. The safest path is the portable file:
+Both desktop builds are **unsigned** (no paid certificates, no Store —
+this project stays free). Your OS will warn on first run; that is
+expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
+path is the portable file:
 
 1. Download `index.html` from the release.
 2. Turn networking off if you like — double-click it. Everything works.
 3. Write. Copy or Download `.md` when done. Nothing leaves the device.
 
+Mac: Gatekeeper warns about an unidentified developer (details:
+`docs/mac-release.md`). Windows: SmartScreen warns about an unrecognized
+app; verify the SHA-256 hash first (details: `docs/win-release.md`).
+
 ## Offline / privacy (with limits)
 
 Analysis runs on-device; there is nothing to phone home to. Draft recovery
-(localStorage on web, app-data file on Mac) is convenience storage, **not**
-encrypted sync — anyone with device access may read it. Details:
-`docs/privacy.md`.
+(localStorage on web, app-data file on desktop) is convenience storage,
+**not** encrypted sync — anyone with device access may read it. There is
+no sync and there will never be one: your backup is your sync — copy the
+exported `.md` where you like. Details: `docs/privacy.md`.
 
 ## Build from source
 
 ```sh
 node --version   # >= 20
-npm test         # engine fixtures (19 tests)
+npm test         # engine fixtures (20 tests)
 npm run build    # -> dist/index.html (~150 KB, deterministic)
 ```
 
 Mac shell (Apple Silicon; needs Xcode + Rust):
 
 ```sh
-npm run bundle:tauri
-npx tauri build --target aarch64-apple-darwin
+npm run build:tauri:mac
+```
+
+Windows shell (x64; needs MSVC + Rust — or use CI):
+
+```sh
+npm run build:tauri:win
 ```
 
 ## Scores and detectors — read this
@@ -54,19 +66,21 @@ npx tauri build --target aarch64-apple-darwin
   whether a term is necessary. Below 100 words / 5 sentences the grade is
   suppressed.
 - **English-first.** Other scripts stay editable and export intact, but
-  English scores/rules are suppressed for clearly non-English input.
+  English scores/rules are suppressed for clearly non-English input. French
+  and other languages may come later; the engine stays English-only for now.
 - Detectors are heuristics with documented false positives (`docs/rules.md`).
   No grammar checking, no semantic rewrites, no tone judgment, no citation
-  checking. No X-exact counter in v1 (grapheme budget only).
-- blunted itself makes no AI requests. Where your macOS offers system Writing
-  Tools (right-click in the editor), they remain available — they run under
-  Apple's policy, not blunted's, and blunted sends nothing itself.
+  checking.
+- blunted itself makes no AI requests. Where your OS offers system writing
+  tools (right-click in the editor), they remain available — they run under
+  your OS vendor's policy, not blunted's, and blunted sends nothing itself.
 
 ## Non-goals
 
 AI, translation, spelling/grammar checks, factual checking, plagiarism,
-collaboration, rich text, accounts, sync, publishing, analytics,
-subscriptions, update checks, browser extensions, Windows/Linux binaries.
+collaboration, multi-document library, rich text, accounts, sync,
+publishing, analytics, subscriptions, update checks, browser extensions,
+Linux binaries, code signing / Store distribution.
 
 ## License
 

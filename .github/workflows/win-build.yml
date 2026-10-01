@@ -1,0 +1,41 @@
+name: win-build
+# Unsigned Windows x64 dev preview (NSIS). No release secrets. PR builds never sign.
+# Forever-free: no cert, no Store. SmartScreen warning on first run is expected.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - run: npm test
+        shell: pwsh
+      - run: npm run build
+        shell: pwsh
+      - run: npm run bundle:tauri
+        shell: pwsh
+      - run: npx tauri build --bundles nsis
+        shell: pwsh
+      - name: record sizes + hashes
+        shell: pwsh
+        run: |
+          Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | ForEach-Object { $_; (Get-FileHash $_.FullName -Algorithm SHA256).Hash }
+          $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1
+          Compress-Archive -Path $exe.FullName -DestinationPath "src-tauri/target/release/bundle/nsis/blunted-win-x64-portable.zip" -Force
+          Get-FileHash "src-tauri/target/release/bundle/nsis/blunted-win-x64-portable.zip" -Algorithm SHA256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blunted-windows-x64-unsigned
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.zip
+            dist/index.html

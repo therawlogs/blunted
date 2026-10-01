@@ -1,6 +1,6 @@
 {
   "name": "blunted",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Private local writing-clarity app — offline engine, no accounts, no network.",
   "type": "module",
   "license": "MIT",
@@ -8,7 +8,9 @@
     "test": "node --test tests/",
     "build": "node scripts/build.mjs",
     "bundle:tauri": "node scripts/bundle-tauri.mjs",
-    "build:tauri": "npm run build && tauri build --target aarch64-apple-darwin"
+    "build:tauri": "npm run build && npm run bundle:tauri && tauri build",
+    "build:tauri:mac": "npm run build && npm run bundle:tauri && tauri build --target aarch64-apple-darwin --bundles dmg",
+    "build:tauri:win": "npm run build && npm run bundle:tauri && tauri build --bundles nsis"
   },
   "engines": {
     "node": ">=20"

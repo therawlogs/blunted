@@ -1,28 +1,27 @@
-# Presets
+# Clarity preset
 
-Proposed v1 product defaults — editable starting points, not scientific
-boundaries or recovered Hemingway cutoffs. One versioned config object;
-mode changes never rewrite the draft.
+Single focus, not five modes. v2 removed the Essay / Social / Message /
+Email / Research presets by owner decision: one document, one threshold
+set, English-only for now. Legacy stored mode ids (`essays`, `social`,
+`message`, `email`, `research`) map to `clear` on load — old drafts keep
+working, nothing is rewritten.
 
-| Mode | Target | Yellow words/grade | Red words/grade | Paragraph note | Extra |
-|---|---|---|---|---|---|
-| Essays | 8 | 25 / 12 | 40 / 16 | >150 words | Normal adverb/wordiness notes |
-| Social | 6 | 18 / 10 | 30 / 14 | >80 words | 280-grapheme budget (neutral, adjustable) |
-| Message | 5 | 15 / 9 | 25 / 13 | >60 words or >2 paras | Tone checklist optional, off by default |
-| Email | 8 | 25 / 12 | 40 / 16 | >120 words | Subject field; reply mode |
-| Research | 12 | 35 / 16 | 55 / 20 | >200 words | Hedges preserved; quotes excluded; SMOG detail |
+| Preset | Target | Yellow words/grade | Red words/grade | Paragraph note |
+|---|---|---|---|---|
+| Clear | 8 | 25 / 12 | 40 / 16 | >120 words |
 
 Algorithm: red if `words ≥ redWords` OR (`words ≥ minGradeWords` AND
-`rawARI ≥ redGrade`); else yellow by the same shape. minGradeWords = 14
-(Essays/Email/Research), 10 (Social/Message). Red wins; one background per
-sentence. Below the grade gate only word counts trigger. No warning merely
-for exceeding the document target.
+`rawARI ≥ redGrade`); else yellow by the same shape. minGradeWords = 14.
+Red wins; one background per sentence. Below the grade gate only word
+counts trigger. No warning merely for exceeding the document target.
 
-Social counting uses grapheme clusters (`Intl.Segmenter` + fallback), never
-`string.length`. The X-exact counter is deliberately omitted from v1: X uses
-weighted URL/Unicode rules (twitter-text, Apache-2.0) that a grapheme count
-must not claim to match.
+Rules on: passive, adverbs, intensifiers (full list), wordiness, hedges
+(noted, never auto-removed), filler, simpler words, repeated words,
+TODO/FIXME/PLACEHOLDER markers. Quotes excluded from style rules by
+default (toggleable). No character budget, no paragraph-count limit, no
+greeting/sign-off checks — those belonged to the removed Social, Message,
+and Email modes.
 
 Overrides are validated (`red ≥ yellow`, finite values, wpm 100–400),
-resettable per mode, and surfaced (“preset customized”). Disabling a rule
-stops its issues; hiding marks is a separate view concern.
+resettable, and surfaced ("Customized"). Disabling a rule stops its
+issues; hiding marks is a separate view concern (Write vs Review).

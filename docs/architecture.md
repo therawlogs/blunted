@@ -11,7 +11,8 @@ src/engine/        pure JS: no DOM, storage, clipboard, FS, or network
   tokenizer.js     Unicode word tokens with UTF-16 offsets
   segmenter.js     Intl.Segmenter + protections, deterministic fallback
   readability.js   ARI / FK / Coleman-Liau / SMOG + display + suppression
-  config.js        5 presets, validation, sentence-mark algorithm
+  config.js        single clarity preset (v2; legacy mode ids map to "clear"),
+                   validation, sentence-mark algorithm
   rules/           helpers, passive, adverbs, wordlists
   analyze.js       pipeline → {metrics, sentences, issues, …}
   index.js         public re-exports (source use only)
@@ -24,11 +25,11 @@ src/ui/            browser UI, dependency-free
 scripts/build.mjs  deterministic concat → dist/index.html (no timestamps)
 dist/index.html    released portable artifact (generated, not edited)
 
-src-tauri/         Mac shell (Apple Silicon): main.rs commands + menus,
-                   capabilities/main.json (least privilege), adapter.js
-                   (shell-only bridge, injected by bundle-tauri.mjs)
-tests/             node:test fixtures (engine + modes)
-docs/              formulas, rules, presets, privacy, a11y, mac-release
+src-tauri/         Desktop shell (macOS + Windows): main.rs commands + menus,
+                    capabilities/main.json (least privilege), adapter.js
+                    (shell-only bridge, injected by bundle-tauri.mjs)
+tests/             node:test fixtures (engine + preset)
+docs/              formulas, rules, presets, privacy, a11y, mac/win-release
 ```
 
 Data flow: `textarea → debounce 150ms → (Blob Worker | main-thread fallback)

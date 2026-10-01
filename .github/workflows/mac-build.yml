@@ -19,7 +19,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run bundle:tauri
-      - run: npx tauri build --target aarch64-apple-darwin
+      - run: npx tauri build --target aarch64-apple-darwin --bundles dmg
       - name: record sizes
         run: |
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg || true

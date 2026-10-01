@@ -20,16 +20,16 @@ keep it.
 
 `-ly` candidates minus exceptions (family, friendly, lovely, lonely, lively,
 likely, only, early, ugly, holy, silly, apply, supply, reply, July, Italy…).
-Intensifiers: very, really, extremely, quite (+more in Essays-like modes;
-Research keeps only selected vague ones). `just/well/fast/hard` are never
-blanket-flagged. “Possible adverb — check whether it adds useful detail.”
+Full intensifier list flagged (`very`, `really`, `extremely`, `quite`,
+`highly`, …). `just/well/fast/hard` are never
+blanket-flagged. "Possible adverb — check whether it adds useful detail."
 
 ## Wordiness / hedges / filler (`wordiness`, `hedge`, `filler`)
 
 Original curated lists (`src/engine/rules/wordlists.js`): `in order to→to`,
 `due to the fact that→because`, `at this point in time→now`, … Hedges
-(`may`, `appears to`, `suggests`, …) are context notes in most modes and
-**off** in Research — deleting them can fabricate certainty. `just` has no
+(`may`, `appears to`, `suggests`, …) are context notes — deleting them can
+fabricate certainty, so they are never auto-removed. `just` has no
 blanket rule. Quotes are never rewritten.
 
 ## Simpler words (`simpler`, heuristic, review + explicit fix)
@@ -45,15 +45,8 @@ Adjacent duplicate lexical words across whitespace only — not punctuation,
 code, or paragraph breaks. `had had` / `that that` are flagged as review
 (they can be intentional), never auto-fixed.
 
-## Email / Message (`email`, info)
+## Placeholders (`todo`, deterministic)
 
-Greeting/sign-off completeness notes, never grammar failures; Reply mode
-silences them. Subject length note above 60 graphemes is a configurable
-product choice. No tone/bluntness detection is claimed; the optional Message
-checklist is static text, not inference.
-
-## Research (`todo`, deterministic)
-
-Manual checklist + deterministic TODO/FIXME/PLACEHOLDER scan, labelled as
-such. No citation/coverage detection is claimed — a citation-shaped string
+TODO / FIXME / PLACEHOLDER / XXX / TBD scan, labelled as such. No
+citation/coverage detection is claimed — a citation-shaped string
 proves nothing.

@@ -22,17 +22,33 @@
     </div>
   </header>
 
-  <nav aria-label="Writing modes">
-    <div class="tabs" role="tablist" aria-label="Modes" id="modeTabs"></div>
-  </nav>
-
   <div class="layout">
     <main class="editor-col" aria-label="Editor">
       <input type="text" id="docTitle" maxlength="120" autocomplete="off"
         placeholder="Title" aria-label="Title (optional)">
-      <div id="subjectWrap" hidden>
-        <input type="text" id="docSubject" maxlength="200" autocomplete="off"
-          placeholder="Subject" aria-label="Email subject (local only, never sent)">
+
+      <footer class="statusbar" aria-label="Document status">
+        <span id="gradeMain">—</span>
+        <span id="statusGrade" hidden>—</span>
+        <span id="statusWords">0 words</span>
+        <span id="statusSent"></span>
+        <span id="statusTime"></span>
+        <span id="statusSave" role="status">—</span>
+      </footer>
+      <p class="legend" id="legend">
+        <span class="lg"><span class="sw sw-y" aria-hidden="true"></span>lengthy</span>
+        <span class="lg"><span class="sw sw-r" aria-hidden="true"></span>long</span>
+        <span class="lg"><span class="sw sw-u" aria-hidden="true"></span><u>word note</u></span>
+        <span class="lg">— a highlight means review, not wrong.</span>
+      </p>
+
+      <div class="findbar" id="findBar" hidden>
+        <input type="text" id="findInput" autocomplete="off"
+          placeholder="Find in document" aria-label="Find in document">
+        <span id="findCount" role="status"></span>
+        <button type="button" id="findPrev" aria-label="Previous match">←</button>
+        <button type="button" id="findNext" aria-label="Next match">→</button>
+        <button type="button" id="findClose" aria-label="Close find">✕</button>
       </div>
 
       <div class="editor-wrap" id="editorWrap">
@@ -44,27 +60,14 @@
       </div>
       <p class="doc-notice" id="docNotice" role="status" hidden></p>
 
-      <footer class="statusbar" aria-label="Document status">
-        <span id="gradeMain">—</span>
-        <span id="statusGrade" hidden>—</span>
-        <span id="statusWords">0 words</span>
-        <span id="statusTime"></span>
-        <span id="statusSave" role="status">—</span>
-      </footer>
-      <p class="legend" id="legend">
-        <span class="lg"><span class="sw sw-y" aria-hidden="true"></span>lengthy</span>
-        <span class="lg"><span class="sw sw-r" aria-hidden="true"></span>long</span>
-        <span class="lg"><span class="sw sw-u" aria-hidden="true"></span><u>word note</u></span>
-        <span class="lg">— a highlight means review, not wrong.</span>
-      </p>
-
       <div class="doc-actions" role="group" aria-label="Document actions">
         <button type="button" id="btnNew">New</button>
         <button type="button" id="btnOpen">Open</button>
         <input type="file" id="filePick" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
         <button type="button" id="btnCopy">Copy</button>
-        <button type="button" id="btnCopyEmail" hidden>Copy email</button>
         <button type="button" id="btnDownload">Download</button>
+        <button type="button" id="btnDownloadTxt">Download .txt</button>
+        <button type="button" id="btnPrint">Print</button>
         <button type="button" id="btnSample">Sample</button>
       </div>
       <p class="copy-note" id="copyNote" role="status" aria-live="polite"></p>
@@ -101,21 +104,42 @@
           <label class="prow">Text size <span id="fontVal"></span>
             <input type="range" id="fontSize" min="13" max="24" step="1" value="16">
           </label>
+          <label class="prow">Font
+            <select id="fontFamily" aria-label="Editor font">
+              <option value="system">System</option>
+              <option value="serif">Serif</option>
+              <option value="mono">Monospace</option>
+            </select>
+          </label>
+          <label class="prow">Line spacing
+            <select id="lineHeight" aria-label="Line spacing">
+              <option value="1.5">Compact</option>
+              <option value="1.8">Comfortable</option>
+              <option value="2.1">Roomy</option>
+            </select>
+          </label>
           <label class="prow">Reading speed (words/min)
             <input type="number" id="wpm" min="100" max="400" step="10" value="200">
           </label>
           <label class="check"><input type="checkbox" id="optQuotes"> Include block quotes in checks</label>
-          <label class="check" id="replyWrap" hidden><input type="checkbox" id="optReply"> Reply mode (skip greeting/sign-off notes)</label>
+          <label class="check"><input type="checkbox" id="optHeader"> Include title + date header on .md download</label>
           <label class="check"><input type="checkbox" id="optPrivate"> Private session (no draft saving)</label>
           <details>
-            <summary>Rules for this mode</summary>
+            <summary>Rules</summary>
             <div class="rules" id="ruleToggles"></div>
-            <button type="button" id="btnResetMode" class="quiet">Reset this mode to defaults</button>
+            <button type="button" id="btnResetMode" class="quiet">Reset rules to defaults</button>
           </details>
           <details>
             <summary>Ignored words</summary>
             <p class="muted">Comma-separated. Matching notes are hidden without touching neighbours.</p>
             <input type="text" id="ignoredTerms" autocomplete="off" placeholder="e.g. onboarding, kubectl">
+          </details>
+          <details>
+            <summary>Backup &amp; settings</summary>
+            <p class="muted">No sync, by design. Move files yourself: Download your draft (.md) plus this settings file, and carry both to the other device.</p>
+            <button type="button" id="btnExportSettings" class="quiet">Export settings (.json)…</button>
+            <button type="button" id="btnImportSettings" class="quiet">Import settings…</button>
+            <input type="file" id="settingsPick" accept=".json,application/json" hidden>
           </details>
           <button type="button" id="btnClearData" class="quiet">Clear local data…</button>
         </div>
@@ -131,6 +155,8 @@
 </div>
 
 <div class="sr-status" id="srStatus" role="status" aria-live="polite"></div>
+
+<div id="printDoc" aria-hidden="true"></div>
 
 <!--BLUNTED:ENGINE-->
 <!--BLUNTED:WORKER-->

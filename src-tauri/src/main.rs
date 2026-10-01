@@ -1,4 +1,4 @@
-// blunted macOS shell — Tauri v2, Apple Silicon.
+// blunted desktop shell — Tauri v2, macOS + Windows.
 // No shell execution, no HTTP, no updater, no remote navigation.
 // Drafts persist atomically under the app-data directory; arbitrary paths are
 // never written except through the system save dialog (user-chosen destination).
@@ -16,6 +16,8 @@ use tauri_plugin_dialog::DialogExt;
 struct Persisted {
     doc: Option<serde_json::Value>,
     prefs: Option<serde_json::Value>,
+    #[serde(default)]
+    recovered: bool,
 }
 
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -35,6 +37,16 @@ fn atomic_write(path: &PathBuf, content: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn valid_doc(v: Option<serde_json::Value>) -> Option<serde_json::Value> {
+    match v {
+        Some(serde_json::Value::Object(ref m)) => match m.get("body") {
+            Some(serde_json::Value::String(_)) => v,
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 #[tauri::command]
 fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
     let dir = data_dir(&app)?;
@@ -42,9 +54,30 @@ fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
         let text = fs::read_to_string(dir.join(name)).ok()?;
         serde_json::from_str(&text).ok() // corrupt JSON -> None, never a crash
     };
+    // Main slot first; fall back through the backup rotation (newest first).
+    // A backup is only useful if it can restore.
+    let mut doc = valid_doc(read("doc.json"));
+    let mut recovered = false;
+    if doc.is_none() {
+        for name in ["doc.backup.1.json", "doc.backup.2.json", "doc.backup.3.json"] {
+            doc = valid_doc(read(name));
+            if doc.is_some() {
+                recovered = true;
+                break;
+            }
+        }
+    }
+    // Legacy single-slot backup from v1 installs.
+    if doc.is_none() {
+        doc = valid_doc(read("doc.backup.json"));
+        if doc.is_some() {
+            recovered = true;
+        }
+    }
     Ok(Persisted {
-        doc: read("doc.json"),
+        doc,
         prefs: read("prefs.json"),
+        recovered,
     })
 }
 
@@ -57,8 +90,11 @@ fn blunted_save(
     let dir = data_dir(&app)?;
     let doc_path = dir.join("doc.json");
     if doc_path.exists() {
-        // retain last-good backup across schema migrations and crashes
-        let _ = fs::copy(&doc_path, dir.join("doc.backup.json"));
+        // rotate last-good backups: .3 <- .2 <- .1 <- current doc
+        let _ = fs::remove_file(dir.join("doc.backup.3.json"));
+        let _ = fs::rename(dir.join("doc.backup.2.json"), dir.join("doc.backup.3.json"));
+        let _ = fs::rename(dir.join("doc.backup.1.json"), dir.join("doc.backup.2.json"));
+        let _ = fs::copy(&doc_path, dir.join("doc.backup.1.json"));
     }
     atomic_write(
         &doc_path,
@@ -74,7 +110,14 @@ fn blunted_save(
 #[tauri::command]
 fn blunted_clear(app: AppHandle) -> Result<(), String> {
     let dir = data_dir(&app)?;
-    for name in ["doc.json", "doc.backup.json", "prefs.json"] {
+    for name in [
+        "doc.json",
+        "doc.backup.1.json",
+        "doc.backup.2.json",
+        "doc.backup.3.json",
+        "doc.backup.json",
+        "prefs.json",
+    ] {
         let _ = fs::remove_file(dir.join(name));
     }
     Ok(())

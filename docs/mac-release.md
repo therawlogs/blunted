@@ -29,14 +29,14 @@ Tauri v2 webview baseline; re-verify when upgrading Tauri).
 2. Offline startup: writing, analysis, Open, Copy, Download, settings work
    with networking disabled; no app-initiated remote requests.
 3. Menu shortcuts: Cmd+N/O/S/C/Z/Shift+Z; Write/Review; font size;
-   appearance. Note: Find focuses the editor (no in-page find UI in v1).
+   appearance. Find opens the in-page search (same as Cmd+F in the browser build).
 4. Export round-trip preserves UTF-8/Markdown/newlines.
 5. Record `.app` size, compressed `.dmg` size, cold startup, and idle memory —
    never quote another app’s figures as ours.
 
 ## Publish
 
-Tag releases (`v0.1.0`), attach the `.dmg` + checksums, and state the
+Tag releases (`v0.1.1`), attach the `.dmg` + checksums, and state the
 unsigned status prominently. Release the portable `dist/index.html` first if
 the bundle is not ready — but do not present the HTML as the Mac install
 experience.

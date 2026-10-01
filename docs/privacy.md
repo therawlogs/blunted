@@ -4,10 +4,13 @@
   Copy/Download are the only outward actions. No accounts, tokens, AI
   requests, telemetry, update checks, or network calls. Verify: disable
   networking, double-click `dist/index.html` — everything works.
-- **Draft recovery is opt-in convenience, not sync.** Web: bounded
-  localStorage snapshots with honest status (`Saved` /
-  `Recovery unavailable` / `Saving failed`); private-session toggle writes
-  nothing. Mac: atomic app-data writes with last-good backup.
+- **Draft recovery is opt-in convenience, not sync.** Web: main save plus a
+  3-slot rotating backup; on an unreadable save the newest working backup
+  restores automatically with a visible "Recovered from backup" notice.
+  Honest status throughout (`Saved` / `Recovered from backup` /
+  `Saving failed`); private-session toggle writes nothing. Desktop shells:
+  atomic app-data writes with the same 3-slot rotation (`doc.backup.1–3.json`).
+  No sync and never will be — carry `.md` + `blunted-settings.json` yourself.
 - **Unencrypted.** Anyone with device access may read stored drafts. No
   vault, no account linking, no secure-storage claims.
 - **No leak surfaces.** Pasted HTML is accepted as plain text; prose is never
