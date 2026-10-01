@@ -1,0 +1,11 @@
+# Force LF line endings on checkout everywhere (including Windows runners).
+# The portable build inlines source text, so CRLF checkouts would produce
+# byte-different dist/index.html. With this, rebuilds are byte-identical
+# on macOS, Windows, and Linux.
+* text=auto eol=lf
+
+# Belt-and-braces: never touch binary assets.
+*.dmg binary
+*.png binary
+*.icns binary
+*.ico binary
