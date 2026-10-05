@@ -45,21 +45,21 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
 
 ## Publish
 
-Tag releases (`v0.1.1`), attach the `-setup.exe` + portable `.zip` +
+Tag releases (`v0.1.2`), attach the `-setup.exe` + portable `.zip` +
 SHA-256 checksums, and state the unsigned status prominently. Release the
 portable `dist/index.html` first if the bundle is not ready — but do not
 present the HTML as the Windows install experience.
 
-## Measured — v0.1.1 dev preview (01 Oct 2026, CI only, never local)
+## Measured — v0.1.2 dev preview (05 Oct 2026, CI only, never local)
 
 Built on GitHub-hosted `windows-latest` (x64, stable Rust, Node 22 — see
-the v0.1.1 `win-build` run for the exact toolchain), `--bundles nsis`.
+the v0.1.2 `win-build` run for the exact toolchain), `--bundles nsis`.
 
 | Artifact | Size | SHA-256 |
 |---|---|---|
-| `blunted_0.1.1_x64-setup.exe` | 3.6M | `03b449e8…b0ff103` (see release notes for full hash) |
-| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.6M | `a4196f98…4ea039d6bd0d` (see release notes for full hash) |
-| `dist/index.html` | 163076 bytes + CRLF | functionally identical to the macOS build; differs only in line endings (Windows checkout) |
+| `blunted_0.1.2_x64-setup.exe` | 3.6M | `ab544ef25b5f4997776b2bb647d5b66b3f8c72633ede4df67056d21c2fa4dab9` |
+| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.6M | `8b488e539c87b023da4b165bd8b8a6fe369c4b527f51d8ef6e6d36f10ff6c581` |
+| `dist/index.html` | 164175 bytes | `8f57999ced5d2d1eabc2003c27e983ca0d438158b53ec0a125c908c0a1abc899` |
 
 - Signature: none. SmartScreen warning on download is expected and unverified.
 - Engine tests pass on the Windows runner before bundling.
