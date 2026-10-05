@@ -11,7 +11,8 @@
 - Brief `aria-live` status after a pause (grade + issue count), never per
   keystroke. Visible focus, 44px targets, logical tab order, in-page find
   (Enter/Shift+Enter, live match count, Escape closes), usable at 320px
-  and 200% zoom, WCAG AA contrast targets.
+  and 200% zoom, WCAG AA contrast targets (light theme `--muted: #6b655b` at 5.49:1;
+  dark theme at 5.75:1).
 - Tested: keyboard-only flows, VoiceOver on Mac (manual — see release
   checklist), Hindi/Japanese IME composition, emoji/combining-mark offsets.
   NVDA/JAWS on Windows not yet tested.
