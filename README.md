@@ -7,7 +7,7 @@ telemetry, no sync — forever free. Copy, Download (`.md` / `.txt`), Print,
 and a settings file are the only outward actions. Find (Cmd/Ctrl+F) and
 Download (Cmd/Ctrl+S) work from the keyboard.
 
-> Screenshot: still pending — v0.1.1 shipped without one. The README will
+> Screenshot: still pending — v0.1.2 shipped without one. The README will
 > use a real screenshot of the built app, never a placeholder image.
 
 ## One focus
@@ -22,7 +22,7 @@ this project stays free). Your OS will warn on first run; that is
 expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
 path is the portable file:
 
-1. Download the portable HTML file from the release (e.g. `blunted-0.1.1.html`).
+1. Download the portable HTML file from the release (e.g. `blunted-0.1.2.html`).
 2. Turn networking off if you like — double-click it. Everything works.
 3. Write. Copy or Download (`.md` / `.txt`) when done. Nothing leaves the device.
 
@@ -43,7 +43,7 @@ exported `.md` where you like. Details: `docs/privacy.md`.
 
 ```sh
 node --version   # >= 20
-npm test         # engine fixtures (20 tests)
+npm test         # engine fixtures (21 tests)
 npm run build    # -> dist/index.html (~163 KB, deterministic)
 ```
 

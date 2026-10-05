@@ -36,12 +36,12 @@ Tauri v2 webview baseline; re-verify when upgrading Tauri).
 
 ## Publish
 
-Tag releases (`v0.1.1`), attach the `.dmg` + checksums, and state the
+Tag releases (`v0.1.2`), attach the `.dmg` + checksums, and state the
 unsigned status prominently. Release the portable `dist/index.html` first if
 the bundle is not ready — but do not present the HTML as the Mac install
 experience.
 
-## Measured — v0.1.1 dev preview (01 Oct 2026, build machine only)
+## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 
 Built with Tauri CLI 2.12.0 (pinned devDependency), Rust 1.98.0, Node
 26.8.1, CommandLineTools SDK (no full Xcode). Target
@@ -50,9 +50,9 @@ Built with Tauri CLI 2.12.0 (pinned devDependency), Rust 1.98.0, Node
 
 | Artifact | Size | SHA-256 |
 |---|---|---|
-| `dist/index.html` | 163076 bytes | `181d674e…27c82591` (see release notes for full hash) |
+| `dist/index.html` | 164175 bytes | `8f57999ced5d2d1eabc2003c27e983ca0d438158b53ec0a125c908c0a1abc899` |
 | `blunted` Mach-O binary (arm64, thin) | 5.1M | — |
-| `blunted_0.1.1_aarch64.dmg` (compressed) | 2.2M | `8048947e…76c82db4e57` (see release notes for full hash) |
+| `blunted_0.1.2_aarch64.dmg` (compressed) | 2.2M | `be162b1165ff8955301886a6cfc81399c20c1c125d422a566232d01f2f7c0a61` |
 
 - Signature: ad-hoc only, no Developer ID. Gatekeeper warning on other
   machines is expected and unverified.
