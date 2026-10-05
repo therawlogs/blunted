@@ -39,11 +39,24 @@ export function validateConfig(cfg) {
 
 export function applyOverrides(modeId, overrides = {}) {
   const base = { ...getMode(modeId), rules: { ...getMode(modeId).rules } };
-  const next = { ...base, ...overrides };
-  if (overrides.rules) next.rules = { ...base.rules, ...overrides.rules };
+  const ruleKeys = new Set(Object.keys(base.rules));
+  const top = {};
+  const flatRules = {};
+  for (const [k, v] of Object.entries(overrides || {})) {
+    if (k === "rules" || v === undefined) continue;
+    if (ruleKeys.has(k)) flatRules[k] = v;
+    else top[k] = v;
+  }
+  const nested = (overrides && overrides.rules) || {};
+  const next = { ...base, ...top, rules: { ...base.rules, ...flatRules, ...nested } };
   const errors = validateConfig(next);
   if (errors.length) throw new Error("Invalid config: " + errors.join("; "));
-  next.customized = Object.keys(overrides).length > 0;
+  
+  const NON_PRESET_KEYS = new Set(["readingWpm", "excludeQuotes"]);
+  const ruleDiff = Object.keys(next.rules).some((k) => next.rules[k] !== base.rules[k]);
+  const topDiff = Object.keys(top).some((k) => !NON_PRESET_KEYS.has(k) && top[k] !== base[k]);
+  next.customized = ruleDiff || topDiff;
+
   // normalize any legacy stored id to the single preset
   next.id = "clear";
   return next;

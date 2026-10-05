@@ -1,6 +1,6 @@
 {
   "name": "blunted",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Private local writing-clarity app — offline engine, no accounts, no network.",
   "type": "module",
   "license": "MIT",

@@ -1,6 +1,6 @@
 /* blunted — quiet page, system fonts only, no remote assets. */
 :root {
-  --bg: #faf9f7; --ink: #1c1a17; --muted: #8a8378;
+  --bg: #faf9f7; --ink: #1c1a17; --muted: #6b655b;
   --line: #e6e1d8; --accent: #0b5fff; --focus: #0b5fff;
   --mark-y: rgba(255, 214, 64, 0.5); --mark-r: rgba(255, 120, 90, 0.45);
   --ul: #7a4dbf; --warn: #9a4a00;

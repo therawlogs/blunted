@@ -66,3 +66,25 @@ test("hedges noted", () => {
   const r = analyze({ text: "It may rain tomorrow, and the results suggest a trend." });
   assert.ok(r.issues.some((i) => i.ruleId === "hedge"));
 });
+
+// Rule overrides: flat & nested toggling, customized status check
+test("rule overrides: flat and nested toggles", () => {
+  const sample = "The report was written by Sam. We utilize tools in order to finish.";
+  const def = analyze({ text: sample, overrides: { readingWpm: 200 } });
+  assert.equal(def.config.customized, false);
+  assert.ok(def.issues.some((i) => i.ruleId === "passive"));
+  assert.ok(def.issues.some((i) => i.ruleId === "simpler"));
+
+  // Flat overrides (as sent by UI)
+  const flatOff = analyze({ text: sample, overrides: { passive: false, simpler: false } });
+  assert.equal(flatOff.config.customized, true);
+  assert.ok(!flatOff.issues.some((i) => i.ruleId === "passive"));
+  assert.ok(!flatOff.issues.some((i) => i.ruleId === "simpler"));
+  assert.ok(flatOff.issues.some((i) => i.ruleId === "wordiness"));
+
+  // Nested overrides
+  const nestedOff = analyze({ text: sample, overrides: { rules: { passive: false } } });
+  assert.equal(nestedOff.config.customized, true);
+  assert.ok(!nestedOff.issues.some((i) => i.ruleId === "passive"));
+  assert.ok(nestedOff.issues.some((i) => i.ruleId === "simpler"));
+});

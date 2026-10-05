@@ -3,6 +3,16 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
+## [0.1.2] — 2026-10-05
+
+- Fix rule overrides: `applyOverrides` now correctly handles flat rule overrides
+  from Preferences UI toggles (such as passive voice, adverbs, simpler words).
+- Fix preset customization detection: non-preset preferences (e.g. `readingWpm`,
+  `excludeQuotes`) no longer mistakenly trigger "preset customized" state.
+- Accessibility / Color contrast: increased muted text contrast (`--muted: #6b655b`)
+  in light theme to achieve 5.49:1 (exceeding WCAG AA 4.5:1 requirement).
+- Regression tests: added automated tests for flat and nested rule overrides.
+
 ## [0.1.1] — 2026-10-01
 
 - Single clarity preset: Essay/Social/Message/Email/Research modes removed
