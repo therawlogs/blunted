@@ -3,6 +3,27 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
+## [0.1.3] — 2026-10-14
+
+- Highlights by problem type: passive, adverb, wordy, simpler, and repeated
+  each get their own underline colour + style, with a matching legend and
+  category-coloured note labels.
+- Notes: category summary chips above the list (`2 passive, 3 wordy…`),
+  tap to filter (highlights + list); clicking a highlight jumps to its note.
+- Grade: explicit early estimate from ~30 prose words with the grade-8
+  target marked on a meter (steady estimate still 100+ words / 5+ sentences).
+- Layout: slim sticky top bar, primary Copy button, merged Download menu
+  (.md / .txt), mobile `Notes` chip jumping to the list.
+- Fixes: one-click remove for adverbs/intensifiers (space-aware), keep-first
+  fix for repeated words, plus `Apply all safe fixes` (wordiness, simpler,
+  repeated — bulk rechecks each, undo stepwise).
+- Rail: quick per-rule toggles (Passive/Adverb/Wordy/Simpler/Repeated) kept
+  in sync with Preferences; `F2` / `Shift+F2` steps notes; editor defaults
+  to serif.
+- Release state (honest): still no README screenshot (never a
+  placeholder); Mac/Windows builds stay unsigned — signing needs a paid
+  membership the project will not take (see `docs/mac-release.md`).
+
 ## [0.1.2] — 2026-10-05
 
 - Fix rule overrides: `applyOverrides` now correctly handles flat rule overrides

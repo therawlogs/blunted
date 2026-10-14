@@ -36,10 +36,34 @@ Tauri v2 webview baseline; re-verify when upgrading Tauri).
 
 ## Publish
 
-Tag releases (`v0.1.2`), attach the `.dmg` + checksums, and state the
+Tag releases (`v0.1.3`), attach the `.dmg` + checksums, and state the
 unsigned status prominently. Release the portable `dist/index.html` first if
 the bundle is not ready — but do not present the HTML as the Mac install
 experience.
+
+## Measured — v0.1.3 dev preview (14 Oct 2026, build machine only)
+
+Built with Tauri CLI 2.12.0 (pinned devDependency), Rust 1.98.0, Node
+v26.8.1, CommandLineTools SDK (no full Xcode). Target
+`aarch64-apple-darwin`, `--bundles dmg`. Release size profile active
+(`lto`, `opt-level="s"`, `strip`).
+
+| Artifact | Size | SHA-256 |
+|---|---|---|
+| `dist/index.html` | 184368 bytes | `af80fd6747631c9529f3ef3f855367641a28c933b7c39e346b6549c425c7e0a7` |
+| `blunted` Mach-O binary (arm64, thin) | 5.1M | — |
+| `blunted_0.1.3_aarch64.dmg` (compressed) | 2.2M | `bf3a6cd0d1f10f3b7972fb3ee855872a9dfb30ebf9b282a1588b5487fc20dd2e` |
+
+- Signature: ad-hoc only (`flags=0x20002 adhoc,linker-signed`), no Developer
+  ID. Gatekeeper warning on other machines is expected and unverified.
+- `dist/index.html` rebuilt byte-identically twice during this release
+  (same SHA); deterministic build holds.
+- Smoke test (build machine): DMG mounted, `blunted.app` present, app
+  launched, process stayed alive, quit cleanly via AppleScript, volume
+  ejected. Note: the first `tauri build` attempt failed transiently at
+  `bundle_dmg.sh`; an immediate retry succeeded with no changes.
+- Not done: clean-Mac install, cold-startup timing, idle memory,
+  screenshot. The Rust bundle is not expected to be bit-reproducible.
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 

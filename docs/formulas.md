@@ -17,7 +17,9 @@ one decimal in details only. Primary ARI is rounded **up**, floored at 1,
 
 Reliability policy (product choice, not science): below 100 eligible words OR
 5 sentences, the main grade is suppressed (`Too little text…`); provisional
-values stay visible in details with a warning. Any zero denominator → `null`,
+values stay visible in details with a warning. The UI additionally shows an
+explicit early estimate from ~30 prose words with the grade-8 target marked
+(steady estimate still needs 100+ words and 5+ sentences). Any zero denominator → `null`,
 never NaN/Infinity/grade 0. No sentence-level FK or SMOG.
 
 SMOG counts words with **three or more** syllables. Short-text SMOG is

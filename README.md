@@ -4,10 +4,11 @@ A local writing-clarity app: one English analysis engine, one clarity
 preset, a dependency-free downloadable HTML app, and Tauri v2 desktop
 shells (Mac Apple Silicon + Windows x64). No accounts, no network, no
 telemetry, no sync — forever free. Copy, Download (`.md` / `.txt`), Print,
-and a settings file are the only outward actions. Find (Cmd/Ctrl+F) and
-Download (Cmd/Ctrl+S) work from the keyboard.
+and a settings file are the only outward actions. Find (Cmd/Ctrl+F),
+Download (Cmd/Ctrl+S), and next/previous note (F2 / Shift+F2) work from
+the keyboard. The editor defaults to a serif face; change it under Preferences.
 
-> Screenshot: still pending — v0.1.2 shipped without one. The README will
+> Screenshot: still pending — v0.1.3 shipped without one. The README will
 > use a real screenshot of the built app, never a placeholder image.
 
 ## One focus
@@ -22,7 +23,7 @@ this project stays free). Your OS will warn on first run; that is
 expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
 path is the portable file:
 
-1. Download the portable HTML file from the release (e.g. `blunted-0.1.2.html`).
+1. Download the portable HTML file from the release (e.g. `blunted-0.1.3.html`).
 2. Turn networking off if you like — double-click it. Everything works.
 3. Write. Copy or Download (`.md` / `.txt`) when done. Nothing leaves the device.
 
@@ -44,7 +45,7 @@ exported `.md` where you like. Details: `docs/privacy.md`.
 ```sh
 node --version   # >= 20
 npm test         # engine fixtures (21 tests)
-npm run build    # -> dist/index.html (~163 KB, deterministic)
+npm run build    # -> dist/index.html (~180 KB, deterministic)
 ```
 
 Mac shell (Apple Silicon; needs Xcode Command Line Tools + Rust):
@@ -63,8 +64,9 @@ npm run build:tauri:win
 
 - Grades are **estimates from surface counts** (ARI primary; Flesch-Kincaid
   and Coleman-Liau as details). They don’t know your reader, argument, or
-  whether a term is necessary. Below 100 words / 5 sentences the grade is
-  suppressed.
+  whether a term is necessary. Below 100 words / 5 sentences the steady grade
+  is suppressed; an explicit early estimate shows from ~30 words with the
+  grade-8 target marked.
 - **English-first.** Other scripts stay editable and export intact, but
   English scores/rules are suppressed for clearly non-English input. French
   and other languages may come later; the engine stays English-only for now.

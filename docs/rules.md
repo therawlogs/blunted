@@ -4,7 +4,10 @@ Every issue: `ruleId, category, severity (info/review/limit), confidence
 (heuristic/deterministic), from/to (UTF-16, half-open), exactText,
 explanation, alternatives, optional fix`. Stable keys use rule + text +
 occurrence, never a raw offset across edits. One-click fixes recheck
-`exactText` + revision and are single undoable edits; no bulk fixing.
+`exactText` + revision and are single undoable edits. Bulk
+apply covers safe non-empty replacements only (wordiness, simpler words,
+repeated words) back-to-front with per-item rechecks; adverb removals stay
+per-note and hedges are never auto-removed.
 
 ## Passive voice (`passive`, heuristic, review)
 
@@ -23,6 +26,8 @@ likely, only, early, ugly, holy, silly, apply, supply, reply, July, Italy…).
 Full intensifier list flagged (`very`, `really`, `extremely`, `quite`,
 `highly`, …). `just/well/fast/hard` are never
 blanket-flagged. "Possible adverb — check whether it adds useful detail."
+Per-note fix removes the word plus one adjacent space; bulk apply skips
+adverb removals (meaning-changing, review each).
 
 ## Wordiness / hedges / filler (`wordiness`, `hedge`, `filler`)
 
@@ -43,7 +48,8 @@ scope (quotes excluded by the scanner).
 
 Adjacent duplicate lexical words across whitespace only — not punctuation,
 code, or paragraph breaks. `had had` / `that that` are flagged as review
-(they can be intentional), never auto-fixed.
+(they can be intentional) — review before applying.
+One-click/bulk fix keeps the first occurrence (`The the` → `The`).
 
 ## Placeholders (`todo`, deterministic)
 

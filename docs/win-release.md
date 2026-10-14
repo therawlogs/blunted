@@ -45,7 +45,7 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
 
 ## Publish
 
-Tag releases (`v0.1.2`), attach the `-setup.exe` + portable `.zip` +
+Tag releases (`v0.1.3`), attach the `-setup.exe` + portable `.zip` +
 SHA-256 checksums, and state the unsigned status prominently. Release the
 portable `dist/index.html` first if the bundle is not ready — but do not
 present the HTML as the Windows install experience.

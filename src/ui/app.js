@@ -30,13 +30,14 @@
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [],
   };
-  var prefs = { theme: "system", fontSize: 16, fontFamily: "system", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, includeQuotes: false, includeHeader: false };
+  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, includeQuotes: false, includeHeader: false };
   var dirty = false;            // unsaved changes vs storage
   var lastAnalysis = null;
   var currentRev = 0;           // text revision counter (local)
   var lastWorkerRev = 0;
   var selectedIssue = -1;
   var composing = false;
+  var activeCatFilter = "all";  // category summary tap-to-filter
 
   // ---------- storage adapter ----------
   // Web backups rotate across three slots (newest first). The slots are
@@ -232,10 +233,23 @@
   // first N in document order and note the rest stay in the issue list.
   var MAX_BG = 2000, MAX_UL = 2000;
 
+  function catToUl(category) {
+    if (category === "passive") return "u-passive";
+    if (category === "adverb") return "u-adverb";
+    if (category === "wordiness") return "u-wordy";
+    if (category === "simpler") return "u-simpler";
+    if (category === "repeated") return "u-repeated";
+    if (category === "hedge") return "u-hedge";
+    if (category === "todo") return "u-todo";
+    return "u";
+  }
+
   function renderBackdrop(text, r) {
     // Build non-overlapping segments with class lists. Sentence marks =
-    // backgrounds; word-level rule issues = underlines. Red wins (one bg).
-    // Sweep-line over sorted cuts: both mark lists are in document order.
+    // backgrounds; word-level rule issues = per-category underlines.
+    // Red wins (one bg). Sweep-line over sorted cuts: both mark lists are
+    // in document order. Overlapping underlines keep every category class
+    // (stylesheet order wins the paint); the notes list still shows each.
     var sentMarks = [];
     for (var i = 0; i < r.sentences.length && sentMarks.length < MAX_BG; i++) {
       var s = r.sentences[i];
@@ -246,8 +260,10 @@
       var is = r.issues[j];
       if (is.from === is.to) continue;
       if (is.category === "sentence" || is.category === "paragraph" || is.category === "length") continue;
-      underlines.push({ from: is.from, to: is.to });
+      if (activeCatFilter !== "all" && is.category !== activeCatFilter) continue;
+      underlines.push({ from: is.from, to: is.to, cls: catToUl(is.category) });
     }
+    underlines.sort(function (a, b) { return a.from - b.from || a.to - b.to; });
     var cutSet = {};
     cutSet[0] = 1; cutSet[text.length] = 1;
     var k;
@@ -255,15 +271,22 @@
     for (k = 0; k < underlines.length; k++) { cutSet[underlines[k].from] = 1; cutSet[underlines[k].to] = 1; }
     var cuts = Object.keys(cutSet).map(Number).sort(function (a, b) { return a - b; });
     var frag = document.createDocumentFragment();
-    var mi = 0, ui = 0;
+    var mi = 0;
     for (var c = 0; c < cuts.length - 1; c++) {
       var a = Math.max(0, cuts[c]), b = Math.min(text.length, cuts[c + 1]);
       if (b <= a) continue;
       while (mi < sentMarks.length && sentMarks[mi].to <= a) mi++;
-      while (ui < underlines.length && underlines[ui].to <= a) ui++;
       var cls = [];
       if (mi < sentMarks.length && sentMarks[mi].from <= a && b <= sentMarks[mi].to) cls.push(sentMarks[mi].cls);
-      if (ui < underlines.length && underlines[ui].from <= a && b <= underlines[ui].to) cls.push("u");
+      // all underline categories covering this slice (cuts align to every
+      // boundary, so coverage is full containment)
+      for (var u = 0; u < underlines.length; u++) {
+        var ub = underlines[u];
+        if (ub.from >= b) break;
+        if (ub.from <= a && b <= ub.to) {
+          if (cls.indexOf(ub.cls) === -1) cls.push(ub.cls);
+        }
+      }
       var chunk = text.slice(a, b);
       if (cls.length === 0) {
         frag.appendChild(document.createTextNode(chunk));
@@ -291,16 +314,47 @@
     statusWords.textContent = tw === wc ? wc + " words" : wc + " prose words (" + tw + " total)";
     statusSent.textContent = m.proseSentences === 1 ? "1 sentence" : m.proseSentences + " sentences";
     statusTime.textContent = m.readingTime + " read";
+    var target = r.config.targetGrade || 8;
+    var meter = $("gradeMeter"), fill = $("gradeFill"), tgt = $("gradeTarget"), mlbl = $("gradeMeterLbl");
+    function paintMeter(gval) {
+      if (!meter || !fill || !tgt) return;
+      // scale 1..16 (College+ clamps at 16)
+      var v = Math.max(1, Math.min(16, gval));
+      var pct = ((v - 1) / 15) * 100;
+      var tpct = ((Math.max(1, Math.min(16, target)) - 1) / 15) * 100;
+      meter.hidden = false;
+      fill.style.width = pct + "%";
+      tgt.style.left = "calc(" + tpct + "% - 1px)";
+      if (mlbl) {
+        mlbl.hidden = false;
+        mlbl.textContent = "Target: grade " + target + " marked ▼ · lower is simpler.";
+      }
+    }
+    function hideMeter() {
+      if (meter) meter.hidden = true;
+      if (mlbl) mlbl.hidden = true;
+    }
     if (m.grade) {
       var g = m.grade;
       gradeMain.textContent = g.label === "College+" ? "College+ reading level" : "Estimated reading grade: " + g.label;
       gradeMain.title = "U.S. school-grade scale (ARI" + (m.rawAri != null ? " " + m.rawAri.toFixed(1) : "") + "). An estimate — not a verdict.";
-      gradeSub.textContent = "Target: grade " + r.config.targetGrade + ".";
+      gradeSub.textContent = "Target: grade " + target + ".";
       statusGrade.textContent = "Grade " + g.label;
+      paintMeter(g.value || parseFloat(g.label) || target);
+    } else if (m.provisionalGrade && wc >= 30 && m.rawAri != null) {
+      // Early estimate from ~30 prose words (steady grade needs 100+/5+).
+      var pg = m.provisionalGrade;
+      var lbl = pg.label || String(Math.max(1, Math.ceil(m.rawAri)));
+      gradeMain.textContent = lbl === "College+" ? "Early estimate: College+ (target grade " + target + ")" : "Early estimate: grade " + lbl + " (target " + target + ")";
+      gradeMain.title = "Early estimate from ~30 words (ARI" + m.rawAri.toFixed(1) + "). Steady after 100+ prose words and 5+ sentences.";
+      gradeSub.textContent = "Early estimate — target grade " + target + ". Steady estimate after 100+ words and 5+ sentences.";
+      statusGrade.textContent = "~Grade " + lbl;
+      paintMeter(pg.value || m.rawAri);
     } else {
       gradeMain.textContent = "Too little text for a steady estimate";
-      gradeSub.textContent = "Keep word count and suggestions below. Need 100+ prose words and 5+ sentences.";
+      gradeSub.textContent = "Keep writing — early estimate from ~30 words, steady after 100+ prose words and 5+ sentences. Target: grade " + target + ".";
       statusGrade.textContent = "—";
+      hideMeter();
     }
     // details
     detailsList.textContent = "";
@@ -337,13 +391,21 @@
   function renderIssues(r) {
     issuesEl.textContent = "";
     selectedIssue = -1;
-    var list = r.issues.filter(function (i) { return i.from !== i.to || i.severity === "limit" || i.severity === "info"; });
-    issueCount.textContent = list.length ? "(" + list.length + ")" : "";
+    var full = r.issues.filter(function (i) { return i.from !== i.to || i.severity === "limit" || i.severity === "info"; });
+    r._uiFull = full;
+    renderCatSummary(full);
+    var list = activeCatFilter === "all" ? full : full.filter(function (i) { return i.category === activeCatFilter; });
+    issueCount.textContent = full.length ? "(" + (activeCatFilter === "all" ? full.length : list.length + " of " + full.length) + ")" : "";
+    updateNotesChip(full, r);
     if (!list.length) {
       var li = document.createElement("li");
       li.className = "empty-issues";
-      li.appendChild(document.createTextNode("No issues found. A clear page is not a promise of perfect prose."));
+      li.appendChild(document.createTextNode(activeCatFilter === "all"
+        ? "No issues found. A clear page is not a promise of perfect prose."
+        : "No “" + (CAT_LABEL[activeCatFilter] || activeCatFilter) + "” notes — filter cleared list. Tap All to reset."));
       issuesEl.appendChild(li);
+      r._uiList = list;
+      // still re-render backdrop for filter changes (caller re-renders)
       return;
     }
     // cap DOM size for very long docs
@@ -351,7 +413,7 @@
     for (var i = 0; i < Math.min(list.length, cap); i++) {
       (function (issue, idx) {
         var b = document.createElement("button");
-        b.type = "button"; b.className = "issue"; b.dataset.sev = issue.severity;
+        b.type = "button"; b.className = "issue"; b.dataset.sev = issue.severity; b.dataset.cat = issue.category;
         b.setAttribute("aria-label", (CAT_LABEL[issue.category] || issue.category) + ", " + issue.severity + ": " + issue.explanation);
         var cat = document.createElement("span"); cat.className = "cat";
         cat.appendChild(document.createTextNode((CAT_LABEL[issue.category] || issue.category) + " · " + issue.severity));
@@ -364,7 +426,9 @@
           var f = document.createElement("span"); f.className = "fix";
           var fb = document.createElement("button");
           fb.type = "button";
-          fb.appendChild(document.createTextNode("Apply: “" + issue.fix.replacement + "”"));
+          var lbl = issue.fix.replacement === "" ? "Remove word" : "Apply: “" + issue.fix.replacement + "”";
+          fb.appendChild(document.createTextNode(lbl));
+          fb.setAttribute("aria-label", lbl + " for " + (CAT_LABEL[issue.category] || issue.category));
           fb.addEventListener("click", function (ev) { ev.stopPropagation(); applyFix(issue); });
           f.appendChild(fb); b.appendChild(f);
         }
@@ -382,6 +446,74 @@
       issuesEl.appendChild(more);
     }
     r._uiList = list;
+  }
+
+  var CAT_ORDER = ["passive", "adverb", "wordiness", "simpler", "repeated", "hedge", "todo", "sentence"];
+
+  function renderCatSummary(full) {
+    var box = $("catSummary");
+    if (!box) return;
+    box.textContent = "";
+    if (!full.length) return;
+    var counts = {};
+    for (var i = 0; i < full.length; i++) {
+      var c = full[i].category || "other";
+      counts[c] = (counts[c] || 0) + 1;
+    }
+    function chip(cat, label) {
+      var n = counts[cat] || 0;
+      if (!n) return;
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip";
+      b.setAttribute("aria-pressed", activeCatFilter === cat ? "true" : "false");
+      var d = document.createElement("span");
+      d.className = "dot dot-" + (CAT_ORDER.indexOf(cat) !== -1 ? cat : "other");
+      d.setAttribute("aria-hidden", "true");
+      b.appendChild(d);
+      b.appendChild(document.createTextNode(label + " "));
+      var nn = document.createElement("span"); nn.className = "n";
+      nn.appendChild(document.createTextNode(String(n)));
+      b.appendChild(nn);
+      b.setAttribute("aria-label", "Filter to " + n + " " + label + " notes");
+      b.addEventListener("click", function () {
+        activeCatFilter = (activeCatFilter === cat) ? "all" : cat;
+        if (lastAnalysis) {
+          renderBackdrop(editor.value, lastAnalysis);
+          renderIssues(lastAnalysis);
+        }
+      });
+      box.appendChild(b);
+    }
+    // All reset first
+    var all = document.createElement("button");
+    all.type = "button"; all.className = "chip";
+    all.setAttribute("aria-pressed", activeCatFilter === "all" ? "true" : "false");
+    all.appendChild(document.createTextNode("All "));
+    var an = document.createElement("span"); an.className = "n";
+    an.appendChild(document.createTextNode(String(full.length)));
+    all.appendChild(an);
+    all.setAttribute("aria-label", "Show all " + full.length + " notes");
+    all.addEventListener("click", function () {
+      activeCatFilter = "all";
+      if (lastAnalysis) { renderBackdrop(editor.value, lastAnalysis); renderIssues(lastAnalysis); }
+    });
+    box.appendChild(all);
+    var labels = { passive: "passive", adverb: "adverb", wordiness: "wordy", simpler: "simpler", repeated: "repeated", hedge: "hedge", todo: "todo", sentence: "sentence" };
+    for (var k = 0; k < CAT_ORDER.length; k++) chip(CAT_ORDER[k], labels[CAT_ORDER[k]]);
+    // any other categories present
+    for (var key in counts) {
+      if (CAT_ORDER.indexOf(key) === -1) chip(key, CAT_LABEL[key] || key);
+    }
+  }
+
+  function updateNotesChip(full, r) {
+    var chipEl = $("notesChip");
+    if (!chipEl) return;
+    if (!full.length) { chipEl.hidden = true; return; }
+    chipEl.hidden = false;
+    var g = r && r.metrics && (r.metrics.grade || r.metrics.provisionalGrade);
+    var gl = g ? (g.label === "College+" ? "College+" : "grade " + g.label) : "no grade yet";
+    chipEl.textContent = full.length + " notes · " + gl + " — tap to review";
   }
 
   function truncate(s, n) {
@@ -429,33 +561,101 @@
     if (el) el.focus();
   }
 
-  // one-click fix: single undoable edit, rechecks exactText + revision
-  function applyFix(issue) {
+  // one-click fix: single undoable edit, rechecks exactText + revision.
+  // Empty replacements (adverb removals) also consume one adjacent space
+  // so "ran quickly today" becomes "ran today", not "ran  today".
+  function applyFix(issue, silent) {
     var revAtClick = currentRev;
     var cur = editor.value;
+    if (!issue.fix || issue.fix.replacement == null) return false;
     if (cur.slice(issue.from, issue.to) !== issue.exactText) {
-      copyNote.textContent = "Text changed — fix not applied. Review the issue again.";
-      return;
+      if (!silent) copyNote.textContent = "Text changed — fix not applied. Review the issue again.";
+      return false;
     }
-    try {
-      editor.focus();
-      editor.setSelectionRange(issue.from, issue.to);
-    } catch (e) {}
+    var from = issue.from, to = issue.to, rep = issue.fix.replacement;
+    if (rep === "") {
+      if (cur[to] === " " || cur[to] === "\t") to += 1;
+      else if ((cur[from - 1] === " " || cur[from - 1] === "\t") && cur[to] !== "\n") from -= 1;
+    }
+    if (!silent) {
+      try {
+        editor.focus();
+        editor.setSelectionRange(from, to);
+      } catch (e) {}
+    }
     var ok = false;
-    try { ok = document.execCommand("insertText", false, issue.fix.replacement); } catch (e) { ok = false; }
+    if (!silent) {
+      try { ok = document.execCommand("insertText", false, rep); } catch (e) { ok = false; }
+    }
     if (!ok && editor.setRangeText) {
       // setRangeText stays inside the browser's undo history (one step),
       // unlike a value splice which breaks it.
-      try { editor.setRangeText(issue.fix.replacement, issue.from, issue.to, "end"); ok = true; }
+      try {
+        var wasFocused = (document.activeElement === editor);
+        editor.setRangeText(rep, from, to, "end");
+        if (!silent && !wasFocused) { /* keep focus where it was for bulk */ }
+        ok = true;
+      }
       catch (e) { ok = false; }
     }
     if (!ok) {
       // last resort: value splice (undo grouping may not hold everywhere)
-      editor.value = cur.slice(0, issue.from) + issue.fix.replacement + cur.slice(issue.to);
+      editor.value = cur.slice(0, from) + rep + cur.slice(to);
+    }
+    if (!silent) {
+      onTextInput();
+      copyNote.textContent = "Applied. Undo with " + (navigator.platform.indexOf("Mac") !== -1 ? "Cmd+Z" : "Ctrl+Z") + " if the meaning changed.";
+    }
+    void revAtClick;
+    return true;
+  }
+
+  // Bulk: safe non-empty replacements only (wordiness, simpler, repeated).
+  // Adverb removals stay per-note (they delete meaning); hedges never have
+  // fixes. Applied back-to-front so offsets stay valid; each rechecks exactText.
+  function applyAllFixes() {
+    var list = lastAnalysis && (lastAnalysis._uiFull || lastAnalysis._uiList);
+    if (!list || !list.length) return;
+    var cands = list.filter(function (i) {
+      return i.fix && i.fix.replacement != null && i.fix.replacement !== "" && i.from !== i.to;
+    }).sort(function (a, b) { return b.from - a.from; });
+    if (!cands.length) {
+      copyNote.textContent = "No safe replacements to apply.";
+      return;
+    }
+    var okN = 0, skipN = 0;
+    editor.focus();
+    for (var k = 0; k < cands.length; k++) {
+      var it = cands[k];
+      if (editor.value.slice(it.from, it.to) !== it.exactText) { skipN++; continue; }
+      try { editor.setSelectionRange(it.from, it.to); } catch (e) {}
+      var done = false;
+      try { done = document.execCommand("insertText", false, it.fix.replacement); } catch (e) { done = false; }
+      if (!done && editor.setRangeText) {
+        try { editor.setRangeText(it.fix.replacement, it.from, it.to, "end"); done = true; }
+        catch (e) { done = false; }
+      }
+      if (!done) {
+        var cur = editor.value;
+        editor.value = cur.slice(0, it.from) + it.fix.replacement + cur.slice(it.to);
+        done = true;
+      }
+      if (done) okN++; else skipN++;
     }
     onTextInput();
-    copyNote.textContent = "Applied. Undo with " + (navigator.platform.indexOf("Mac") !== -1 ? "Cmd+Z" : "Ctrl+Z") + " if the meaning changed.";
-    void revAtClick;
+    copyNote.textContent = "Applied " + okN + " safe fix" + (okN === 1 ? "" : "es") +
+      (skipN ? " (" + skipN + " skipped — text changed)" : "") +
+      ". Undo repeatedly to revert.";
+  }
+
+  function highlightNote(idx) {
+    // Click-a-highlight path: mark the note + bring it into view without
+    // stealing the editor caret.
+    var btns = issuesEl.querySelectorAll(".issue");
+    for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-current", i === idx ? "true" : "false");
+    selectedIssue = idx;
+    var el = $("issue-" + idx);
+    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: "nearest" }); } catch (e) {} }
   }
 
   function announceStatus() {
@@ -596,6 +796,27 @@
   editor.addEventListener("scroll", syncScroll);
   editor.addEventListener("compositionstart", function () { composing = true; clearTimeout(debounceTimer); });
   editor.addEventListener("compositionend", function () { composing = false; scheduleAnalysis(); });
+  // Click a highlight to jump to its note: the textarea sits above the
+  // backdrop, so resolve the caret offset after click and mark the note
+  // without moving the caret.
+  editor.addEventListener("click", function () {
+    setTimeout(function () {
+      var list = lastAnalysis && lastAnalysis._uiList;
+      if (!list || !list.length) return;
+      var pos = 0;
+      try { pos = editor.selectionStart; } catch (e) { return; }
+      if (pos == null) return;
+      // ignore clicks on empty space past end
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i];
+        if (it.from !== it.to && it.from <= pos && pos <= it.to) {
+          // respect active filter already (list is filtered)
+          highlightNote(i);
+          return;
+        }
+      }
+    }, 0);
+  });
   if (window.ResizeObserver) {
     new ResizeObserver(syncScroll).observe(editor);
   }
@@ -629,6 +850,7 @@
       cb.type = "checkbox"; cb.checked = !!on; cb.dataset.rule = key;
       cb.addEventListener("change", function () {
         state.ruleOverrides[key] = cb.checked;
+        syncRailToggle(key, cb.checked);
         updateCustomNote(); runAnalysis(); scheduleSave();
       });
       lab.appendChild(cb);
@@ -650,6 +872,50 @@
     });
     hlab.appendChild(hsel);
     box.appendChild(hlab);
+    buildRailToggles();
+  }
+
+  var RAIL_RULES = [
+    ["passive", "Passive"], ["adverb", "Adverb"], ["wordiness", "Wordy"],
+    ["simpler", "Simpler"], ["repeated", "Repeated"],
+  ];
+
+  function railChecked(key) {
+    var cfg = MODES[SINGLE_MODE];
+    var cur = state.ruleOverrides[key] !== undefined ? state.ruleOverrides[key] : cfg.rules[key];
+    return cur === true || cur === "note" || cur === "selected";
+  }
+
+  function buildRailToggles() {
+    var box = $("railToggles");
+    if (!box) return;
+    box.textContent = "";
+    RAIL_RULES.forEach(function (pair) {
+      var key = pair[0];
+      var lab = document.createElement("label");
+      lab.className = "check";
+      lab.title = "Toggle " + pair[1].toLowerCase() + " notes";
+      var cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = railChecked(key); cb.dataset.railRule = key;
+      cb.setAttribute("aria-label", pair[1] + " notes on/off");
+      cb.addEventListener("change", function () {
+        state.ruleOverrides[key] = cb.checked;
+        // keep Preferences checkbox in sync without full rebuild
+        var main = $("ruleToggles") && $("ruleToggles").querySelector('input[data-rule="' + key + '"]');
+        if (main) main.checked = cb.checked;
+        updateCustomNote(); runAnalysis(); scheduleSave();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(pair[1]));
+      box.appendChild(lab);
+    });
+  }
+
+  function syncRailToggle(key, on) {
+    var box = $("railToggles");
+    if (!box) return;
+    var cb = box.querySelector('input[data-rail-rule="' + key + '"]');
+    if (cb) cb.checked = !!on;
   }
 
   function updateCustomNote() {
@@ -662,6 +928,23 @@
   $("btnResetMode").addEventListener("click", function () {
     state.ruleOverrides = {};
     buildRuleToggles(); updateCustomNote(); runAnalysis(); scheduleSave();
+  });
+  var applyAllBtn = $("btnApplyAll");
+  if (applyAllBtn) applyAllBtn.addEventListener("click", applyAllFixes);
+  // merged Download menu: close the popover after picking a format
+  ["btnDownload", "btnDownloadTxt"].forEach(function (id) {
+    var b = $(id);
+    if (b) b.addEventListener("click", function () {
+      var m = $("dlMenu");
+      if (m && m.open) { try { m.removeAttribute("open"); } catch (e) {} }
+    });
+  });
+  var notesChip = $("notesChip");
+  if (notesChip) notesChip.addEventListener("click", function () {
+    var h = $("issuesH");
+    if (h && h.scrollIntoView) { try { h.scrollIntoView({ block: "start" }); } catch (e) {} }
+    var first = $("issue-0");
+    if (first) { try { first.focus({ preventScroll: true }); } catch (e) {} }
   });
 
   var ignoredDeb = null;
@@ -678,7 +961,7 @@
     applyPrefs(); scheduleSave();
   });
   $("fontFamily").addEventListener("change", function (e) {
-    prefs.fontFamily = e.target.value || "system";
+    prefs.fontFamily = e.target.value || "serif";
     applyPrefs(); scheduleSave();
   });
   $("lineHeight").addEventListener("change", function (e) {
@@ -708,12 +991,12 @@
 
   function applyPrefs() {
     document.body.dataset.theme = prefs.theme;
-    document.body.dataset.font = prefs.fontFamily || "system";
+    document.body.dataset.font = prefs.fontFamily || "serif";
     document.documentElement.style.setProperty("--ed-font", prefs.fontSize + "px");
     document.documentElement.style.setProperty("--ed-lh", String(prefs.lineHeight || 1.8));
     $("fontVal").textContent = prefs.fontSize + "px";
     $("fontSize").value = prefs.fontSize;
-    $("fontFamily").value = prefs.fontFamily || "system";
+    $("fontFamily").value = prefs.fontFamily || "serif";
     $("lineHeight").value = String(prefs.lineHeight || 1.8);
     $("wpm").value = prefs.wpm;
     $("optQuotes").checked = !!prefs.includeQuotes;
@@ -975,6 +1258,12 @@
 
   document.addEventListener("keydown", function (e) {
     var mod = e.metaKey || e.ctrlKey;
+    if (e.key === "F2") {
+      // Next/prev note shortcut (Shift+F2 = previous)
+      e.preventDefault();
+      stepIssue(e.shiftKey ? -1 : 1);
+      return;
+    }
     if (mod && (e.key === "s" || e.key === "S")) {
       // Download .md — same path as the button (Tauri dialog or browser file).
       // Skipped inside the desktop shell: the native Save As… menu owns

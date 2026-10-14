@@ -136,6 +136,7 @@ export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerm
           explanation: r.kind === "intensifier"
             ? "Intensifier — check whether it adds useful detail."
             : "Possible adverb — check whether it adds useful detail.",
+          fix: { replacement: "" },
         }));
       }
     }
@@ -218,12 +219,14 @@ export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerm
         if (/[.,;:!?'"“”‘’()\-]/.test(gap)) continue;
         if (!allow("repeated", r.from, r.to)) continue;
         const intentional = r.word === "had" || r.word === "that";
+        const keep = prevTok ? src.slice(prevTok.from, prevTok.to) : r.word;
         issues.push(makeIssue({
           ruleId: "repeated", category: "repeated", from: r.from, to: r.to, text: src,
           explanation: intentional
             ? "Repeated word — “had had” / “that that” can be intentional; review."
             : "Repeated word — possible duplicate.",
-          fix: null,
+          alternatives: [keep],
+          fix: { replacement: keep },
         }));
         void gap;
       }

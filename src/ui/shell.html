@@ -38,7 +38,11 @@
       <p class="legend" id="legend">
         <span class="lg"><span class="sw sw-y" aria-hidden="true"></span>lengthy</span>
         <span class="lg"><span class="sw sw-r" aria-hidden="true"></span>long</span>
-        <span class="lg"><span class="sw sw-u" aria-hidden="true"></span><u>word note</u></span>
+        <span class="lg"><span class="sw sw-passive" aria-hidden="true"></span>passive</span>
+        <span class="lg"><span class="sw sw-adverb" aria-hidden="true"></span>adverb</span>
+        <span class="lg"><span class="sw sw-wordy" aria-hidden="true"></span>wordy</span>
+        <span class="lg"><span class="sw sw-simpler" aria-hidden="true"></span>simpler</span>
+        <span class="lg"><span class="sw sw-repeated" aria-hidden="true"></span>repeated</span>
         <span class="lg">— a highlight means review, not wrong.</span>
       </p>
 
@@ -63,10 +67,14 @@
       <div class="doc-actions" role="group" aria-label="Document actions">
         <button type="button" id="btnNew">New</button>
         <button type="button" id="btnOpen">Open</button>
-        <input type="file" id="filePick" accept=".txt,.md,.markdown,text/plain,text/markdown" hidden>
-        <button type="button" id="btnCopy">Copy</button>
-        <button type="button" id="btnDownload">Download</button>
-        <button type="button" id="btnDownloadTxt">Download .txt</button>
+        <button type="button" id="btnCopy" class="btn-primary">Copy</button>
+        <details class="dl-menu" id="dlMenu">
+          <summary aria-label="Download options">Download ▾</summary>
+          <div class="dl-pop" role="group" aria-label="Download format">
+            <button type="button" id="btnDownload">Markdown (.md)</button>
+            <button type="button" id="btnDownloadTxt">Plain text (.txt)</button>
+          </div>
+        </details>
         <button type="button" id="btnPrint">Print</button>
         <button type="button" id="btnSample">Sample</button>
       </div>
@@ -78,16 +86,21 @@
         <div class="notes-head">
           <h2 id="issuesH">Notes <span id="issueCount"></span></h2>
           <div class="issue-nav">
-            <button type="button" id="prevIssue">← Prev</button>
-            <button type="button" id="nextIssue">Next →</button>
+            <button type="button" id="prevIssue" title="Previous note (Shift+F2)">← Prev</button>
+            <button type="button" id="nextIssue" title="Next note (F2)">Next →</button>
           </div>
         </div>
+        <div class="cat-summary" id="catSummary" role="group" aria-label="Filter notes by category"></div>
+        <div class="rail-toggles" id="railToggles" role="group" aria-label="Quick rule toggles"></div>
+        <div><button type="button" id="btnApplyAll" class="quiet" title="Apply all safe replacements (wordy, simpler, repeated)">Apply all safe fixes</button></div>
         <ol class="issues" id="issues" aria-label="Writing notes"></ol>
       </section>
 
       <details class="fold" id="detailsBox">
         <summary>Details</summary>
         <p class="grade-sub" id="gradeSub"></p>
+        <div class="grade-meter" id="gradeMeter" hidden aria-hidden="true"><div class="fill" id="gradeFill"></div><div class="target" id="gradeTarget"></div></div>
+        <p class="grade-meter-lbl" id="gradeMeterLbl" hidden></p>
         <dl class="details" id="detailsList"></dl>
       </details>
 
@@ -155,6 +168,7 @@
 </div>
 
 <div class="sr-status" id="srStatus" role="status" aria-live="polite"></div>
+<button type="button" class="notes-chip" id="notesChip" hidden>Notes</button>
 
 <div id="printDoc" aria-hidden="true"></div>
 
