@@ -50,6 +50,23 @@ SHA-256 checksums, and state the unsigned status prominently. Release the
 portable `dist/index.html` first if the bundle is not ready — but do not
 present the HTML as the Windows install experience.
 
+## Measured — v0.1.3 dev preview (14 Oct 2026, CI only, never local)
+
+Built on GitHub-hosted `windows-latest` (x64, stable Rust, Node 22 — see
+the v0.1.3 `win-build` run for the exact toolchain), `--bundles nsis`.
+
+| Artifact | Size | SHA-256 |
+|---|---|---|
+| `blunted_0.1.3_x64-setup.exe` | 3.5M | `ec78d620f52d6cedf55b74eb94ea7224c3b47ea6a3e6e38b756511239f3160ea` |
+| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.5M | `0dc9fc3958b597a0b52cf30b337a9a2a4971e9de9b50a24b8f701eb5be719803` |
+| `dist/index.html` | 184368 bytes | `af80fd6747631c9529f3ef3f855367641a28c933b7c39e346b6549c425c7e0a7` |
+
+- Signature: none. SmartScreen warning on download is expected and unverified.
+- Engine tests pass on the Windows runner before bundling.
+- `dist/index.html` is byte-identical to the macOS local build (same SHA).
+- Not done: clean-PC install, 100%/125%/150% scaling check, IME/TSF,
+  NVDA/JAWS pass, cold startup, CRLF round-trip on a real machine.
+
 ## Measured — v0.1.2 dev preview (05 Oct 2026, CI only, never local)
 
 Built on GitHub-hosted `windows-latest` (x64, stable Rust, Node 22 — see
