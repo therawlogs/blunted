@@ -18,6 +18,16 @@ npm run bundle:tauri     # src-tauri/frontend/ (+ shell-only adapter)
 npm run build:tauri:mac  # Apple Silicon .dmg (bundles dmg only)
 ```
 
+After building, print the artifact hashes with:
+
+```sh
+shasum -a 256 dist/index.html src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+```
+
+Compare the full SHA-256 value with the release listing before opening the
+artifact. Hash generation confirms which bytes were built; it does not
+confirm installation or launch on a clean Mac.
+
 Minimum system version: macOS 13.0 (pinned in `tauri.conf.json` from the
 Tauri v2 webview baseline; re-verify when upgrading Tauri).
 
@@ -36,7 +46,7 @@ Tauri v2 webview baseline; re-verify when upgrading Tauri).
 
 ## Publish
 
-Tag releases (`v0.1.3`), attach the `.dmg` + checksums, and state the
+Tag releases (`v0.1.4`), attach the `.dmg` + checksums, and state the
 unsigned status prominently. Release the portable `dist/index.html` first if
 the bundle is not ready — but do not present the HTML as the Mac install
 experience.
@@ -64,6 +74,19 @@ v26.8.1, CommandLineTools SDK (no full Xcode). Target
   `bundle_dmg.sh`; an immediate retry succeeded with no changes.
 - Not done: clean-Mac install, cold-startup timing, idle memory,
   screenshot. The Rust bundle is not expected to be bit-reproducible.
+
+## v0.1.4 build — clean-machine verification pending
+
+Build-machine artifact hashes are recorded below after the current build.
+Clean-Mac installation and launch are not verified by the coding agent;
+the owner should complete this record after testing a clean machine.
+
+| Item | Result |
+|---|---|
+| `dist/index.html` (185892 bytes) SHA-256 | `da1c260bdcf254ae73bba00220ca7f28fbf21282d328ddf8a1554d55ef24e41a` |
+| `blunted_0.1.4_aarch64.dmg` (2302038 bytes) SHA-256 | `41d4b883f89065fbf73eabeb78b85730f915b25b3dfe73bd913d214c5b3c2d86` |
+| Clean-Mac install and launch | Not yet verified — owner to record |
+| Tester / machine / macOS version / date | Owner to record |
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 

@@ -3,6 +3,21 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
+## [0.1.4] — 2026-10-15
+
+- Startup: reproduced the exception against the original app and shell:
+  the app registered a `change` handler on `filePick`, but the shell omitted
+  that element, throwing before `keydown` and the remaining handlers were
+  registered. Add the missing file picker, register shortcuts before control
+  wiring, and isolate preference/control initialization. A regression
+  reproduces the missing-control exception and confirms F2 remains registered.
+- Mobile: the Notes jump leaves room below the sticky header for the Notes
+  heading and category chips.
+- README and app metadata now describe the single Clear preset and include
+  a real application screenshot. Named profiles remain future work.
+- Release docs record generated artifact hashes separately from clean-machine
+  install results, which remain for the owner to complete and record.
+
 ## [0.1.3] — 2026-10-14
 
 - Highlights by problem type: passive, adverb, wordy, simpler, and repeated
@@ -20,8 +35,7 @@ All notable changes to blunted will be documented here. Format follows
 - Rail: quick per-rule toggles (Passive/Adverb/Wordy/Simpler/Repeated) kept
   in sync with Preferences; `F2` / `Shift+F2` steps notes; editor defaults
   to serif.
-- Release state (honest): still no README screenshot (never a
-  placeholder); Mac/Windows builds stay unsigned — signing needs a paid
+- Release state: Mac/Windows builds stay unsigned — signing needs a paid
   membership the project will not take (see `docs/mac-release.md`).
 
 ## [0.1.2] — 2026-10-05

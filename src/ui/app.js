@@ -39,6 +39,35 @@
   var composing = false;
   var activeCatFilter = "all";  // category summary tap-to-filter
 
+  // Register document shortcuts before wiring optional UI controls. A
+  // malformed/missing control must not prevent F2 or the other shortcuts
+  // from being available for the rest of the session.
+  document.addEventListener("keydown", function (e) {
+    var mod = e.metaKey || e.ctrlKey;
+    if (e.key === "F2") {
+      e.preventDefault();
+      stepIssue(e.shiftKey ? -1 : 1);
+      return;
+    }
+    if (mod && (e.key === "s" || e.key === "S")) {
+      if (tauri()) return;
+      e.preventDefault();
+      $("btnDownload").click();
+      return;
+    }
+    if (mod && (e.key === "f" || e.key === "F")) {
+      e.preventDefault();
+      if ($("findBar").hidden) openFind();
+      else { $("findInput").focus(); try { $("findInput").select(); } catch (err) {} }
+      return;
+    }
+    if (e.key === "Escape") {
+      if (!$("findBar").hidden) { closeFind(); return; }
+      var open = document.querySelector("details[open]");
+      if (open && !/input|textarea|select/i.test(document.activeElement.tagName)) open.removeAttribute("open");
+    }
+  });
+
   // ---------- storage adapter ----------
   // Web backups rotate across three slots (newest first). The slots are
   // READ on corrupt/missing main docs — a backup is only useful if it can
@@ -1256,36 +1285,6 @@
     el.appendChild(h); el.appendChild(meta); el.appendChild(body);
   });
 
-  document.addEventListener("keydown", function (e) {
-    var mod = e.metaKey || e.ctrlKey;
-    if (e.key === "F2") {
-      // Next/prev note shortcut (Shift+F2 = previous)
-      e.preventDefault();
-      stepIssue(e.shiftKey ? -1 : 1);
-      return;
-    }
-    if (mod && (e.key === "s" || e.key === "S")) {
-      // Download .md — same path as the button (Tauri dialog or browser file).
-      // Skipped inside the desktop shell: the native Save As… menu owns
-      // Cmd/Ctrl+S there, and firing both would stack two dialogs.
-      if (tauri()) return;
-      e.preventDefault();
-      $("btnDownload").click();
-      return;
-    }
-    if (mod && (e.key === "f" || e.key === "F")) {
-      e.preventDefault();
-      if ($("findBar").hidden) openFind();
-      else { $("findInput").focus(); try { $("findInput").select(); } catch (err) {} }
-      return;
-    }
-    if (e.key === "Escape") {
-      if (!$("findBar").hidden) { closeFind(); return; }
-      var open = document.querySelector("details[open]");
-      if (open && !/input|textarea|select/i.test(document.activeElement.tagName)) open.removeAttribute("open");
-    }
-  });
-
   function freshDoc() {
     return {
       id: "doc-" + Date.now().toString(36), title: "", modeId: SINGLE_MODE,
@@ -1323,20 +1322,47 @@
   }
 
   function initWith(loaded) {
+    var startupFailed = false;
+    function startupStep(fn) {
+      try { fn(); }
+      catch (e) { startupFailed = true; }
+    }
     var wasRecovered = !!(loaded && loaded.recovered);
     var wasCorrupt = !!(loaded && loaded.corrupt);
     if (loaded && loaded.prefs) {
-      prefs = sanitizePrefs(loaded.prefs);
-      delete prefs.replyMode; // removed with Email mode
+      startupStep(function () {
+        prefs = sanitizePrefs(loaded.prefs);
+        delete prefs.replyMode; // removed with Email mode
+      });
     }
     if (loaded && loaded.doc && typeof loaded.doc.body === "string") {
-      state = Object.assign(freshDoc(), loaded.doc);
-      state.modeId = normalizeMode(state.modeId);
-      delete state.subject;
+      startupStep(function () {
+        state = Object.assign(freshDoc(), loaded.doc);
+        state.modeId = normalizeMode(state.modeId);
+        delete state.subject;
+        if (!state.ruleOverrides || typeof state.ruleOverrides !== "object" || Array.isArray(state.ruleOverrides)) state.ruleOverrides = {};
+        if (!Array.isArray(state.ignoredTerms)) state.ignoredTerms = [];
+        if (!Array.isArray(state.ignoredRuleIds)) state.ignoredRuleIds = [];
+      });
     }
-    applyPrefs();
-    setReview(prefs.review === "write" ? "write" : "review");
-    loadDocIntoUI();
+    startupStep(applyPrefs);
+    // Keep the editor's default font available even if an unrelated
+    // preference control fails while applying saved preferences.
+    startupStep(function () {
+      if (!document.body.dataset.font) document.body.dataset.font = prefs.fontFamily || "serif";
+    });
+    startupStep(function () { setReview(prefs.review === "write" ? "write" : "review"); });
+    startupStep(function () {
+      editor.value = state.body || "";
+      $("docTitle").value = state.title || "";
+      $("ignoredTerms").value = state.ignoredTerms.join(", ");
+      dirty = false;
+    });
+    // These controls initialize independently so a failure applying fonts
+    // or restoring document fields cannot leave either rule panel empty.
+    startupStep(buildRuleToggles);
+    startupStep(updateCustomNote);
+    startupStep(updateSampleVisibility);
     if (wasRecovered) {
       dirty = true; // re-save the recovered draft over the bad main slot
       setSaveState("Recovered from backup");
@@ -1348,9 +1374,11 @@
     }
     else if (prefs.privateSession) setSaveState("Private session — not saved");
     else setSaveState("—");
-    // font sync for backdrop
-    syncScroll();
-    runAnalysis();
+    startupStep(syncScroll);
+    startupStep(runAnalysis);
+    if (startupFailed) {
+      copyNote.textContent = "Some preferences or controls could not be initialized. Keyboard shortcuts remain available.";
+    }
   }
 
   // Prefs from storage are untrusted input: keep known keys, sane ranges.

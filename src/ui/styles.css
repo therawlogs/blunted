@@ -169,6 +169,7 @@ body[data-review="write"] .backdrop { visibility: hidden; }
 .notes { margin-top: 0; }
 .notes-head { display: flex; align-items: center; justify-content: space-between; }
 .notes-head h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0; }
+#issuesH { scroll-margin-top: calc(5.5rem + env(safe-area-inset-top)); }
 .issue-nav { display: flex; gap: 1.1rem; }
 .issue-nav button { color: var(--muted); font-size: 13px; padding: 10px 0; }
 .issues { list-style: none; margin: 0.4rem 0 0; padding: 0; border-top: 1px solid var(--line); }

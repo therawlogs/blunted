@@ -18,6 +18,18 @@ npm run bundle:tauri     # src-tauri/frontend/ (+ shell-only adapter)
 npx tauri build --bundles nsis   # x64 NSIS installer
 ```
 
+On Windows, print hashes before install with PowerShell:
+
+```powershell
+Get-FileHash .\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*-setup.exe -Algorithm SHA256
+Get-FileHash .\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.zip -Algorithm SHA256
+Get-FileHash .\dist\index.html -Algorithm SHA256
+```
+
+Compare the full SHA-256 value with the release listing before opening the
+artifact. Hash generation confirms which bytes were built; it does not
+confirm installation or launch on a clean PC.
+
 WebView2: `webviewInstallMode` is `embedBootstrapper` (+~1.8 MB). On
 Windows 10 (April 2018+) and Windows 11 the WebView2 runtime ships with
 the OS, so most users install nothing extra. If the runtime is missing or
@@ -45,7 +57,7 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
 
 ## Publish
 
-Tag releases (`v0.1.3`), attach the `-setup.exe` + portable `.zip` +
+Tag releases (`v0.1.4`), attach the `-setup.exe` + portable `.zip` +
 SHA-256 checksums, and state the unsigned status prominently. Release the
 portable `dist/index.html` first if the bundle is not ready — but do not
 present the HTML as the Windows install experience.
@@ -66,6 +78,24 @@ the v0.1.3 `win-build` run for the exact toolchain), `--bundles nsis`.
 - `dist/index.html` is byte-identical to the macOS local build (same SHA).
 - Not done: clean-PC install, 100%/125%/150% scaling check, IME/TSF,
   NVDA/JAWS pass, cold startup, CRLF round-trip on a real machine.
+
+## v0.1.4 build — clean-machine verification pending
+
+Build-machine artifact hashes are recorded below after the current build.
+Clean-Windows installation and launch are not verified by the coding agent;
+the owner should complete this record after testing a clean machine.
+
+| Item | Result |
+|---|---|
+| `dist/index.html` (185892 bytes) SHA-256 | `da1c260bdcf254ae73bba00220ca7f28fbf21282d328ddf8a1554d55ef24e41a` |
+| NSIS installer SHA-256 | Not built on this macOS host; generate on `windows-latest` |
+| Portable ZIP SHA-256 | Not built on this macOS host; generate on `windows-latest` |
+| Clean-Windows install and launch | Not yet verified — owner to record |
+| Tester / machine / Windows version / date | Owner to record |
+
+The Windows installers are built by the `win-build` workflow on
+`windows-latest` when the `v0.1.4` tag is pushed. Record those artifact hashes
+here; they do not confirm clean-machine installation or launch.
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, CI only, never local)
 

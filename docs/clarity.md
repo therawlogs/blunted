@@ -6,6 +6,10 @@ set, English-only for now. Legacy stored mode ids (`essays`, `social`,
 `message`, `email`, `research`) map to `clear` on load — old drafts keep
 working, nothing is rewritten.
 
+The shipped app has one preset, Clear. Named profiles, including Essay,
+editable profile thresholds, profile-specific rule settings, and sample-
+based suggestions are future work and are not available in this release.
+
 | Preset | Target | Yellow words/grade | Red words/grade | Paragraph note |
 |---|---|---|---|---|
 | Clear | 8 | 25 / 12 | 40 / 16 | >120 words |

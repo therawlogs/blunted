@@ -1,4 +1,4 @@
-# blunted — private writing clarity
+# blunted — offline writing clarity for Mac and Windows
 
 A local writing-clarity app: one English analysis engine, one clarity
 preset, a dependency-free downloadable HTML app, and Tauri v2 desktop
@@ -8,8 +8,7 @@ and a settings file are the only outward actions. Find (Cmd/Ctrl+F),
 Download (Cmd/Ctrl+S), and next/previous note (F2 / Shift+F2) work from
 the keyboard. The editor defaults to a serif face; change it under Preferences.
 
-> Screenshot: still pending — v0.1.3 shipped without one. The README will
-> use a real screenshot of the built app, never a placeholder image.
+![blunted app screenshot](docs/images/blunted-app.png)
 
 ## One focus
 
@@ -23,7 +22,7 @@ this project stays free). Your OS will warn on first run; that is
 expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
 path is the portable file:
 
-1. Download the portable HTML file from the release (e.g. `blunted-0.1.3.html`).
+1. Download the portable HTML file from the release (e.g. `blunted-0.1.4.html`).
 2. Turn networking off if you like — double-click it. Everything works.
 3. Write. Copy or Download (`.md` / `.txt`) when done. Nothing leaves the device.
 
@@ -44,7 +43,7 @@ exported `.md` where you like. Details: `docs/privacy.md`.
 
 ```sh
 node --version   # >= 20
-npm test         # engine fixtures (21 tests)
+npm test         # engine and startup regression fixtures
 npm run build    # -> dist/index.html (~180 KB, deterministic)
 ```
 
