@@ -77,14 +77,17 @@ v26.8.1, CommandLineTools SDK (no full Xcode). Target
 
 ## v0.1.4 build — clean-machine verification pending
 
-Build-machine artifact hashes are recorded below after the current build.
+Build-machine artifact hashes are recorded below. The published DMG is the
+Mac CI artifact; it has a different digest from the local build because the
+Rust bundle is not expected to be bit-reproducible.
 Clean-Mac installation and launch are not verified by the coding agent;
 the owner should complete this record after testing a clean machine.
 
 | Item | Result |
 |---|---|
 | `dist/index.html` (185892 bytes) SHA-256 | `da1c260bdcf254ae73bba00220ca7f28fbf21282d328ddf8a1554d55ef24e41a` |
-| `blunted_0.1.4_aarch64.dmg` (2302038 bytes) SHA-256 | `41d4b883f89065fbf73eabeb78b85730f915b25b3dfe73bd913d214c5b3c2d86` |
+| Published `blunted_0.1.4_aarch64.dmg` (2289935 bytes, Mac CI) SHA-256 | `9d4835a5e3b7d49bb8635ab965aa458fdba0150ffe1ab135eb9416e4d6408258` |
+| Local `blunted_0.1.4_aarch64.dmg` (2302038 bytes) SHA-256 | `41d4b883f89065fbf73eabeb78b85730f915b25b3dfe73bd913d214c5b3c2d86` |
 | Clean-Mac install and launch | Not yet verified — owner to record |
 | Tester / machine / macOS version / date | Owner to record |
 

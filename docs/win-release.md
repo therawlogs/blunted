@@ -88,14 +88,14 @@ the owner should complete this record after testing a clean machine.
 | Item | Result |
 |---|---|
 | `dist/index.html` (185892 bytes) SHA-256 | `da1c260bdcf254ae73bba00220ca7f28fbf21282d328ddf8a1554d55ef24e41a` |
-| NSIS installer SHA-256 | Not built on this macOS host; generate on `windows-latest` |
-| Portable ZIP SHA-256 | Not built on this macOS host; generate on `windows-latest` |
+| `blunted_0.1.4_x64-setup.exe` (3657110 bytes) SHA-256 | `ed99bcf4d497815169b7bfe5aca0d823dda677b2906022b271ac037d20ab0b31` |
+| `blunted-win-x64-portable.zip` (3639079 bytes) SHA-256 | `446954f80ce481462ceb33bd468876beb74455267f4415fde1ea1230341e4ae8` |
 | Clean-Windows install and launch | Not yet verified — owner to record |
 | Tester / machine / Windows version / date | Owner to record |
 
-The Windows installers are built by the `win-build` workflow on
-`windows-latest` when the `v0.1.4` tag is pushed. Record those artifact hashes
-here; they do not confirm clean-machine installation or launch.
+The Windows installers were built by the successful `win-build` workflow on
+`windows-latest` for tag `v0.1.4`. These build hashes do not confirm
+clean-machine installation or launch.
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, CI only, never local)
 
