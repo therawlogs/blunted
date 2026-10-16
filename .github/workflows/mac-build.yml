@@ -1,5 +1,5 @@
 name: mac-build
-# Unsigned Apple-Silicon release candidate. No release secrets or notarization.
+# Ad-hoc signed Apple-Silicon candidate. No Developer ID signing or notarization.
 on:
   workflow_dispatch:
   push:
@@ -21,8 +21,10 @@ jobs:
       - run: npm run build
       - run: npm run bundle:tauri
       - run: npx tauri build --target aarch64-apple-darwin --bundles dmg
-      - name: package candidate and record SHA-256
+      - name: verify signature, package candidate, and record SHA-256
         run: |
+          APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg || true
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app || true
           mkdir -p release-artifacts

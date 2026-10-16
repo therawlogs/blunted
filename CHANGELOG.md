@@ -3,17 +3,25 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
-## [0.1.5] — 2026-10-16
+## [0.1.6] — release correction in progress
+
+- Configure Tauri ad-hoc code signing for the macOS app bundle and verify the
+  signature in CI. The v0.1.5 Mac app failed signature validation and that
+  release has been withdrawn; its tag remains unchanged.
+- v0.1.5 profile, writing-mode, and autosave changes are carried forward.
+
+## [0.1.5] — withdrawn 2026-10-16
 
 - Add editable Clear and Essay profiles, per-rule strictness, personal voice
   words, and reviewed sample-based suggestions.
 - Write mode hides review metrics and the review rail. Autosave stays enabled
   by default; desktop first run selects a persistent local folder and names
   drafts from their first line.
-- README leads with a paste-and-flag example. Published from the exact RC2
-  candidate commit with its CI artifacts and SHA-256 listing. Clean-machine
-  Mac/Windows install and 0.1.4 upgrade checks remain pending. The Mac DMG is
-  unsigned and not notarized; the Windows installer is unsigned.
+- README leads with a paste-and-flag example. The GitHub release was withdrawn
+  after the macOS app failed signature verification and Gatekeeper blocked it
+  with a damaged-app alert. Do not install or run v0.1.5. Its tag will not be
+  moved or reused. The Mac DMG was unsigned and not notarized; the Windows
+  installer was unsigned.
 
 ## [0.1.4] — 2026-10-15
 

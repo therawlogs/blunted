@@ -27,10 +27,14 @@ highlight means **review**, not wrong. See `docs/clarity.md`.
 
 ## Download & run (unsigned dev preview)
 
-Both desktop builds are **unsigned** (no paid certificates, no Store —
-this project stays free). Your OS will warn on first run; that is
-expected. Do not disable Gatekeeper/SmartScreen system-wide. The safest
-path is the portable file:
+The v0.1.5 desktop release has been withdrawn because its macOS app bundle
+failed signature validation. Do not install or run v0.1.5. A corrected v0.1.6
+build is in progress. The portable HTML edition is unaffected; the latest
+published portable file is available from [v0.1.4](https://github.com/therawlogs/blunted/releases/tag/v0.1.4).
+
+The Windows installer remains unsigned. The corrected Mac build will use an
+ad-hoc signature, without Developer ID signing or notarization. Do not disable
+Gatekeeper/SmartScreen system-wide. The safest option is the portable HTML:
 
 1. Download the portable HTML file from the release (e.g. `index.html`).
 2. Turn networking off if you like — double-click it. Everything works.
@@ -39,9 +43,10 @@ path is the portable file:
    `.txt`) when done.
    Nothing leaves the device.
 
-Mac: Gatekeeper warns about an unidentified developer (details:
-`docs/mac-release.md`). Windows: SmartScreen warns about an unrecognized
-app; verify the SHA-256 hash first (details: `docs/win-release.md`).
+Mac: Gatekeeper may require explicit approval for the ad-hoc-signed,
+notarization-free app (details: `docs/mac-release.md`). Windows: SmartScreen
+may warn about an unrecognized app; verify the SHA-256 hash first (details:
+`docs/win-release.md`).
 
 ## Offline / privacy (with limits)
 

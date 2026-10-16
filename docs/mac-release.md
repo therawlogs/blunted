@@ -1,10 +1,9 @@
 # Mac release (unsigned)
 
-Status: **unsigned and not notarized.** No Developer ID signing,
-notarization, or stapling — those need a paid Apple Developer Program
-membership the owner has not authorized. Gatekeeper will warn on first open;
-that is expected. Never advise disabling Gatekeeper system-wide or running
-blanket quarantine-removal commands.
+Status: **ad-hoc signed, not notarized.** There is no Developer ID signature,
+notarization, or stapling. Gatekeeper may require approval on first open. Never
+advise disabling Gatekeeper system-wide or running blanket quarantine-removal
+commands.
 
 ## Build
 
@@ -50,13 +49,21 @@ DMG and compare the complete 64-character digest with the release listing.
 Record the exact artifact name and digest; a CI/build-machine digest is not a
 substitute for hashing the downloaded file.
 
-## v0.1.5 release and verification status
+## v0.1.5 withdrawn; v0.1.6 correction in progress
 
-The final GitHub Release `v0.1.5` uses the exact commit and build artifacts
-from RC2 (`f9832e8`). Its attached `SHA256SUMS.txt` and release listing identify
-the DMG and portable HTML bytes; the release asset digests match the published
-files. These build hashes do not verify a downloaded copy or a clean-machine
-install.
+The `v0.1.5` release was withdrawn after its app bundle failed
+`codesign --verify --deep --strict` and Gatekeeper reported that the app was
+damaged. The DMG itself passed structural verification and its checksum
+matched the release listing, so the defect is in the app signature, not the
+download. The `v0.1.5` tag remains permanently attached to commit `f9832e8` and
+will not be moved or reused.
+
+For `v0.1.6`, Tauri is configured with the ad-hoc signing identity `-`, as
+documented for unsigned Apple Silicon distribution. The Mac CI workflow now
+fails if `codesign --verify --deep --strict` fails on the built app. This
+signature is not Developer ID signing and does not notarize the app. Do not
+publish `v0.1.6` until the candidate passes the signature check and the Mac,
+Windows, and 0.1.4 upgrade checks are recorded.
 
 Before installation, hash the downloaded DMG with `shasum -a 256` and compare
 the full digest with both `SHA256SUMS.txt` and the release listing. Test on a
@@ -107,30 +114,38 @@ the owner should complete this record after testing a clean machine.
 | Clean-Mac install and launch | Not yet verified — owner to record |
 | Tester / machine / macOS version / date | Owner to record |
 
-## v0.1.5 — clean-machine verification pending
+## v0.1.5 — withdrawn; signature verification failed
 
 RC1 CI passed for commit `5cd173a`; [RC2 Mac CI passed](https://github.com/therawlogs/blunted/actions/runs/38909642894)
-for commit `f9832e8`, which is the published `v0.1.5` tag target. The final
-release contains the exact RC2 artifacts. Hashes below are build hashes and
-release asset digests; downloaded-file checks and machine verification remain
-pending.
+for commit `f9832e8`, which remains the withdrawn `v0.1.5` tag target. The
+release DMG hash matched its listing; however, the app inside failed local
+signature validation. Do not use these files.
 
 | Release artifact / SHA-256 | Result |
 |---|---|
 | `blunted_0.1.5_aarch64.dmg` | `31e46f4ff55d2c740a05c646dcfb4a9337f9e2a8964b76568e7f0d2be4c76c91` |
 | `blunted-0.1.5.html` | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
-| Release `SHA256SUMS.txt` | Attached; checksums match GitHub asset digests |
+| App bundle signature | Failed `codesign --verify --deep --strict`; withdrawn |
 
 | Field | Result |
 |---|---|
 | Clean Mac model / macOS version / date / tester | Pending owner-run test |
 | Release tag / commit / downloaded DMG filename | `v0.1.5` / `f9832e8`; downloaded filename and hash check pending |
-| Downloaded DMG SHA-256 / manifest and release-listing match | Pending owner-run download check |
-| Signing / notarization / stapling status | Unsigned / not notarized / not stapled |
-| Install / first launch / offline writing / autosave / recovery | Pending |
+| Downloaded DMG SHA-256 / manifest and release-listing match | DMG matched; bundle signature failed |
+| Signing / notarization / stapling status | Invalid ad-hoc bundle signature / not notarized / not stapled |
+| Install / first launch / offline writing / autosave / recovery | Blocked by Gatekeeper damaged-app warning |
 | 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
 | Upgrade autosave to chosen folder / restart and recovery | Pending |
 | Result / issue reference / tester | Pending |
+
+## v0.1.6 candidate — ad-hoc signature correction
+
+| Check | Result |
+|---|---|
+| Explicit Tauri ad-hoc identity (`signingIdentity: "-"`) | Configured |
+| CI `codesign --verify --deep --strict` gate | Added; candidate run pending |
+| Clean Mac download, hash, Gatekeeper, install, launch | Pending |
+| Windows install and 0.1.4 upgrade checks | Pending |
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 

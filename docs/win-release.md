@@ -60,13 +60,14 @@ downloaded `.exe` and `.zip`, comparing each complete digest with
 digest; a CI digest alone does not certify the downloaded file or its
 installation.
 
-## v0.1.5 release and verification status
+## v0.1.5 withdrawn; v0.1.6 correction in progress
 
-The final GitHub Release `v0.1.5` uses the exact commit and build artifacts
-from RC2 (`f9832e8`). Its attached `SHA256SUMS.txt` and release listing identify
-the setup `.exe`, zipped setup installer `.zip`, and portable HTML. The ZIP
-contains the installer; it is not a portable app. Build hashes do not verify a
-downloaded copy or a clean-machine install.
+The `v0.1.5` release was withdrawn after its Mac app failed signature
+validation and Gatekeeper blocked it. Its tag remains permanently attached to
+commit `f9832e8` and will not be moved or reused. The corrected release is
+planned as `v0.1.6`; its Windows package will continue to be identified as a
+zipped setup installer, not a portable app. The Windows artifacts from v0.1.5
+were withdrawn with that release and should not be used.
 
 Before installation, run `Get-FileHash -Algorithm SHA256` on the downloaded
 installer and compare the full digest with `SHA256SUMS.txt` and the release
@@ -108,20 +109,18 @@ the owner should complete this record after testing a clean machine.
 | Clean-Windows install and launch | Not yet verified — owner to record |
 | Tester / machine / Windows version / date | Owner to record |
 
-## v0.1.5 — clean-machine verification pending
+## v0.1.5 — withdrawn; Mac signature verification failed
 
 RC1 CI passed for commit `5cd173a`; [RC2 Windows CI passed](https://github.com/therawlogs/blunted/actions/runs/38909642848)
-for commit `f9832e8`, which is the published `v0.1.5` tag target. The final
-release contains the exact RC2 artifacts. Hashes below are build hashes and
-release asset digests; downloaded-file checks and machine verification remain
-pending.
+for commit `f9832e8`, which remains the withdrawn `v0.1.5` tag target. The
+Windows RC2 build passed, but do not use the withdrawn release files.
 
 | Release artifact | SHA-256 |
 |---|---|
 | `blunted_0.1.5_x64-setup.exe` | `e9a27678fc59189fe1ae97e602b0dc1593f0bc069eda6ff9332adef6c2146711` |
 | `blunted-win-x64-setup.zip` | `5c13c6f81bcecce6ac51fea98d5411de85313b73e8776100d3a080a6f4e1aa5d` |
 | `blunted-0.1.5.html` | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
-| Release `SHA256SUMS.txt` | Attached; checksums match GitHub asset digests |
+| Release `SHA256SUMS.txt` | Attached to withdrawn release |
 
 | Field | Result |
 |---|---|
