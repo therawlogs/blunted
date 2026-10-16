@@ -22,7 +22,7 @@ On Windows, print hashes before install with PowerShell:
 
 ```powershell
 Get-FileHash .\Downloads\blunted_*_x64-setup.exe -Algorithm SHA256
-Get-FileHash .\Downloads\blunted-win-x64-portable.zip -Algorithm SHA256
+Get-FileHash .\Downloads\blunted-win-x64-setup.zip -Algorithm SHA256
 ```
 
 Compare the full SHA-256 value with the release listing before opening the
@@ -55,15 +55,17 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
    another app's figures as ours.
 
 Before opening the installer, run `Get-FileHash -Algorithm SHA256` on the
-downloaded `.exe` and compare the complete digest with the release listing.
-Record the exact artifact name and digest; the CI digest alone does not
-certify the downloaded file or its installation.
+downloaded `.exe` and `.zip`, comparing each complete digest with
+`SHA256SUMS.txt` and the release listing. Record the exact artifact name and
+digest; a CI digest alone does not certify the downloaded file or its
+installation.
 
 ## Candidate, verification, and final publication
 
-Push `v0.1.5-rc1` to build candidate files. The `win-build` workflow uploads
-the setup `.exe`, portable `.zip`, portable HTML, and `SHA256SUMS.txt` as one
-CI artifact. Create a GitHub prerelease named `v0.1.5-rc1`, attach those exact
+Push `v0.1.5-rc2` to build candidate files. The `win-build` workflow uploads
+the setup `.exe`, zipped setup installer `.zip`, portable HTML, and
+`SHA256SUMS.txt` as one CI artifact. Create a GitHub prerelease named
+`v0.1.5-rc2`, attach those exact
 files, and include the full manifest in its release listing. The Mac workflow
 must also finish before the candidate is ready for the complete test matrix.
 
@@ -90,7 +92,7 @@ the v0.1.3 `win-build` run for the exact toolchain), `--bundles nsis`.
 | Artifact | Size | SHA-256 |
 |---|---|---|
 | `blunted_0.1.3_x64-setup.exe` | 3.5M | `ec78d620f52d6cedf55b74eb94ea7224c3b47ea6a3e6e38b756511239f3160ea` |
-| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.5M | `0dc9fc3958b597a0b52cf30b337a9a2a4971e9de9b50a24b8f701eb5be719803` |
+| `blunted-win-x64-portable.zip` (historical zipped setup installer; not a portable app) | 3.5M | `0dc9fc3958b597a0b52cf30b337a9a2a4971e9de9b50a24b8f701eb5be719803` |
 | `dist/index.html` | 184368 bytes | `af80fd6747631c9529f3ef3f855367641a28c933b7c39e346b6549c425c7e0a7` |
 
 - Signature: none. SmartScreen warning on download is expected and unverified.
@@ -109,20 +111,22 @@ the owner should complete this record after testing a clean machine.
 |---|---|
 | `dist/index.html` (185892 bytes) SHA-256 | `da1c260bdcf254ae73bba00220ca7f28fbf21282d328ddf8a1554d55ef24e41a` |
 | `blunted_0.1.4_x64-setup.exe` (3657110 bytes) SHA-256 | `ed99bcf4d497815169b7bfe5aca0d823dda677b2906022b271ac037d20ab0b31` |
-| `blunted-win-x64-portable.zip` (3639079 bytes) SHA-256 | `446954f80ce481462ceb33bd468876beb74455267f4415fde1ea1230341e4ae8` |
+| `blunted-win-x64-portable.zip` (historical zipped setup installer; not a portable app; 3639079 bytes) SHA-256 | `446954f80ce481462ceb33bd468876beb74455267f4415fde1ea1230341e4ae8` |
 | Clean-Windows install and launch | Not yet verified — owner to record |
 | Tester / machine / Windows version / date | Owner to record |
 
 ## v0.1.5 candidate — clean-machine verification pending
 
-Candidate artifact hashes are pending RC CI. Do not fill them from a local
-build or promote to `v0.1.5` while any required result is pending or failed.
+RC1 CI passed for commit `5cd173a`; its workflow artifacts are not the
+corrected RC2 files. RC2 CI and its artifact hashes are pending. Record hashes
+from the downloaded RC2 files and manifest; do not use local build hashes or
+promote to `v0.1.5` while any required result is pending or failed.
 
-| Candidate artifact / release-listed SHA-256 | Result |
+| Candidate artifact | SHA-256 / result |
 |---|---|
-| Setup `.exe` | Pending RC build |
-| Portable `.zip` | Pending RC build |
-| `dist/index.html` | Pending RC build |
+| Setup `.exe` | Pending RC2 build |
+| Zipped setup installer `blunted-win-x64-setup.zip` | Pending RC2 build |
+| `dist/index.html` | Pending RC2 build |
 | `SHA256SUMS.txt` attached to candidate release | Pending |
 
 | Verification | Result |
@@ -131,8 +135,9 @@ build or promote to `v0.1.5` while any required result is pending or failed.
 | Field | Result |
 |---|---|
 | Clean PC model / Windows version / date / tester | Pending owner-run test |
-| Candidate tag / commit / downloaded setup filename | Pending |
-| Downloaded setup SHA-256 / manifest and release-listing match | Pending |
+| Candidate tag / commit / downloaded installer filename | Pending |
+| Downloaded setup `.exe` SHA-256 / manifest and listing match | Pending |
+| Downloaded setup `.zip` SHA-256 / manifest and listing match | Pending |
 | Signature status | Unsigned |
 | Install / first launch / offline writing / autosave / recovery | Pending |
 | 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
@@ -151,7 +156,7 @@ the v0.1.2 `win-build` run for the exact toolchain), `--bundles nsis`.
 | Artifact | Size | SHA-256 |
 |---|---|---|
 | `blunted_0.1.2_x64-setup.exe` | 3.6M | `ab544ef25b5f4997776b2bb647d5b66b3f8c72633ede4df67056d21c2fa4dab9` |
-| `blunted-win-x64-portable.zip` (setup exe, zipped) | 3.6M | `8b488e539c87b023da4b165bd8b8a6fe369c4b527f51d8ef6e6d36f10ff6c581` |
+| `blunted-win-x64-portable.zip` (historical zipped setup installer; not a portable app) | 3.6M | `8b488e539c87b023da4b165bd8b8a6fe369c4b527f51d8ef6e6d36f10ff6c581` |
 | `dist/index.html` | 164175 bytes | `8f57999ced5d2d1eabc2003c27e983ca0d438158b53ec0a125c908c0a1abc899` |
 
 - Signature: none. SmartScreen warning on download is expected and unverified.

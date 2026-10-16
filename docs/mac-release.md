@@ -52,9 +52,9 @@ substitute for hashing the downloaded file.
 
 ## Candidate, verification, and final publication
 
-Push `v0.1.5-rc1` to build candidate files. The `mac-build` workflow uploads
+Push `v0.1.5-rc2` to build candidate files. The `mac-build` workflow uploads
 the DMG, portable HTML, and `SHA256SUMS.txt` as one CI artifact. Create a
-GitHub prerelease named `v0.1.5-rc1`, attach those exact files, and include
+GitHub prerelease named `v0.1.5-rc2`, attach those exact files, and include
 the full manifest in its release listing. The Windows workflow must also
 finish before the candidate is ready for the complete test matrix.
 
@@ -115,13 +115,15 @@ the owner should complete this record after testing a clean machine.
 
 ## v0.1.5 candidate — clean-machine verification pending
 
-Candidate artifact hashes are pending RC CI. Do not fill them from a local
-build or promote to `v0.1.5` while any required result is pending or failed.
+RC1 CI passed for commit `5cd173a`. RC2 CI and its artifact hashes are
+pending. Record hashes from the downloaded RC2 files and manifest; do not use
+local build hashes or promote to `v0.1.5` while any required result is pending
+or failed.
 
 | Candidate artifact / release-listed SHA-256 | Result |
 |---|---|
-| DMG | Pending RC build |
-| `dist/index.html` | Pending RC build |
+| DMG | Pending RC2 build |
+| `dist/index.html` | Pending RC2 build |
 | `SHA256SUMS.txt` attached to candidate release | Pending |
 
 | Verification | Result |

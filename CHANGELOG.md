@@ -67,7 +67,7 @@ All notable changes to blunted will be documented here. Format follows
   rewrites. Email greeting/sign-off/subject notes, Social character budget,
   and Message paragraph-count notes removed with their modes.
 - Windows x64 support: NSIS per-user installer (`embedBootstrapper`
-  WebView2, +~1.8 MB), `win-build.yml` CI, portable `.zip` alongside
+  WebView2, +~1.8 MB), `win-build.yml` CI, zipped setup installer `.zip` alongside
   `-setup.exe`, `docs/win-release.md`. Unsigned forever (free).
 - Windows correctness: CRLF normalized on open, reserved filenames
   (`CON`/`PRN`/`AUX`/…) sanitized on save, release size profile
