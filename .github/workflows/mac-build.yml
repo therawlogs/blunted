@@ -23,8 +23,12 @@ jobs:
       - run: npx tauri build --target aarch64-apple-darwin --bundles dmg
       - name: verify signature, package candidate, and record SHA-256
         run: |
-          APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app"
-          codesign --verify --deep --strict --verbose=2 "$APP"
+          DMG="$(find src-tauri/target/aarch64-apple-darwin/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)"
+          MOUNT="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$DMG"
+          codesign --verify --deep --strict --verbose=2 "$MOUNT/blunted.app"
+          hdiutil detach "$MOUNT"
+          rmdir "$MOUNT"
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg || true
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app || true
           mkdir -p release-artifacts
