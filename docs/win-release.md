@@ -1,4 +1,4 @@
-# Windows release (unsigned candidate)
+# Windows release (unsigned)
 
 Status: **unsigned.** No code-signing
 certificate, no Microsoft Store listing — those cost money the project
@@ -60,26 +60,19 @@ downloaded `.exe` and `.zip`, comparing each complete digest with
 digest; a CI digest alone does not certify the downloaded file or its
 installation.
 
-## Candidate, verification, and final publication
+## v0.1.5 release and verification status
 
-Push `v0.1.5-rc2` to build candidate files. The `win-build` workflow uploads
-the setup `.exe`, zipped setup installer `.zip`, portable HTML, and
-`SHA256SUMS.txt` as one CI artifact. Create a GitHub prerelease named
-`v0.1.5-rc2`, attach those exact
-files, and include the full manifest in its release listing. The Mac workflow
-must also finish before the candidate is ready for the complete test matrix.
+The final GitHub Release `v0.1.5` uses the exact commit and build artifacts
+from RC2 (`f9832e8`). Its attached `SHA256SUMS.txt` and release listing identify
+the setup `.exe`, zipped setup installer `.zip`, and portable HTML. The ZIP
+contains the installer; it is not a portable app. Build hashes do not verify a
+downloaded copy or a clean-machine install.
 
 Before installation, run `Get-FileHash -Algorithm SHA256` on the downloaded
 installer and compare the full digest with `SHA256SUMS.txt` and the release
-listing. Test the candidate on a clean PC and complete the 0.1.4 upgrade
-scenario below. Record results only after the check; leave unavailable checks
-explicitly pending.
-
-After Mac, Windows, and upgrade checks all pass, tag the same commit
-`v0.1.5`. Promote the exact tested candidate files to the final GitHub Release
-and publish them with a full SHA-256 listing. Do not substitute a rebuild.
-State prominently that the installer is unsigned and SmartScreen may warn.
-Candidate failure keeps `v0.1.5` unpublished; fix it and test the next RC tag.
+listing. Test on a clean PC and complete the 0.1.4 upgrade scenario below.
+Record results only after each check; keep unavailable checks explicitly
+pending. The installer is unsigned and SmartScreen may warn.
 
 If a bad final release is discovered, unpublish it, mark it withdrawn with the
 reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
@@ -115,31 +108,27 @@ the owner should complete this record after testing a clean machine.
 | Clean-Windows install and launch | Not yet verified — owner to record |
 | Tester / machine / Windows version / date | Owner to record |
 
-## v0.1.5 candidate — clean-machine verification pending
+## v0.1.5 — clean-machine verification pending
 
 RC1 CI passed for commit `5cd173a`; [RC2 Windows CI passed](https://github.com/therawlogs/blunted/actions/runs/38909642848)
-for commit `f9832e8`. The corrected RC2 workflow artifact is available from
-that run. Its per-file hashes still need to be recorded against downloaded
-candidate files and the release listing; do not use local build hashes or
-promote to `v0.1.5` while any required verification result is pending or
-failed.
+for commit `f9832e8`, which is the published `v0.1.5` tag target. The final
+release contains the exact RC2 artifacts. Hashes below are build hashes and
+release asset digests; downloaded-file checks and machine verification remain
+pending.
 
-| Candidate artifact | SHA-256 / result |
+| Release artifact | SHA-256 |
 |---|---|
-| Setup `.exe` | RC2 CI build passed; downloaded hash/listing match pending |
-| Zipped setup installer `blunted-win-x64-setup.zip` | RC2 CI build passed; downloaded hash/listing match pending |
-| `dist/index.html` | RC2 CI build passed; downloaded hash/listing match pending |
-| `SHA256SUMS.txt` attached to candidate release | Pending |
-
-| Verification | Result |
-|---|---|
+| `blunted_0.1.5_x64-setup.exe` | `e9a27678fc59189fe1ae97e602b0dc1593f0bc069eda6ff9332adef6c2146711` |
+| `blunted-win-x64-setup.zip` | `5c13c6f81bcecce6ac51fea98d5411de85313b73e8776100d3a080a6f4e1aa5d` |
+| `blunted-0.1.5.html` | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
+| Release `SHA256SUMS.txt` | Attached; checksums match GitHub asset digests |
 
 | Field | Result |
 |---|---|
 | Clean PC model / Windows version / date / tester | Pending owner-run test |
-| Candidate tag / commit / downloaded installer filename | Pending |
-| Downloaded setup `.exe` SHA-256 / manifest and listing match | Pending |
-| Downloaded setup `.zip` SHA-256 / manifest and listing match | Pending |
+| Release tag / commit / downloaded installer filename | `v0.1.5` / `f9832e8`; downloaded filename and hash check pending |
+| Downloaded setup `.exe` SHA-256 / manifest and listing match | Pending owner-run download check |
+| Downloaded setup `.zip` SHA-256 / manifest and listing match | Pending owner-run download check |
 | Signature status | Unsigned |
 | Install / first launch / offline writing / autosave / recovery | Pending |
 | 0.1.4 upgrade: profile settings and existing draft preserved | Pending |

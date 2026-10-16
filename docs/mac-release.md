@@ -1,4 +1,4 @@
-# Mac release (unsigned candidate)
+# Mac release (unsigned)
 
 Status: **unsigned and not notarized.** No Developer ID signing,
 notarization, or stapling — those need a paid Apple Developer Program
@@ -50,25 +50,19 @@ DMG and compare the complete 64-character digest with the release listing.
 Record the exact artifact name and digest; a CI/build-machine digest is not a
 substitute for hashing the downloaded file.
 
-## Candidate, verification, and final publication
+## v0.1.5 release and verification status
 
-Push `v0.1.5-rc2` to build candidate files. The `mac-build` workflow uploads
-the DMG, portable HTML, and `SHA256SUMS.txt` as one CI artifact. Create a
-GitHub prerelease named `v0.1.5-rc2`, attach those exact files, and include
-the full manifest in its release listing. The Windows workflow must also
-finish before the candidate is ready for the complete test matrix.
+The final GitHub Release `v0.1.5` uses the exact commit and build artifacts
+from RC2 (`f9832e8`). Its attached `SHA256SUMS.txt` and release listing identify
+the DMG and portable HTML bytes; the release asset digests match the published
+files. These build hashes do not verify a downloaded copy or a clean-machine
+install.
 
 Before installation, hash the downloaded DMG with `shasum -a 256` and compare
-it to the full digest in `SHA256SUMS.txt` and the release listing. Test the
-candidate on a clean Mac and complete the 0.1.4 upgrade scenario below. Record
-results only after the check; leave unavailable checks explicitly pending.
-
-After Mac, Windows, and upgrade checks all pass, tag the same commit
-`v0.1.5`. Promote the exact tested candidate files to the final GitHub Release
-and publish them with a full SHA-256 listing. Do not substitute a rebuild.
-State prominently that the DMG is unsigned and not notarized and Gatekeeper
-will warn. Candidate failure keeps `v0.1.5` unpublished; fix it and test the
-next RC tag.
+the full digest with both `SHA256SUMS.txt` and the release listing. Test on a
+clean Mac and complete the 0.1.4 upgrade scenario below. Record results only
+after each check; keep unavailable checks explicitly pending. The DMG is
+unsigned and not notarized, and Gatekeeper may warn.
 
 If a bad final release is discovered, unpublish it, mark it withdrawn with the
 reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
@@ -113,28 +107,25 @@ the owner should complete this record after testing a clean machine.
 | Clean-Mac install and launch | Not yet verified — owner to record |
 | Tester / machine / macOS version / date | Owner to record |
 
-## v0.1.5 candidate — clean-machine verification pending
+## v0.1.5 — clean-machine verification pending
 
 RC1 CI passed for commit `5cd173a`; [RC2 Mac CI passed](https://github.com/therawlogs/blunted/actions/runs/38909642894)
-for commit `f9832e8`. The RC2 workflow artifact is available from that run. Its per-file
-hashes still need to be recorded against downloaded candidate files and the
-release listing; do not use local build hashes or promote to `v0.1.5` while
-any required verification result is pending or failed.
+for commit `f9832e8`, which is the published `v0.1.5` tag target. The final
+release contains the exact RC2 artifacts. Hashes below are build hashes and
+release asset digests; downloaded-file checks and machine verification remain
+pending.
 
-| Candidate artifact / release-listed SHA-256 | Result |
+| Release artifact / SHA-256 | Result |
 |---|---|
-| DMG | RC2 CI build passed; downloaded hash/listing match pending |
-| `dist/index.html` | RC2 CI build passed; downloaded hash/listing match pending |
-| `SHA256SUMS.txt` attached to candidate release | Pending |
-
-| Verification | Result |
-|---|---|
+| `blunted_0.1.5_aarch64.dmg` | `31e46f4ff55d2c740a05c646dcfb4a9337f9e2a8964b76568e7f0d2be4c76c91` |
+| `blunted-0.1.5.html` | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
+| Release `SHA256SUMS.txt` | Attached; checksums match GitHub asset digests |
 
 | Field | Result |
 |---|---|
 | Clean Mac model / macOS version / date / tester | Pending owner-run test |
-| Candidate tag / commit / downloaded DMG filename | Pending |
-| Downloaded DMG SHA-256 / manifest and release-listing match | Pending |
+| Release tag / commit / downloaded DMG filename | `v0.1.5` / `f9832e8`; downloaded filename and hash check pending |
+| Downloaded DMG SHA-256 / manifest and release-listing match | Pending owner-run download check |
 | Signing / notarization / stapling status | Unsigned / not notarized / not stapled |
 | Install / first launch / offline writing / autosave / recovery | Pending |
 | 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
