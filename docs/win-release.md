@@ -60,14 +60,15 @@ downloaded `.exe` and `.zip`, comparing each complete digest with
 digest; a CI digest alone does not certify the downloaded file or its
 installation.
 
-## v0.1.5 withdrawn; v0.1.6 correction in progress
+## v0.1.5 withdrawn; v0.1.6 released
 
 The `v0.1.5` release was withdrawn after its Mac app failed signature
 validation and Gatekeeper blocked it. Its tag remains permanently attached to
 commit `f9832e8` and will not be moved or reused. The corrected release is
-planned as `v0.1.6`; its Windows package will continue to be identified as a
-zipped setup installer, not a portable app. The Windows artifacts from v0.1.5
-were withdrawn with that release and should not be used.
+`v0.1.6`; its Windows package is identified as a zipped setup installer, not
+a portable app. The Windows artifacts from v0.1.5 were withdrawn with that
+release and should not be used. The v0.1.6 installer and ZIP hashes match the
+Windows CI manifest.
 
 Before installation, run `Get-FileHash -Algorithm SHA256` on the downloaded
 installer and compare the full digest with `SHA256SUMS.txt` and the release
@@ -76,7 +77,7 @@ Record results only after each check; keep unavailable checks explicitly
 pending. The installer is unsigned and SmartScreen may warn.
 
 If a bad final release is discovered, unpublish it, mark it withdrawn with the
-reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
+reason, and never move or reuse its tag. Ship a fix under the next version.
 
 ## Measured — v0.1.3 dev preview (14 Oct 2026, CI only, never local)
 
@@ -133,6 +134,19 @@ Windows RC2 build passed, but do not use the withdrawn release files.
 | 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
 | Upgrade autosave to chosen folder / restart and recovery | Pending |
 | Result / issue reference / tester | Pending |
+
+## v0.1.6 — release verification status
+
+[Windows CI build and tests](https://github.com/therawlogs/blunted/actions/runs/38916568681)
+passed for the same commit as the Mac build.
+
+| Release artifact | SHA-256 |
+|---|---|
+| `blunted_0.1.6_x64-setup.exe` | `cd6f13bc3457a0780f78f0f1c82f2fa06cbf38c26ced6bb42c625f1f7a6b6225` |
+| `blunted-win-x64-setup.zip` | `b487da3ee3a6cfe8f051e8e23a4ec61e372d7240b481dba73ed948a8534c614a` |
+| `blunted-0.1.6.html` | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
+| Clean Windows install / launch / offline / autosave / recovery | Pending owner-run test |
+| 0.1.4 upgrade and draft/profile preservation | Pending owner-run test |
 
 The Windows installers were built by the successful `win-build` workflow on
 `windows-latest` for tag `v0.1.4`. These build hashes do not confirm

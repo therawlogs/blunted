@@ -3,12 +3,13 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
-## [0.1.6] — release correction in progress
+## [0.1.6] — 2026-10-16
 
 - Configure Tauri ad-hoc code signing for the macOS app bundle and verify the
-  signature in CI. The v0.1.5 Mac app failed signature validation and that
-  release has been withdrawn; its tag remains unchanged.
-- v0.1.5 profile, writing-mode, and autosave changes are carried forward.
+  signature inside the DMG in CI. The downloaded DMG app passes strict deep
+  signature verification. v0.1.5 was withdrawn and its tag remains unchanged.
+- Carry forward v0.1.5 profile, writing-mode, and autosave changes. Clean
+  machine installs and the 0.1.4 upgrade check remain pending.
 
 ## [0.1.5] — withdrawn 2026-10-16
 

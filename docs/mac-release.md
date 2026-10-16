@@ -49,7 +49,7 @@ DMG and compare the complete 64-character digest with the release listing.
 Record the exact artifact name and digest; a CI/build-machine digest is not a
 substitute for hashing the downloaded file.
 
-## v0.1.5 withdrawn; v0.1.6 correction in progress
+## v0.1.5 withdrawn; v0.1.6 released
 
 The `v0.1.5` release was withdrawn after its app bundle failed
 `codesign --verify --deep --strict` and Gatekeeper reported that the app was
@@ -59,20 +59,21 @@ download. The `v0.1.5` tag remains permanently attached to commit `f9832e8` and
 will not be moved or reused.
 
 For `v0.1.6`, Tauri is configured with the ad-hoc signing identity `-`, as
-documented for unsigned Apple Silicon distribution. The Mac CI workflow now
-fails if `codesign --verify --deep --strict` fails on the built app. This
-signature is not Developer ID signing and does not notarize the app. Do not
-publish `v0.1.6` until the candidate passes the signature check and the Mac,
-Windows, and 0.1.4 upgrade checks are recorded.
+documented for Apple Silicon distribution without a Developer ID identity.
+The Mac CI workflow mounts the completed DMG and fails if
+`codesign --verify --deep --strict` fails on the app inside it. The v0.1.6
+downloaded DMG passed this check and its SHA-256 matched the CI manifest. This
+signature is not Developer ID signing and does not notarize the app.
+Clean-machine install and 0.1.4 upgrade checks remain pending.
 
 Before installation, hash the downloaded DMG with `shasum -a 256` and compare
 the full digest with both `SHA256SUMS.txt` and the release listing. Test on a
 clean Mac and complete the 0.1.4 upgrade scenario below. Record results only
 after each check; keep unavailable checks explicitly pending. The DMG is
-unsigned and not notarized, and Gatekeeper may warn.
+ad-hoc signed, not notarized, and Gatekeeper may still require approval.
 
 If a bad final release is discovered, unpublish it, mark it withdrawn with the
-reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
+reason, and never move or reuse its tag. Ship a fix under the next version.
 
 ## Measured — v0.1.3 dev preview (14 Oct 2026, build machine only)
 
@@ -138,14 +139,17 @@ signature validation. Do not use these files.
 | Upgrade autosave to chosen folder / restart and recovery | Pending |
 | Result / issue reference / tester | Pending |
 
-## v0.1.6 candidate — ad-hoc signature correction
+## v0.1.6 — release verification status
 
 | Check | Result |
 |---|---|
 | Explicit Tauri ad-hoc identity (`signingIdentity: "-"`) | Configured |
-| CI `codesign --verify --deep --strict` gate | Added; candidate run pending |
-| Clean Mac download, hash, Gatekeeper, install, launch | Pending |
-| Windows install and 0.1.4 upgrade checks | Pending |
+| [Mac CI build and signature gate](https://github.com/therawlogs/blunted/actions/runs/38915898925) | Passed |
+| `blunted_0.1.6_aarch64.dmg` SHA-256 | `840e8b0368f5985d25d39aa7fdb7c2703abaf46e5c0edfbb6a01b81e3874d6ca` |
+| `blunted-0.1.6.html` SHA-256 | `d27c382c9a523618692086dbb25af1db547d408ad9df22f88bf39e990be4615c` |
+| Downloaded DMG app signature | `codesign --verify --deep --strict` passed |
+| Clean Mac download/hash/install/launch/offline/autosave/recovery | Pending owner-run test |
+| 0.1.4 upgrade and draft/profile preservation | Pending owner-run test |
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 
