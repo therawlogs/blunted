@@ -1,9 +1,9 @@
 name: mac-build
-# Unsigned Apple-Silicon dev preview. No release secrets. PR builds never sign.
+# Unsigned Apple-Silicon release candidate. No release secrets or notarization.
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    tags: ["v*-rc*"]
 jobs:
   build-mac:
     runs-on: macos-14
@@ -21,13 +21,17 @@ jobs:
       - run: npm run build
       - run: npm run bundle:tauri
       - run: npx tauri build --target aarch64-apple-darwin --bundles dmg
-      - name: record sizes
+      - name: package candidate and record SHA-256
         run: |
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg || true
           du -sh src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app || true
+          mkdir -p release-artifacts
+          cp src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg release-artifacts/
+          cp dist/index.html release-artifacts/
+          cd release-artifacts
+          shasum -a 256 * > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: blunted-macos-aarch64-unsigned
           path: |
-            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            dist/index.html
+            release-artifacts/*

@@ -27,6 +27,7 @@
 
   window.__BLUNTED_TAURI__ = {
     loadDoc: function () { return core.invoke("blunted_load"); },
+    chooseFolder: function () { return core.invoke("blunted_choose_folder"); },
     saveDoc: function (payload) {
       return core.invoke("blunted_save", { doc: payload.doc, prefs: payload.prefs });
     },

@@ -1,6 +1,6 @@
-# Windows release (unsigned dev preview)
+# Windows release (unsigned candidate)
 
-Status: **unsigned development preview, forever free.** No code-signing
+Status: **unsigned.** No code-signing
 certificate, no Microsoft Store listing — those cost money the project
 will not spend. SmartScreen will warn on first run ("Windows protected
 your PC" / "unrecognized app"); that is expected. Never advise disabling
@@ -21,13 +21,12 @@ npx tauri build --bundles nsis   # x64 NSIS installer
 On Windows, print hashes before install with PowerShell:
 
 ```powershell
-Get-FileHash .\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*-setup.exe -Algorithm SHA256
-Get-FileHash .\src-tauri\target\x86_64-pc-windows-msvc\release\bundle\nsis\*.zip -Algorithm SHA256
-Get-FileHash .\dist\index.html -Algorithm SHA256
+Get-FileHash .\Downloads\blunted_*_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\Downloads\blunted-win-x64-portable.zip -Algorithm SHA256
 ```
 
 Compare the full SHA-256 value with the release listing before opening the
-artifact. Hash generation confirms which bytes were built; it does not
+artifact. For local builds, pass the generated artifact path instead. Hash generation confirms which bytes were built; it does not
 confirm installation or launch on a clean PC.
 
 WebView2: `webviewInstallMode` is `embedBootstrapper` (+~1.8 MB). On
@@ -55,12 +54,33 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
 5. Record installer `.exe` size, installed size, cold startup — never quote
    another app's figures as ours.
 
-## Publish
+Before opening the installer, run `Get-FileHash -Algorithm SHA256` on the
+downloaded `.exe` and compare the complete digest with the release listing.
+Record the exact artifact name and digest; the CI digest alone does not
+certify the downloaded file or its installation.
 
-Tag releases (`v0.1.4`), attach the `-setup.exe` + portable `.zip` +
-SHA-256 checksums, and state the unsigned status prominently. Release the
-portable `dist/index.html` first if the bundle is not ready — but do not
-present the HTML as the Windows install experience.
+## Candidate, verification, and final publication
+
+Push `v0.1.5-rc1` to build candidate files. The `win-build` workflow uploads
+the setup `.exe`, portable `.zip`, portable HTML, and `SHA256SUMS.txt` as one
+CI artifact. Create a GitHub prerelease named `v0.1.5-rc1`, attach those exact
+files, and include the full manifest in its release listing. The Mac workflow
+must also finish before the candidate is ready for the complete test matrix.
+
+Before installation, run `Get-FileHash -Algorithm SHA256` on the downloaded
+installer and compare the full digest with `SHA256SUMS.txt` and the release
+listing. Test the candidate on a clean PC and complete the 0.1.4 upgrade
+scenario below. Record results only after the check; leave unavailable checks
+explicitly pending.
+
+After Mac, Windows, and upgrade checks all pass, tag the same commit
+`v0.1.5`. Promote the exact tested candidate files to the final GitHub Release
+and publish them with a full SHA-256 listing. Do not substitute a rebuild.
+State prominently that the installer is unsigned and SmartScreen may warn.
+Candidate failure keeps `v0.1.5` unpublished; fix it and test the next RC tag.
+
+If a bad final release is discovered, unpublish it, mark it withdrawn with the
+reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
 
 ## Measured — v0.1.3 dev preview (14 Oct 2026, CI only, never local)
 
@@ -92,6 +112,32 @@ the owner should complete this record after testing a clean machine.
 | `blunted-win-x64-portable.zip` (3639079 bytes) SHA-256 | `446954f80ce481462ceb33bd468876beb74455267f4415fde1ea1230341e4ae8` |
 | Clean-Windows install and launch | Not yet verified — owner to record |
 | Tester / machine / Windows version / date | Owner to record |
+
+## v0.1.5 candidate — clean-machine verification pending
+
+Candidate artifact hashes are pending RC CI. Do not fill them from a local
+build or promote to `v0.1.5` while any required result is pending or failed.
+
+| Candidate artifact / release-listed SHA-256 | Result |
+|---|---|
+| Setup `.exe` | Pending RC build |
+| Portable `.zip` | Pending RC build |
+| `dist/index.html` | Pending RC build |
+| `SHA256SUMS.txt` attached to candidate release | Pending |
+
+| Verification | Result |
+|---|---|
+
+| Field | Result |
+|---|---|
+| Clean PC model / Windows version / date / tester | Pending owner-run test |
+| Candidate tag / commit / downloaded setup filename | Pending |
+| Downloaded setup SHA-256 / manifest and release-listing match | Pending |
+| Signature status | Unsigned |
+| Install / first launch / offline writing / autosave / recovery | Pending |
+| 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
+| Upgrade autosave to chosen folder / restart and recovery | Pending |
+| Result / issue reference / tester | Pending |
 
 The Windows installers were built by the successful `win-build` workflow on
 `windows-latest` for tag `v0.1.4`. These build hashes do not confirm

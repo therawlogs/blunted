@@ -1,9 +1,7 @@
 // Pure engine: analyze({text, overrides, ignoredTerms})
 // No DOM, storage, clipboard, filesystem, or network calls.
-// Single clarity preset ("clear"). `mode` is accepted for backward
-// compatibility (legacy Essay/Social/Message/Email/Research ids map to
-// "clear") and otherwise ignored. `subject`/`emailReply` are accepted but
-// ignored (email mode removed).
+// Supports the Clear and Essay profiles. `mode` remains tolerant of retired
+// IDs for compatibility. `subject`/`emailReply` are accepted but ignored.
 import { scanDocument, rangeOverlap } from "./markdown.js";
 import { tokenize, countLettersDigits } from "./tokenizer.js";
 import { segmentSentences } from "./segmenter.js";
@@ -19,7 +17,7 @@ import { countGraphemes } from "./graphemes.js";
 
 let revisionCounter = 0;
 
-export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerms = [], ignoredRuleIds = [], subject = "", emailReply = false, textRevision = null, segmenterFallback = false } = {}) {
+export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerms = [], ignoredRuleIds = [], personalWords = [], subject = "", emailReply = false, textRevision = null, segmenterFallback = false } = {}) {
   const src = String(text ?? "");
   const modeCfg = applyOverrides(mode, overrides);
   const rev = textRevision ?? ++revisionCounter;
@@ -101,6 +99,7 @@ export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerm
   // ---- rules ----
   const issues = [];
   const ignoredSet = new Set((ignoredTerms || []).map((s) => String(s).toLowerCase()));
+  const personalSet = new Set((personalWords || []).map((s) => String(s).toLowerCase()));
   const ignoredRules = new Set(ignoredRuleIds || []);
   const quoteOnly = (from, to) =>
     modeCfg.excludeQuotes && quoteRanges.some((q) => from >= q.from && to <= q.to);
@@ -108,8 +107,9 @@ export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerm
   const allow = (ruleId, from, to, exact) => {
     if (ignoredRules.has(ruleId)) return false;
     if (exact && ignoredSet.has(exact.toLowerCase())) return false;
+    if (exact && personalSet.has(exact.toLowerCase())) return false;
     if (inRanges(excludedRanges, from, to)) return false;
-    if (quoteOnly(from, to)) return false;
+    if (quoteOnly(from, to) && modeCfg.rules[ruleId] !== "strict") return false;
     return true;
   };
 
@@ -167,7 +167,7 @@ export function analyze({ text = "", mode = "clear", overrides = {}, ignoredTerm
       }
     }
     // hedges: kept as notes (single preset); "off" only via override
-    if (modeCfg.rules.hedge === "note") {
+    if (modeCfg.rules.hedge === "note" || modeCfg.rules.hedge === "strict") {
       for (const h of HEDGES) {
         // single-word hedges need token-exact; phrases via findPhrases
         for (const m of findPhrases(src, [h])) {

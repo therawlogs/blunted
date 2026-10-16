@@ -18,14 +18,39 @@ struct Persisted {
     prefs: Option<serde_json::Value>,
     #[serde(default)]
     recovered: bool,
+    needs_folder: bool,
 }
 
-fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn default_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?
         .join("blunted");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn configured_dir(app: &AppHandle) -> Result<Option<PathBuf>, String> {
+    let path = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join("blunted-folder.txt");
+    let value = match fs::read_to_string(path) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let dir = PathBuf::from(value.trim());
+    if dir.is_dir() {
+        Ok(Some(dir))
+    } else {
+        Ok(None)
+    }
+}
+
+fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = configured_dir(app)?.unwrap_or(default_dir(app)?);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
@@ -49,18 +74,39 @@ fn valid_doc(v: Option<serde_json::Value>) -> Option<serde_json::Value> {
 
 #[tauri::command]
 fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
-    let dir = data_dir(&app)?;
+    let configured = configured_dir(&app)?;
+    let legacy = default_dir(&app)?;
+    let dir = configured.clone().unwrap_or(legacy.clone());
     let read = |name: &str| -> Option<serde_json::Value> {
         let text = fs::read_to_string(dir.join(name)).ok()?;
         serde_json::from_str(&text).ok() // corrupt JSON -> None, never a crash
     };
     // Main slot first; fall back through the backup rotation (newest first).
     // A backup is only useful if it can restore.
-    let mut doc = valid_doc(read("doc.json"));
+    let current_name =
+        fs::read_to_string(dir.join("current-draft.txt")).unwrap_or_else(|_| "doc.json".into());
+    let candidate = current_name.trim();
+    let current_name = if PathBuf::from(candidate)
+        .file_name()
+        .and_then(|v| v.to_str())
+        == Some(candidate)
+        && candidate.ends_with(".json")
+    {
+        candidate.to_string()
+    } else {
+        "doc.json".into()
+    };
+    let stem = current_name.strip_suffix(".json").unwrap_or(&current_name);
+    let mut doc = valid_doc(read(&current_name));
     let mut recovered = false;
     if doc.is_none() {
-        for name in ["doc.backup.1.json", "doc.backup.2.json", "doc.backup.3.json"] {
-            doc = valid_doc(read(name));
+        let backups = [
+            format!("{}.backup.1.json", stem),
+            format!("{}.backup.2.json", stem),
+            format!("{}.backup.3.json", stem),
+        ];
+        for name in backups {
+            doc = valid_doc(read(&name));
             if doc.is_some() {
                 recovered = true;
                 break;
@@ -74,11 +120,46 @@ fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
             recovered = true;
         }
     }
+    if doc.is_none() && configured.is_some() {
+        let old = fs::read_to_string(legacy.join("doc.json"))
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok());
+        doc = valid_doc(old);
+    }
     Ok(Persisted {
         doc,
-        prefs: read("prefs.json"),
+        prefs: read("prefs.json").or_else(|| {
+            if configured.is_some() {
+                fs::read_to_string(legacy.join("prefs.json"))
+                    .ok()
+                    .and_then(|s| serde_json::from_str(&s).ok())
+            } else {
+                None
+            }
+        }),
         recovered,
+        needs_folder: configured.is_none(),
     })
+}
+
+#[tauri::command]
+fn blunted_choose_folder(app: AppHandle) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("Choose blunted autosave folder")
+        .blocking_pick_folder();
+    let Some(file_path) = selected else {
+        return Ok(None);
+    };
+    let path = file_path
+        .as_path()
+        .ok_or_else(|| "unsupported folder path".to_string())?;
+    fs::create_dir_all(path).map_err(|e| e.to_string())?;
+    let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&config).map_err(|e| e.to_string())?;
+    atomic_write(&config.join("blunted-folder.txt"), &path.to_string_lossy())?;
+    Ok(Some(path.to_string_lossy().into_owned()))
 }
 
 #[tauri::command]
@@ -88,13 +169,98 @@ fn blunted_save(
     prefs: serde_json::Value,
 ) -> Result<(), String> {
     let dir = data_dir(&app)?;
-    let doc_path = dir.join("doc.json");
+    let body = doc.get("body").and_then(|v| v.as_str()).unwrap_or("");
+    let title = body
+        .lines()
+        .find(|line| !line.trim().is_empty())
+        .unwrap_or("untitled");
+    let mut stem: String = title
+        .chars()
+        .filter(|c| {
+            !matches!(
+                c,
+                '\\' | '/'
+                    | ':'
+                    | '*'
+                    | '?'
+                    | '"'
+                    | '<'
+                    | '>'
+                    | '|'
+                    | '#'
+                    | '%'
+                    | '&'
+                    | '{'
+                    | '}'
+                    | '$'
+                    | '!'
+                    | '@'
+                    | '+'
+                    | '`'
+                    | '='
+            )
+        })
+        .take(48)
+        .collect();
+    stem = stem.trim().trim_end_matches(['.', ' ']).to_string();
+    if stem.is_empty() {
+        stem = "untitled".into();
+    }
+    if [
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+    ]
+    .contains(&stem.to_lowercase().as_str())
+    {
+        stem.insert(0, '_');
+    }
+    let doc_name = format!("{}.json", stem);
+    let doc_path = dir.join(&doc_name);
+    let old_name =
+        fs::read_to_string(dir.join("current-draft.txt")).unwrap_or_else(|_| "doc.json".into());
+    let old_candidate = old_name.trim();
+    let old_name = if PathBuf::from(old_candidate)
+        .file_name()
+        .and_then(|v| v.to_str())
+        == Some(old_candidate)
+        && old_candidate.ends_with(".json")
+    {
+        old_candidate.to_string()
+    } else {
+        "doc.json".into()
+    };
+    let old_stem = old_name
+        .strip_suffix(".json")
+        .unwrap_or(&old_name)
+        .to_string();
+    if old_name != doc_name && dir.join(&old_name).exists() {
+        if doc_path.exists() {
+            let _ = fs::remove_file(&doc_path);
+        }
+        fs::rename(dir.join(&old_name), &doc_path).map_err(|e| e.to_string())?;
+        for n in 1..=3 {
+            let old_backup = dir.join(format!("{}.backup.{}.json", old_stem, n));
+            let new_backup = dir.join(format!("{}.backup.{}.json", stem, n));
+            if old_backup.exists() {
+                if new_backup.exists() {
+                    let _ = fs::remove_file(&new_backup);
+                }
+                let _ = fs::rename(old_backup, new_backup);
+            }
+        }
+    }
     if doc_path.exists() {
         // rotate last-good backups: .3 <- .2 <- .1 <- current doc
-        let _ = fs::remove_file(dir.join("doc.backup.3.json"));
-        let _ = fs::rename(dir.join("doc.backup.2.json"), dir.join("doc.backup.3.json"));
-        let _ = fs::rename(dir.join("doc.backup.1.json"), dir.join("doc.backup.2.json"));
-        let _ = fs::copy(&doc_path, dir.join("doc.backup.1.json"));
+        let _ = fs::remove_file(dir.join(format!("{}.backup.3.json", stem)));
+        let _ = fs::rename(
+            dir.join(format!("{}.backup.2.json", stem)),
+            dir.join(format!("{}.backup.3.json", stem)),
+        );
+        let _ = fs::rename(
+            dir.join(format!("{}.backup.1.json", stem)),
+            dir.join(format!("{}.backup.2.json", stem)),
+        );
+        let _ = fs::copy(&doc_path, dir.join(format!("{}.backup.1.json", stem)));
     }
     atomic_write(
         &doc_path,
@@ -104,22 +270,54 @@ fn blunted_save(
         &dir.join("prefs.json"),
         &serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())?,
     )?;
+    atomic_write(&dir.join("current-draft.txt"), &doc_name)?;
     Ok(())
 }
 
 #[tauri::command]
 fn blunted_clear(app: AppHandle) -> Result<(), String> {
-    let dir = data_dir(&app)?;
-    for name in [
-        "doc.json",
-        "doc.backup.1.json",
-        "doc.backup.2.json",
-        "doc.backup.3.json",
-        "doc.backup.json",
-        "prefs.json",
-    ] {
-        let _ = fs::remove_file(dir.join(name));
+    let mut dirs = vec![data_dir(&app)?];
+    let legacy = default_dir(&app)?;
+    if !dirs.contains(&legacy) {
+        dirs.push(legacy);
     }
+    for dir in dirs {
+        if let Ok(name) = fs::read_to_string(dir.join("current-draft.txt")) {
+            let candidate = name.trim();
+            let name = if PathBuf::from(candidate)
+                .file_name()
+                .and_then(|v| v.to_str())
+                == Some(candidate)
+                && candidate.ends_with(".json")
+            {
+                candidate
+            } else {
+                "doc.json"
+            };
+            let _ = fs::remove_file(dir.join(name));
+            let stem = name.strip_suffix(".json").unwrap_or(name);
+            for n in 1..=3 {
+                let _ = fs::remove_file(dir.join(format!("{}.backup.{}.json", stem, n)));
+            }
+        }
+        for name in [
+            "doc.json",
+            "doc.backup.1.json",
+            "doc.backup.2.json",
+            "doc.backup.3.json",
+            "doc.backup.json",
+            "prefs.json",
+            "current-draft.txt",
+        ] {
+            let _ = fs::remove_file(dir.join(name));
+        }
+    }
+    let folder_config = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join("blunted-folder.txt");
+    let _ = fs::remove_file(folder_config);
     Ok(())
 }
 
@@ -247,6 +445,7 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             blunted_load,
+            blunted_choose_folder,
             blunted_save,
             blunted_clear,
             blunted_open_file,

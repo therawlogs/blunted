@@ -221,7 +221,11 @@ body[data-review="write"] .backdrop { visibility: hidden; }
 .fold .grade-sub { font-size: 13px; color: var(--muted); margin: 0 0 0.6rem; }
 .details { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0 0 1rem; font-size: 13px; }
 .details dt { color: var(--muted); } .details dd { margin: 0; font-variant-numeric: tabular-nums; }
-body[data-review="write"] #detailsBox, body[data-review="write"] .grade-sub { display: none; }
+body[data-review="write"] #detailsBox, body[data-review="write"] .grade-sub,
+body[data-review="write"] .rail, body[data-review="write"] #statusWords,
+body[data-review="write"] #gradeMain, body[data-review="write"] #statusGrade { display: none; }
+body[data-review="write"] .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+body[data-review="write"] .editor-col { max-width: 58rem; margin-inline: auto; }
 
 .prefs { display: grid; gap: 0.4rem; padding-bottom: 1rem; max-width: 26rem; }
 .prow { display: grid; gap: 4px; font-size: 14px; color: var(--muted); padding: 0.3rem 0; }

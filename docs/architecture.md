@@ -11,8 +11,7 @@ src/engine/        pure JS: no DOM, storage, clipboard, FS, or network
   tokenizer.js     Unicode word tokens with UTF-16 offsets
   segmenter.js     Intl.Segmenter + protections, deterministic fallback
   readability.js   ARI / FK / Coleman-Liau / SMOG + display + suppression
-  config.js        single clarity preset (v2; legacy mode ids map to "clear"),
-                   validation, sentence-mark algorithm
+  config.js        Clear and Essay profiles, validation, sentence-mark algorithm
   rules/           helpers, passive, adverbs, wordlists
   analyze.js       pipeline → {metrics, sentences, issues, …}
   index.js         public re-exports (source use only)
@@ -33,12 +32,17 @@ docs/              formulas, rules, clarity, privacy, a11y, mac/win-release
 ```
 
 Data flow: `textarea → debounce 150ms → (Blob Worker | main-thread fallback)
-→ analyze({text, overrides…}) → render backdrop + score + issue list`.
+→ analyze({text, profile, overrides…}) → render backdrop + score + issue list`.
 Revision counters discard stale results. The engine never touches the DOM;
 the UI never implements analysis.
 
 Storage: web adapter uses localStorage (main doc + prefs + 3-slot rotating
 backup) with honest status; unreadable saves restore from the newest
 working backup with a visible notice. Tauri adapter overrides via
-`window.__BLUNTED_TAURI__` backed by atomic app-data writes + the same
-3-slot rotation. Stored prefs are allow-list sanitized on load/import.
+`window.__BLUNTED_TAURI__` backed by atomic writes to the selected local
+folder and the same 3-slot rotation. Existing app-data drafts remain available
+and are copied into the selected folder on first save. Folder choice lives in
+app config across updates.
+The portable HTML edition continues using browser localStorage. Stored prefs,
+profile thresholds/rules, and voice words are allow-list sanitized on
+load/import.

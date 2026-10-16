@@ -1,8 +1,5 @@
-// Single clarity preset — one focus, not five modes.
-// v2: Essay/Social/Message/Email/Research modes removed by owner decision.
-// Any legacy mode id maps to "clear" so old drafts and callers keep working.
-// Thresholds follow the former Essays/Email shape: target grade 8,
-// yellow 25 words / grade 12, red 40 / grade 16.
+// Built-in writing profiles. Unknown and retired profile ids remain compatible
+// by falling back to Clear; the historic Essays id maps to Essay.
 import { CONFIG_SCHEMA_VERSION } from "./version.js";
 
 export const MODES = {
@@ -16,13 +13,24 @@ export const MODES = {
     excludeQuotes: true, readingWpm: 200,
     emailChecks: null, schemaVersion: CONFIG_SCHEMA_VERSION,
   },
+  essay: {
+    id: "essay", label: "Essay",
+    targetGrade: 12,
+    yellowWords: 35, redWords: 55, yellowGrade: 14, redGrade: 18,
+    minGradeWords: 14, paragraphWords: 180, maxParagraphs: 0,
+    characterBudget: 0,
+    rules: { passive: true, adverb: true, intensifier: true, wordiness: true, hedge: "note", filler: true, simpler: true, repeated: true, todo: true },
+    excludeQuotes: true, readingWpm: 200,
+    emailChecks: null, schemaVersion: CONFIG_SCHEMA_VERSION,
+  },
 };
 
 const LEGACY_IDS = new Set(["essays", "social", "message", "email", "research", "clear", "default"]);
 
 export function getMode(id) {
   if (id && MODES[id]) return MODES[id];
-  if (id && LEGACY_IDS.has(id)) return MODES.clear; // legacy preset → single preset
+  if (id && id === "essays") return MODES.essay;
+  if (id && LEGACY_IDS.has(id)) return MODES.clear;
   return MODES.clear;
 }
 
@@ -58,7 +66,7 @@ export function applyOverrides(modeId, overrides = {}) {
   next.customized = ruleDiff || topDiff;
 
   // normalize any legacy stored id to the single preset
-  next.id = "clear";
+  next.id = modeId === "essay" ? "essay" : "clear";
   return next;
 }
 

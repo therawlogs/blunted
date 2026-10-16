@@ -20,6 +20,7 @@
   // to the single preset. Unknown values also fall through to "clear".
   function normalizeMode(id) {
     if (id && MODES[id]) return id;
+    if (id === "essays") return "essay";
     return SINGLE_MODE;
   }
 
@@ -28,9 +29,9 @@
     id: "doc-" + Date.now().toString(36),
     title: "", modeId: SINGLE_MODE, body: "",
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [],
+    ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [], personalWords: [],
   };
-  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, includeQuotes: false, includeHeader: false };
+  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, activeProfile: "clear", profiles: {} };
   var dirty = false;            // unsaved changes vs storage
   var lastAnalysis = null;
   var currentRev = 0;           // text revision counter (local)
@@ -116,6 +117,7 @@
       return { doc: doc, prefs: prefsOut, recovered: recovered };
     },
     save: function () {
+      if (!prefs.autosave) { setSaveState("Autosave off"); return; }
       if (prefs.privateSession) { setSaveState("Private session — not saved"); return; }
       var t = tauri();
       var payload = { doc: state, prefs: prefs };
@@ -191,8 +193,8 @@
     var rev = currentRev;
     updateLargeDocNotice();
     var req = {
-      text: editor.value, mode: SINGLE_MODE,
-      overrides: buildOverrides(), ignoredTerms: state.ignoredTerms,
+      text: editor.value, mode: prefs.activeProfile || SINGLE_MODE,
+      overrides: buildOverrides(), ignoredTerms: state.ignoredTerms, personalWords: state.personalWords,
       ignoredRuleIds: state.ignoredRuleIds,
       textRevision: rev,
     };
@@ -211,8 +213,8 @@
 
   function analyzeMainThread(req, rev) {
     req = req || {
-      text: editor.value, mode: SINGLE_MODE, overrides: buildOverrides(),
-      ignoredTerms: state.ignoredTerms, ignoredRuleIds: state.ignoredRuleIds,
+      text: editor.value, mode: prefs.activeProfile || SINGLE_MODE, overrides: buildOverrides(),
+      ignoredTerms: state.ignoredTerms, personalWords: state.personalWords, ignoredRuleIds: state.ignoredRuleIds,
       textRevision: currentRev,
     };
     rev = rev || currentRev;
@@ -239,10 +241,39 @@
   }
 
   function buildOverrides() {
-    var o = Object.assign({}, state.ruleOverrides);
+    var profile = prefs.profiles && prefs.profiles[prefs.activeProfile] || {};
+    var o = Object.assign({}, profile, state.ruleOverrides);
     o.readingWpm = prefs.wpm;
     if (prefs.includeQuotes) o.excludeQuotes = false;
     return o;
+  }
+
+  function activeProfileConfig() {
+    var base = MODES[prefs.activeProfile] || MODES.clear;
+    var ov = (prefs.profiles && prefs.profiles[prefs.activeProfile]) || {};
+    return Object.assign({}, base, ov, { rules: Object.assign({}, base.rules, ov.rules || {}) });
+  }
+  function renderProfileControls() {
+    var cfg = activeProfileConfig();
+    $("profileSel").value = prefs.activeProfile;
+    ["targetGrade", "yellowWords", "redWords", "yellowGrade", "redGrade", "minGradeWords"].forEach(function (k) { $(k).value = cfg[k]; });
+    buildRuleToggles();
+  }
+  function persistProfileField(key, value) {
+    if (!prefs.profiles) prefs.profiles = {};
+    if (!prefs.profiles[prefs.activeProfile]) prefs.profiles[prefs.activeProfile] = {};
+    prefs.profiles[prefs.activeProfile][key] = value;
+    runAnalysis(); scheduleSave();
+  }
+  function migrateLegacyRuleOverrides() {
+    if (!state.ruleOverrides || !Object.keys(state.ruleOverrides).length) return;
+    if (!prefs.profiles) prefs.profiles = {};
+    var id = prefs.activeProfile === "essay" ? "essay" : "clear";
+    if (!prefs.profiles[id]) prefs.profiles[id] = {};
+    var rules = Object.assign({}, activeProfileConfig().rules);
+    Object.keys(state.ruleOverrides).forEach(function (key) { if (key in rules) rules[key] = state.ruleOverrides[key]; });
+    prefs.profiles[id].rules = rules;
+    state.ruleOverrides = {};
   }
 
   // ---------- rendering ----------
@@ -851,9 +882,7 @@
   }
   window.addEventListener("resize", syncScroll);
 
-  // ---------- single preset ----------
-  // No mode tabs: one clarity preset. Legacy stored modeIds are migrated
-  // to "clear" on load; selection/body/title are never rewritten.
+  // ---------- writing profiles ----------
 
   // ---------- rule toggles / settings ----------
   var RULE_LABELS = [
@@ -866,38 +895,37 @@
   function buildRuleToggles() {
     var box = $("ruleToggles");
     box.textContent = "";
-    var cfg = MODES[SINGLE_MODE];
+    var cfg = activeProfileConfig();
     RULE_LABELS.forEach(function (pair) {
       var key = pair[0];
       if (!(key in cfg.rules)) return;
-      var cur = state.ruleOverrides[key] !== undefined ? state.ruleOverrides[key]
-        : cfg.rules[key];
-      var on = cur === true || cur === "note" || cur === "selected";
+      var cur = cfg.rules[key];
       var lab = document.createElement("label");
-      lab.className = "check";
-      var cb = document.createElement("input");
-      cb.type = "checkbox"; cb.checked = !!on; cb.dataset.rule = key;
+      lab.className = "prow"; lab.appendChild(document.createTextNode(pair[1]));
+      var cb = document.createElement("select"); cb.dataset.rule = key;
+      [["off", "Off"], ["normal", "Normal"], ["strict", "Strict"]].forEach(function (x) { var op = document.createElement("option"); op.value=x[0]; op.textContent=x[1]; cb.appendChild(op); });
+      cb.value = cur === false || cur === "off" ? "off" : cur === "strict" ? "strict" : "normal";
       cb.addEventListener("change", function () {
-        state.ruleOverrides[key] = cb.checked;
-        syncRailToggle(key, cb.checked);
+        var rules = Object.assign({}, activeProfileConfig().rules); rules[key] = cb.value === "off" ? false : cb.value;
+        persistProfileField("rules", rules);
+        syncRailToggle(key, cb.value !== "off");
         updateCustomNote(); runAnalysis(); scheduleSave();
       });
       lab.appendChild(cb);
-      lab.appendChild(document.createTextNode(pair[1]));
       box.appendChild(lab);
     });
     // hedge tri-state
     var hlab = document.createElement("label");
     hlab.appendChild(document.createTextNode("Hedges"));
     var hsel = document.createElement("select");
-    [["note", "Note"], ["off", "Off"]].forEach(function (o) {
+    [["off", "Off"], ["note", "Normal"], ["strict", "Strict"]].forEach(function (o) {
       var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; hsel.appendChild(op);
     });
-    var hcur = state.ruleOverrides.hedge !== undefined ? state.ruleOverrides.hedge : cfg.rules.hedge;
-    hsel.value = hcur === "off" ? "off" : "note";
+    var hcur = cfg.rules.hedge;
+    hsel.value = hcur === "off" ? "off" : hcur === "strict" ? "strict" : "note";
     hsel.setAttribute("aria-label", "Hedge handling");
     hsel.addEventListener("change", function () {
-      state.ruleOverrides.hedge = hsel.value; updateCustomNote(); runAnalysis(); scheduleSave();
+      var rules = Object.assign({}, activeProfileConfig().rules); rules.hedge = hsel.value; persistProfileField("rules", rules); updateCustomNote();
     });
     hlab.appendChild(hsel);
     box.appendChild(hlab);
@@ -910,9 +938,9 @@
   ];
 
   function railChecked(key) {
-    var cfg = MODES[SINGLE_MODE];
-    var cur = state.ruleOverrides[key] !== undefined ? state.ruleOverrides[key] : cfg.rules[key];
-    return cur === true || cur === "note" || cur === "selected";
+    var cfg = activeProfileConfig();
+    var cur = cfg.rules[key];
+    return cur !== false && cur !== "off";
   }
 
   function buildRailToggles() {
@@ -928,10 +956,11 @@
       cb.type = "checkbox"; cb.checked = railChecked(key); cb.dataset.railRule = key;
       cb.setAttribute("aria-label", pair[1] + " notes on/off");
       cb.addEventListener("change", function () {
-        state.ruleOverrides[key] = cb.checked;
+        var rules = Object.assign({}, activeProfileConfig().rules); rules[key] = cb.checked;
+        persistProfileField("rules", rules);
         // keep Preferences checkbox in sync without full rebuild
-        var main = $("ruleToggles") && $("ruleToggles").querySelector('input[data-rule="' + key + '"]');
-        if (main) main.checked = cb.checked;
+        var main = $("ruleToggles") && $("ruleToggles").querySelector('select[data-rule="' + key + '"]');
+        if (main) main.value = cb.checked ? "normal" : "off";
         updateCustomNote(); runAnalysis(); scheduleSave();
       });
       lab.appendChild(cb);
@@ -948,16 +977,10 @@
   }
 
   function updateCustomNote() {
-    var n = Object.keys(state.ruleOverrides).filter(function (k) {
-      return k !== "readingWpm" && k !== "excludeQuotes";
-    }).length;
+    var n = Object.keys((prefs.profiles && prefs.profiles[prefs.activeProfile]) || {}).length;
     $("customNote").textContent = n ? "Customized (" + n + " override" + (n > 1 ? "s" : "") + ")." : "";
   }
 
-  $("btnResetMode").addEventListener("click", function () {
-    state.ruleOverrides = {};
-    buildRuleToggles(); updateCustomNote(); runAnalysis(); scheduleSave();
-  });
   var applyAllBtn = $("btnApplyAll");
   if (applyAllBtn) applyAllBtn.addEventListener("click", applyAllFixes);
   // merged Download menu: close the popover after picking a format
@@ -983,6 +1006,52 @@
       state.ignoredTerms = e.target.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
       runAnalysis(); scheduleSave();
     }, 300);
+  });
+  $("personalWords").addEventListener("input", function (e) {
+    clearTimeout(ignoredDeb);
+    ignoredDeb = setTimeout(function () {
+      state.personalWords = e.target.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 300);
+      runAnalysis(); scheduleSave();
+    }, 300);
+  });
+  $("profileSel").addEventListener("change", function (e) {
+    prefs.activeProfile = e.target.value === "essay" ? "essay" : "clear";
+    state.modeId = prefs.activeProfile; renderProfileControls(); updateCustomNote(); runAnalysis(); scheduleSave();
+  });
+  ["targetGrade", "yellowWords", "redWords", "yellowGrade", "redGrade", "minGradeWords"].forEach(function (key) {
+    $(key).addEventListener("change", function (e) {
+      var val = Number(e.target.value), lo = key === "minGradeWords" || key.indexOf("Words") >= 0 ? 5 : 1, hi = key === "redWords" ? 150 : key === "redGrade" ? 35 : key === "targetGrade" ? 30 : 100;
+      var current = activeProfileConfig();
+      var invalidPair = (key === "yellowWords" && val > current.redWords) || (key === "redWords" && val < current.yellowWords) || (key === "yellowGrade" && val > current.redGrade) || (key === "redGrade" && val < current.yellowGrade);
+      if (!Number.isFinite(val) || val < lo || val > hi || invalidPair) { renderProfileControls(); return; }
+      persistProfileField(key, val); renderProfileControls();
+    });
+  });
+  $("btnResetMode").addEventListener("click", function () {
+    if (prefs.profiles) delete prefs.profiles[prefs.activeProfile];
+    renderProfileControls(); runAnalysis(); scheduleSave();
+  });
+  $("btnLearnSample").addEventListener("click", function () {
+    var text = $("learnSample").value.trim();
+    var words = (text.toLowerCase().match(/[a-z]{4,}/g) || []).filter(function (w) { return !/^(that|this|with|from|have|were|your|about|there|their|which|would|could|should|these|those|will|into|when|what|they|them|then|than|been|also|very|just|some|more|most|such|each|over|under|after|before|because|while|where|very)$/.test(w); });
+    var counts = {}; words.forEach(function (w) { counts[w] = (counts[w] || 0) + 1; });
+    var candidates = Object.keys(counts).filter(function (w) { return counts[w] >= 2; }).sort(function (a,b) { return counts[b]-counts[a]; }).slice(0, 12);
+    var sampleWordCount = (text.match(/[a-z]+/g) || []).length;
+    var sentenceCount = text.split(/[.!?]+/).filter(Boolean).length;
+    var avg = sampleWordCount && sentenceCount ? Math.round(sampleWordCount / sentenceCount) : null;
+    var box = $("learnSuggestions"); box.textContent = "";
+    if (!text || (!candidates.length && !avg)) { box.textContent = "Add a longer sample to get useful suggestions."; return; }
+    var head = document.createElement("p"); head.textContent = "Review these local suggestions before applying:"; box.appendChild(head);
+    var wlabel = document.createElement("label"); var wcheck = document.createElement("input"); wcheck.type="checkbox"; wcheck.checked=true;
+    wlabel.appendChild(wcheck); wlabel.appendChild(document.createTextNode(" Add repeated sample words to My voice words: " + candidates.join(", "))); box.appendChild(wlabel);
+    var avgLabel = document.createElement("label"); var acheck = document.createElement("input"); acheck.type="checkbox"; acheck.checked=false;
+    avgLabel.appendChild(acheck); avgLabel.appendChild(document.createTextNode(" Set yellow sentence threshold near sample average (" + avg + " words)")); box.appendChild(avgLabel);
+    var accept = document.createElement("button"); accept.type="button"; accept.textContent="Apply selected suggestions"; box.appendChild(accept);
+    accept.addEventListener("click", function () {
+      if (wcheck.checked) state.personalWords = Array.from(new Set((state.personalWords || []).concat(candidates))).slice(0,300);
+      if (acheck.checked && avg) persistProfileField("yellowWords", Math.min(activeProfileConfig().redWords, Math.max(10, Math.min(100, avg))));
+      $("personalWords").value = state.personalWords.join(", "); box.textContent="Selected sample suggestions applied."; runAnalysis(); scheduleSave();
+    });
   });
 
   $("fontSize").addEventListener("input", function (e) {
@@ -1014,6 +1083,11 @@
     setSaveState(prefs.privateSession ? "Private session — not saved" : "—");
     scheduleSave();
   });
+  $("optAutoSave").addEventListener("change", function (e) {
+    prefs.autosave = e.target.checked;
+    if (!prefs.autosave) setSaveState("Autosave off");
+    scheduleSave();
+  });
   $("themeSel").addEventListener("change", function (e) {
     prefs.theme = e.target.value; applyPrefs(); scheduleSave();
   });
@@ -1031,6 +1105,7 @@
     $("optQuotes").checked = !!prefs.includeQuotes;
     $("optHeader").checked = !!prefs.includeHeader;
     $("optPrivate").checked = !!prefs.privateSession;
+    $("optAutoSave").checked = prefs.autosave !== false;
     $("themeSel").value = prefs.theme;
     syncScroll();
   }
@@ -1186,8 +1261,8 @@
   // ---------- settings export / import (manual file = the sync story) ----------
   $("btnExportSettings").addEventListener("click", function () {
     var data = {
-      app: "blunted", version: 1,
-      prefs: prefs, ruleOverrides: state.ruleOverrides, ignoredTerms: state.ignoredTerms,
+      app: "blunted", version: 2,
+      prefs: prefs, ruleOverrides: state.ruleOverrides, ignoredTerms: state.ignoredTerms, personalWords: state.personalWords,
     };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
     var a = document.createElement("a");
@@ -1214,6 +1289,8 @@
           state.ignoredTerms = Array.isArray(data.ignoredTerms)
             ? data.ignoredTerms.filter(function (s) { return typeof s === "string"; }).map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 200)
             : [];
+          state.personalWords = Array.isArray(data.personalWords) ? data.personalWords.filter(function (s) { return typeof s === "string"; }).slice(0, 300) : [];
+          migrateLegacyRuleOverrides();
           ok = true;
         }
       } catch (err) { ok = false; }
@@ -1287,9 +1364,9 @@
 
   function freshDoc() {
     return {
-      id: "doc-" + Date.now().toString(36), title: "", modeId: SINGLE_MODE,
+      id: "doc-" + Date.now().toString(36), title: "", modeId: prefs.activeProfile || SINGLE_MODE,
       body: "", createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(), ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [],
+      updatedAt: new Date().toISOString(), ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [], personalWords: [],
     };
   }
 
@@ -1297,6 +1374,7 @@
     editor.value = state.body || "";
     $("docTitle").value = state.title || "";
     $("ignoredTerms").value = (state.ignoredTerms || []).join(", ");
+    $("personalWords").value = (state.personalWords || []).join(", ");
     state.modeId = normalizeMode(state.modeId);
     delete state.subject;
     buildRuleToggles(); updateCustomNote();
@@ -1322,6 +1400,17 @@
   }
 
   function initWith(loaded) {
+    if (loaded && loaded.needs_folder && tauri() && tauri().chooseFolder) {
+      tauri().chooseFolder().then(function (path) {
+        initWith(Object.assign({}, loaded, { needs_folder: false }));
+        if (path) scheduleSave();
+        else copyNote.textContent = "Folder not selected. Autosave will use app storage for now; choose a folder on next launch.";
+      }, function () {
+        initWith(Object.assign({}, loaded, { needs_folder: false }));
+        copyNote.textContent = "Folder selection failed. Autosave will use app storage for now.";
+      });
+      return;
+    }
     var startupFailed = false;
     function startupStep(fn) {
       try { fn(); }
@@ -1342,6 +1431,8 @@
         delete state.subject;
         if (!state.ruleOverrides || typeof state.ruleOverrides !== "object" || Array.isArray(state.ruleOverrides)) state.ruleOverrides = {};
         if (!Array.isArray(state.ignoredTerms)) state.ignoredTerms = [];
+        if (!Array.isArray(state.personalWords)) state.personalWords = [];
+        migrateLegacyRuleOverrides();
         if (!Array.isArray(state.ignoredRuleIds)) state.ignoredRuleIds = [];
       });
     }
@@ -1356,11 +1447,12 @@
       editor.value = state.body || "";
       $("docTitle").value = state.title || "";
       $("ignoredTerms").value = state.ignoredTerms.join(", ");
+      $("personalWords").value = state.personalWords.join(", ");
       dirty = false;
     });
     // These controls initialize independently so a failure applying fonts
     // or restoring document fields cannot leave either rule panel empty.
-    startupStep(buildRuleToggles);
+    startupStep(renderProfileControls);
     startupStep(updateCustomNote);
     startupStep(updateSampleVisibility);
     if (wasRecovered) {
@@ -1384,7 +1476,7 @@
   // Prefs from storage are untrusted input: keep known keys, sane ranges.
   function sanitizePrefs(p) {
     var out = {};
-    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "includeQuotes", "includeHeader"];
+    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "autosave", "includeQuotes", "includeHeader", "activeProfile", "profiles"];
     for (var i = 0; i < allow.length; i++) {
       if (p[allow[i]] !== undefined) out[allow[i]] = p[allow[i]];
     }
@@ -1394,6 +1486,24 @@
     if (!Number.isFinite(out.lineHeight) || out.lineHeight < 1.2 || out.lineHeight > 2.5) delete out.lineHeight;
     if (!Number.isFinite(out.wpm) || out.wpm < 100 || out.wpm > 400) delete out.wpm;
     if (out.review !== "write" && out.review !== "review") delete out.review;
+    ["autosave", "privateSession", "includeQuotes", "includeHeader"].forEach(function (k) { if (typeof out[k] !== "boolean") delete out[k]; });
+    if (out.activeProfile !== "clear" && out.activeProfile !== "essay") out.activeProfile = "clear";
+    if (!out.profiles || typeof out.profiles !== "object" || Array.isArray(out.profiles)) out.profiles = {};
+    ["clear", "essay"].forEach(function (id) {
+      var p = out.profiles[id]; if (!p || typeof p !== "object" || Array.isArray(p)) { delete out.profiles[id]; return; }
+      ["targetGrade", "yellowWords", "redWords", "yellowGrade", "redGrade", "minGradeWords"].forEach(function (k) { if (!Number.isFinite(p[k])) delete p[k]; });
+      if (p.targetGrade < 1 || p.targetGrade > 35) delete p.targetGrade;
+      if (p.minGradeWords < 5 || p.minGradeWords > 100) delete p.minGradeWords;
+      if (p.yellowWords < 5 || p.yellowWords > 100) delete p.yellowWords;
+      if (p.redWords < 8 || p.redWords > 150) delete p.redWords;
+      if (p.yellowGrade < 1 || p.yellowGrade > 30) delete p.yellowGrade;
+      if (p.redGrade < 2 || p.redGrade > 35) delete p.redGrade;
+      if (p.rules && typeof p.rules === "object" && !Array.isArray(p.rules)) {
+        var clean = {}; KNOWN_RULES.concat(["hedge"]).forEach(function (k) { var v=p.rules[k]; if (v === true || v === false || v === "normal" || v === "strict" || (k === "hedge" && (v === "off" || v === "note"))) clean[k]=v; }); p.rules=clean;
+      } else delete p.rules;
+      if (p.yellowWords && p.redWords && p.redWords < p.yellowWords) { delete p.yellowWords; delete p.redWords; }
+      if (p.yellowGrade && p.redGrade && p.redGrade < p.yellowGrade) { delete p.yellowGrade; delete p.redGrade; }
+    });
     return Object.assign({}, prefs, out);
   }
 

@@ -3,6 +3,18 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
+## [0.1.5] — candidate; final release pending verification
+
+- Add editable Clear and Essay profiles, per-rule strictness, personal voice
+  words, and reviewed sample-based suggestions.
+- Write mode hides review metrics and the review rail. Autosave stays enabled
+  by default; desktop first run selects a persistent local folder and names
+  drafts from their first line.
+- README leads with a paste-and-flag example. Clean-machine Mac/Windows install
+  and 0.1.4 upgrade records remain pending until a tester verifies downloaded
+  hashes and installation. The Mac DMG is unsigned and not notarized; the
+  Windows installer is unsigned.
+
 ## [0.1.4] — 2026-10-15
 
 - Startup: reproduced the exception against the original app and shell:
@@ -13,8 +25,8 @@ All notable changes to blunted will be documented here. Format follows
   reproduces the missing-control exception and confirms F2 remains registered.
 - Mobile: the Notes jump leaves room below the sticky header for the Notes
   heading and category chips.
-- README and app metadata now describe the single Clear preset and include
-  a real application screenshot. Named profiles remain future work.
+- README and app metadata describe offline writing and include a real
+  application screenshot.
 - Release docs record generated artifact hashes separately from clean-machine
   install results, which remain for the owner to complete and record.
 

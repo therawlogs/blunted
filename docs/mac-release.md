@@ -1,7 +1,7 @@
-# Mac release (unsigned dev preview)
+# Mac release (unsigned candidate)
 
-Status: **unsigned development preview.** No Developer ID signing, no
-notarization, no stapling — those need a paid Apple Developer Program
+Status: **unsigned and not notarized.** No Developer ID signing,
+notarization, or stapling — those need a paid Apple Developer Program
 membership the owner has not authorized. Gatekeeper will warn on first open;
 that is expected. Never advise disabling Gatekeeper system-wide or running
 blanket quarantine-removal commands.
@@ -21,12 +21,13 @@ npm run build:tauri:mac  # Apple Silicon .dmg (bundles dmg only)
 After building, print the artifact hashes with:
 
 ```sh
-shasum -a 256 dist/index.html src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+shasum -a 256 ~/Downloads/blunted_*_aarch64.dmg
 ```
 
 Compare the full SHA-256 value with the release listing before opening the
-artifact. Hash generation confirms which bytes were built; it does not
-confirm installation or launch on a clean Mac.
+artifact. For a locally built artifact, pass its actual path instead. Hash
+generation confirms which bytes were built; it does not confirm installation
+or launch on a clean Mac.
 
 Minimum system version: macOS 13.0 (pinned in `tauri.conf.json` from the
 Tauri v2 webview baseline; re-verify when upgrading Tauri).
@@ -44,12 +45,33 @@ Tauri v2 webview baseline; re-verify when upgrading Tauri).
 5. Record `.app` size, compressed `.dmg` size, cold startup, and idle memory —
    never quote another app’s figures as ours.
 
-## Publish
+Before opening an artifact, run the SHA-256 command above on the downloaded
+DMG and compare the complete 64-character digest with the release listing.
+Record the exact artifact name and digest; a CI/build-machine digest is not a
+substitute for hashing the downloaded file.
 
-Tag releases (`v0.1.4`), attach the `.dmg` + checksums, and state the
-unsigned status prominently. Release the portable `dist/index.html` first if
-the bundle is not ready — but do not present the HTML as the Mac install
-experience.
+## Candidate, verification, and final publication
+
+Push `v0.1.5-rc1` to build candidate files. The `mac-build` workflow uploads
+the DMG, portable HTML, and `SHA256SUMS.txt` as one CI artifact. Create a
+GitHub prerelease named `v0.1.5-rc1`, attach those exact files, and include
+the full manifest in its release listing. The Windows workflow must also
+finish before the candidate is ready for the complete test matrix.
+
+Before installation, hash the downloaded DMG with `shasum -a 256` and compare
+it to the full digest in `SHA256SUMS.txt` and the release listing. Test the
+candidate on a clean Mac and complete the 0.1.4 upgrade scenario below. Record
+results only after the check; leave unavailable checks explicitly pending.
+
+After Mac, Windows, and upgrade checks all pass, tag the same commit
+`v0.1.5`. Promote the exact tested candidate files to the final GitHub Release
+and publish them with a full SHA-256 listing. Do not substitute a rebuild.
+State prominently that the DMG is unsigned and not notarized and Gatekeeper
+will warn. Candidate failure keeps `v0.1.5` unpublished; fix it and test the
+next RC tag.
+
+If a bad final release is discovered, unpublish it, mark it withdrawn with the
+reason, and never move or reuse `v0.1.5`. Ship a fix as `v0.1.6`.
 
 ## Measured — v0.1.3 dev preview (14 Oct 2026, build machine only)
 
@@ -90,6 +112,31 @@ the owner should complete this record after testing a clean machine.
 | Local `blunted_0.1.4_aarch64.dmg` (2302038 bytes) SHA-256 | `41d4b883f89065fbf73eabeb78b85730f915b25b3dfe73bd913d214c5b3c2d86` |
 | Clean-Mac install and launch | Not yet verified — owner to record |
 | Tester / machine / macOS version / date | Owner to record |
+
+## v0.1.5 candidate — clean-machine verification pending
+
+Candidate artifact hashes are pending RC CI. Do not fill them from a local
+build or promote to `v0.1.5` while any required result is pending or failed.
+
+| Candidate artifact / release-listed SHA-256 | Result |
+|---|---|
+| DMG | Pending RC build |
+| `dist/index.html` | Pending RC build |
+| `SHA256SUMS.txt` attached to candidate release | Pending |
+
+| Verification | Result |
+|---|---|
+
+| Field | Result |
+|---|---|
+| Clean Mac model / macOS version / date / tester | Pending owner-run test |
+| Candidate tag / commit / downloaded DMG filename | Pending |
+| Downloaded DMG SHA-256 / manifest and release-listing match | Pending |
+| Signing / notarization / stapling status | Unsigned / not notarized / not stapled |
+| Install / first launch / offline writing / autosave / recovery | Pending |
+| 0.1.4 upgrade: profile settings and existing draft preserved | Pending |
+| Upgrade autosave to chosen folder / restart and recovery | Pending |
+| Result / issue reference / tester | Pending |
 
 ## Measured — v0.1.2 dev preview (05 Oct 2026, build machine only)
 

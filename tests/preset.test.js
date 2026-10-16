@@ -2,16 +2,38 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { analyze, getMode, MODES } from "../src/engine/index.js";
 
-// Single clarity preset: one focus, no modes
-test("single preset shape", () => {
-  assert.deepEqual(Object.keys(MODES), ["clear"]);
+// Named editable profiles have independent starting points.
+test("Clear and Essay profile defaults", () => {
+  assert.deepEqual(Object.keys(MODES), ["clear", "essay"]);
   assert.equal(getMode("clear").id, "clear");
   assert.equal(getMode("clear").targetGrade, 8);
-  // legacy ids map to clear (old drafts keep working)
-  for (const legacy of ["essays", "social", "message", "email", "research"]) {
+  assert.equal(getMode("essay").id, "essay");
+  assert.equal(getMode("essay").targetGrade, 12);
+  // legacy ids with an unambiguous named profile migrate to Essay.
+  assert.equal(getMode("essays").id, "essay");
+  for (const legacy of ["social", "message", "email", "research"]) {
     assert.equal(getMode(legacy).id, "clear", legacy);
   }
   assert.equal(getMode("nonsense").id, "clear");
+});
+
+test("profile-specific thresholds and personal voice words", () => {
+  const text = ("This is a clear and simple line with a few short words ").repeat(4) + "today.";
+  const neutralGrade = { yellowGrade: 35, redGrade: 35, minGradeWords: 100 };
+  const essay = analyze({ text, mode: "essay", overrides: neutralGrade });
+  const clear = analyze({ text, mode: "clear", overrides: neutralGrade });
+  assert.equal(essay.sentences[0].mark, "yellow");
+  assert.equal(clear.sentences[0].mark, "red");
+  const personal = analyze({ text: "We utilize tools.", personalWords: ["utilize"] });
+  assert.ok(!personal.issues.some((i) => i.ruleId === "wordiness" && i.text.includes("utilize")));
+});
+
+test("strict rule setting includes quoted voice", () => {
+  const text = '> "The report was written by the team."';
+  const normal = analyze({ text, mode: "clear" });
+  const strict = analyze({ text, mode: "clear", overrides: { rules: { passive: "strict" } } });
+  assert.ok(!normal.issues.some((i) => i.ruleId === "passive"));
+  assert.ok(strict.issues.some((i) => i.ruleId === "passive"));
 });
 
 // Non-English input: scores/rules suppressed, text intact

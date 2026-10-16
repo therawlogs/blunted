@@ -1,31 +1,33 @@
-# Clarity preset
+# Writing profiles
 
-Single focus, not five modes. v2 removed the Essay / Social / Message /
-Email / Research presets by owner decision: one document, one threshold
-set, English-only for now. Legacy stored mode ids (`essays`, `social`,
-`message`, `email`, `research`) map to `clear` on load — old drafts keep
-working, nothing is rewritten.
+blunted ships two editable English profiles. A highlight means review, not a verdict.
 
-The shipped app has one preset, Clear. Named profiles, including Essay,
-editable profile thresholds, profile-specific rule settings, and sample-
-based suggestions are future work and are not available in this release.
+| Profile | Target grade | Yellow words / grade | Red words / grade |
+|---|---:|---:|---:|
+| Clear | 8 | 25 / 12 | 40 / 16 |
+| Essay | 12 | 35 / 14 | 55 / 18 |
 
-| Preset | Target | Yellow words/grade | Red words/grade | Paragraph note |
-|---|---|---|---|---|
-| Clear | 8 | 25 / 12 | 40 / 16 | >120 words |
+Sentence marks use the selected profile’s limits. Red wins; grade thresholds
+apply only after the minimum sentence length. Adjust thresholds in Preferences.
+Each detector can be Off, Normal, or Strict. Strict checks quoted text too;
+Normal follows the profile quote-exclusion setting. Rule settings and thresholds are
+saved per profile and travel with exported settings.
 
-Algorithm: red if `words ≥ redWords` OR (`words ≥ minGradeWords` AND
-`rawARI ≥ redGrade`); else yellow by the same shape. minGradeWords = 14.
-Red wins; one background per sentence. Below the grade gate only word
-counts trigger. No warning merely for exceeding the document target.
+The rules cover passive voice, adverbs, intensifiers, wordiness, filler,
+hedges, simpler-word suggestions, repeated words, and TODO/FIXME markers.
+Quotes are excluded by default. “My voice words” are kept local and suppress
+matching word-choice notes. No rule rewrites prose without an explicit action.
 
-Rules on: passive, adverbs, intensifiers (full list), wordiness, hedges
-(noted, never auto-removed), filler, simpler words, repeated words,
-TODO/FIXME/PLACEHOLDER markers. Quotes excluded from style rules by
-default (toggleable). No character budget, no paragraph-count limit, no
-greeting/sign-off checks — those belonged to the removed Social, Message,
-and Email modes.
+## Learn from a sample
 
-Overrides are validated (`red ≥ yellow`, finite values, wpm 100–400),
-resettable, and surfaced ("Customized"). Disabling a rule stops its
-issues; hiding marks is a separate view concern (Write vs Review).
+Paste a sample you wrote and request suggestions. blunted uses repeated words
+and sentence length to propose optional profile changes. Review and accept
+each suggestion before it is applied. Samples are analyzed on-device and are
+not included in diagnostics or network requests.
+
+## Limits
+
+Grade estimates use surface counts, not meaning or audience. The engine is
+English-first; other languages remain editable, but English scores and rules
+are suppressed when non-English input is likely. See `formulas.md` and
+`rules.md` for methodology and known heuristic limits.
