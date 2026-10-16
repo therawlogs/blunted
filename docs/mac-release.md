@@ -115,15 +115,16 @@ the owner should complete this record after testing a clean machine.
 
 ## v0.1.5 candidate — clean-machine verification pending
 
-RC1 CI passed for commit `5cd173a`. RC2 CI and its artifact hashes are
-pending. Record hashes from the downloaded RC2 files and manifest; do not use
-local build hashes or promote to `v0.1.5` while any required result is pending
-or failed.
+RC1 CI passed for commit `5cd173a`; [RC2 Mac CI passed](https://github.com/therawlogs/blunted/actions/runs/38909642894)
+for commit `f9832e8`. The RC2 workflow artifact is available from that run. Its per-file
+hashes still need to be recorded against downloaded candidate files and the
+release listing; do not use local build hashes or promote to `v0.1.5` while
+any required verification result is pending or failed.
 
 | Candidate artifact / release-listed SHA-256 | Result |
 |---|---|
-| DMG | Pending RC2 build |
-| `dist/index.html` | Pending RC2 build |
+| DMG | RC2 CI build passed; downloaded hash/listing match pending |
+| `dist/index.html` | RC2 CI build passed; downloaded hash/listing match pending |
 | `SHA256SUMS.txt` attached to candidate release | Pending |
 
 | Verification | Result |
