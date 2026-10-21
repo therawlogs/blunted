@@ -3,6 +3,11 @@ name: win-build
 # Forever-free: no cert, no Store. SmartScreen warning on first run is expected.
 on:
   workflow_dispatch:
+    inputs:
+      build_ref:
+        description: Git ref to build (empty uses this workflow ref)
+        required: false
+        type: string
   push:
     tags: ["v*"]
 jobs:
@@ -10,6 +15,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -21,11 +28,11 @@ jobs:
         shell: pwsh
       - run: npm test
         shell: pwsh
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-        shell: pwsh
       - run: npm run build
         shell: pwsh
       - run: npm run bundle:tauri
+        shell: pwsh
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
         shell: pwsh
       - run: npx tauri build --bundles nsis
         shell: pwsh

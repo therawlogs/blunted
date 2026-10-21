@@ -2,6 +2,11 @@ name: mac-build
 # Ad-hoc signed Apple-Silicon candidate. No Developer ID signing or notarization.
 on:
   workflow_dispatch:
+    inputs:
+      build_ref:
+        description: Git ref to build (empty uses this workflow ref)
+        required: false
+        type: string
   push:
     tags: ["v*"]
 jobs:
@@ -9,6 +14,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.build_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -18,9 +25,9 @@ jobs:
           targets: aarch64-apple-darwin
       - run: npm ci
       - run: npm test
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: npm run build
       - run: npm run bundle:tauri
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: npx tauri build --target aarch64-apple-darwin --bundles dmg
       - name: verify signature, package candidate, and record SHA-256
         run: |
