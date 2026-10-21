@@ -3,7 +3,7 @@ name: mac-build
 on:
   workflow_dispatch:
   push:
-    tags: ["v*-rc*"]
+    tags: ["v*"]
 jobs:
   build-mac:
     runs-on: macos-14
@@ -18,6 +18,7 @@ jobs:
           targets: aarch64-apple-darwin
       - run: npm ci
       - run: npm test
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
       - run: npm run build
       - run: npm run bundle:tauri
       - run: npx tauri build --target aarch64-apple-darwin --bundles dmg

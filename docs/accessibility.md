@@ -1,24 +1,20 @@
 # Accessibility
 
-- Native `textarea` owns the text: typing, selection, undo, IME, dictation,
-  and VoiceOver behavior stay platform-standard. Analysis never touches the
-  input value and pauses during composition.
-- Highlights live in an `aria-hidden` backdrop; every issue is a real button
-  in a list that selects its source range and focuses the editor on request.
-  Highlights-off (Write mode / fallback) loses no information.
-- Severity is never color-only: each issue carries a text category + severity
-  label and a distinct border; forced-colors mode uses outlines.
-  Problem-type underlines also vary by style (passive solid, adverb dashed,
-  wordy wavy, simpler dotted, repeated double) plus a text legend and
-  category chips — never color alone.
-- Notes navigation: Prev/Next buttons plus `F2` / `Shift+F2` (next/previous
-  note) from anywhere; clicking a highlight in the editor marks its note
-  without moving the caret. On narrow screens a `Notes` chip jumps to the list.
-- Brief `aria-live` status after a pause (grade + issue count), never per
-  keystroke. Visible focus, 44px targets, logical tab order, in-page find
-  (Enter/Shift+Enter, live match count, Escape closes), usable at 320px
-  and 200% zoom, WCAG AA contrast targets (light theme `--muted: #6b655b` at 5.49:1;
-  dark theme at 5.75:1).
-- Tested: keyboard-only flows, VoiceOver on Mac (manual — see release
-  checklist), Hindi/Japanese IME composition, emoji/combining-mark offsets.
-  NVDA/JAWS on Windows not yet tested.
+- A native textarea owns typing, selection, undo and composition. Analysis
+  runs after a pause and does not rewrite the input.
+- Text-labelled mode controls, visible focus and 44px control targets accompany
+  the quiet article surface. Interface typography is separate from prose fonts.
+- Native modal dialogs contain Articles, preferences and transition decisions.
+  Closing restores focus to the opener. More closes with Escape.
+- Review highlights only the active passage in an aria-hidden backdrop. The
+  inspector exposes category, passage, explanation and individual action buttons.
+  Previous/Next and F2/Shift+F2 navigate; All notes incrementally exposes all
+  findings. Dismissed notes are individually restorable.
+- Find supports Enter/Shift+Enter and Escape in editing and reading views.
+  Save status is announced; save failures remain visible. Forced colors have
+  explicit focus and passage outlines.
+- Browser geometry checks covered 390, 768, 1180 and 1440px widths in all three
+  modes and a long wrapped passage above the bottom inspector. Automated
+  fixtures cover Unicode offsets, focus controls and workspace restoration.
+- Manual VoiceOver, NVDA/JAWS, IME and 200% zoom acceptance remains required.
+  Automated and visual checks do not establish screen-reader acceptance.

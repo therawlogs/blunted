@@ -56,7 +56,7 @@ function makeHarness({ missingElement = null, savedPrefs = null, failPreferenceC
     activeElement: new ElementStub("textarea"),
     addEventListener(type, callback) { documentListeners[type] = callback; },
     getElementById(id) {
-      if (id === missingElement) return null;
+      if (id === missingElement || !shellSource.includes('id="'+id+'"')) return null;
       if (!nodes.has(id)) {
         const tag = ["themeSel", "fontFamily", "lineHeight", "wpm", "fontSize"].includes(id) ? "select" : "div";
         const node = new ElementStub(tag, failPreferenceControl);
@@ -118,12 +118,11 @@ test("app shell supplies the file picker required by startup wiring", () => {
   assert.match(shellSource, /id="filePick"/);
 });
 
-test("preference initialization failure still applies the font and builds both rule panels", () => {
+test("preference initialization failure still applies the font and builds rule preferences", () => {
   const h = makeHarness({ failPreferenceControl: true });
   assert.equal(h.exception, null);
   h.documentListeners.DOMContentLoaded();
   assert.equal(h.document.body.dataset.font, "serif");
-  assert.equal(h.nodes.get("railToggles").children.length, 5);
   assert.equal(h.nodes.get("ruleToggles").children.length, 9);
   assert.equal(typeof h.nodes.get("btnSample").listeners.click, "function");
 });

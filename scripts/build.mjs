@@ -10,6 +10,7 @@ const outArg = process.argv.indexOf("--out");
 const outPath = resolve(root, outArg !== -1 ? process.argv[outArg + 1] : "dist/index.html");
 
 const ENGINE_FILES = [
+  "src/writer/article.js",
   "src/engine/version.js",
   "src/engine/graphemes.js",
   "src/engine/markdown.js",
@@ -49,9 +50,10 @@ for (const sym of ["function analyze(", "function scanDocument(", "function ari(
   if (!bundle.includes(sym)) throw new Error(`engine bundle missing ${sym}`);
 }
 
-const mainEngine = `window.BluntedEngine = (function () {\n${bundle}\nreturn { analyze: analyze, MODES: MODES, getMode: getMode, ENGINE_VERSION: ENGINE_VERSION, CONFIG_VERSION: CONFIG_VERSION };\n})();`;
+const mainEngine = `window.BluntedEngine = (function () {\n${bundle}\nreturn { analyze: analyze, articleBlocks: articleBlocks, exportArticle: exportArticle, structureReport: structureReport, dismissalKey: dismissalKey, validateLibraryBackup: validateLibraryBackup, MODES: MODES, getMode: getMode, ENGINE_VERSION: ENGINE_VERSION, CONFIG_VERSION: CONFIG_VERSION };\n})();`;
 
-const workerBoot = `\nonmessage = function (e) {\n  try {\n    var r = analyze(e.data || {});\n    postMessage({ ok: true, rev: (e.data || {}).textRevision, result: r });\n  } catch (err) {\n    postMessage({ ok: false, rev: (e.data || {}).textRevision, error: String((err && err.message) || err) });\n  }\n};\n`;
+const workerBoot = `\nonmessage = function (e) {\n  try {\n    var r = analyze(e.data || {});
+    r.structure = structureReport((e.data || {}).text || "", r.config.paragraphWords, !!(e.data || {}).title);\n    postMessage({ ok: true, rev: (e.data || {}).textRevision, result: r });\n  } catch (err) {\n    postMessage({ ok: false, rev: (e.data || {}).textRevision, error: String((err && err.message) || err) });\n  }\n};\n`;
 
 const workerSrc = bundle + workerBoot;
 const css = load("src/ui/styles.css");

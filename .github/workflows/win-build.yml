@@ -4,7 +4,7 @@ name: win-build
 on:
   workflow_dispatch:
   push:
-    tags: ["v*-rc*"]
+    tags: ["v*"]
 jobs:
   build-win:
     runs-on: windows-latest
@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
         shell: pwsh
       - run: npm test
+        shell: pwsh
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
         shell: pwsh
       - run: npm run build
         shell: pwsh

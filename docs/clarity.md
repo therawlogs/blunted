@@ -31,3 +31,23 @@ Grade estimates use surface counts, not meaning or audience. The engine is
 English-first; other languages remain editable, but English scores and rules
 are suppressed when non-English input is likely. See `formulas.md` and
 `rules.md` for methodology and known heuristic limits.
+
+## Editorial reviewers
+
+Profiles and reviewers are separate. Clear and Essay tune checks; Clarity
+reviews existing prose patterns, while Structure reports heading hierarchy gaps,
+paragraphs over the profile threshold and section word counts. Structure also
+provides a labeled opening self-review question. It does not detect missing
+arguments, verify facts or judge whether evidence supports a claim.
+
+Each note offers Show passage and Dismiss. Dismissals belong to an article and
+survive unrelated edits while their paragraph, trigger and explanation remain
+unchanged. Editing that passage makes the note eligible again. Show dismissed
+notes resets dismissals. Findings are invalidated immediately on text input;
+old worker responses cannot reintroduce stale notes. F2 enters Review and moves
+to a note; Shift+F2 moves back.
+
+Review shows one active passage. Previous/Next and All notes keep all findings
+reachable without marking every category at once. Self-review prompts and
+previously dismissed findings have separate views. Apply is always individual;
+there is no bulk replacement. Detailed metrics and rule controls live in Options.

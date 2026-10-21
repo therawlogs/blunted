@@ -3,6 +3,26 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog; versions are `0.x` development previews.
 
+## [1.0.0] — 2026-10-21
+
+- Article-first redesign: one header, stable 42rem prose column, title above
+  text, quiet save footer and tools grouped under More.
+- Single-note review inspector, active passage highlighting, complete incremental
+  findings list and individual dismissal recovery. Remove bulk replacements.
+- Independent navigation preferences, reading anchors, wrapped-passage scrolling,
+  faithful numbering, omitted-image labels and headline-aware prose exports.
+
+- Desktop article library with independent stable-ID files, legacy migration,
+  recovery, search, rename, trash/restore and explicit library backup/restore.
+- Quiet drafting, Markdown shortcuts, heading outline and safe reading/print
+  preview. Clear/Essay remain writing profiles, separate from reviewers.
+- Clarity and Structure reviews with passage actions, paragraph-scoped
+  dismissals and immediate invalidation of stale analysis.
+- Serialized save snapshots, failed-save switching protection and native
+  close/quit-time flushing. Correct desktop bridge configuration and move
+  blocking file/folder dialogs off the UI thread. Portable HTML remains a single-draft editor.
+- See `docs/article-workspace.md` for validation and remaining acceptance gates.
+
 ## [0.1.6] — 2026-10-16
 
 - Configure Tauri ad-hoc code signing for the macOS app bundle and verify the

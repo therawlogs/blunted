@@ -26,12 +26,16 @@
 
   // ---------- state ----------
   var state = {
-    id: "doc-" + Date.now().toString(36),
+    id: articleId(),
     title: "", modeId: SINGLE_MODE, body: "",
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [], personalWords: [],
   };
-  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "review", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, activeProfile: "clear", profiles: {} };
+  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "write", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, exportHeadline: true, workspace: { activeId: "", positions: {} }, activeProfile: "clear", profiles: {} };
+  var articles = [], libraryReady = false, loadFailed = false, transitioning = false;
+  var saveQueue = Promise.resolve(), pendingRestore = null, previewOpen = false;
+  var reviewer = "clarity", activeNote = null, findingsLimit = 50;
+  var panelOpener = null, panelOpeners = {}, prefsTimer = null, leaveResolve = null, workspaceTimer = null;
   var dirty = false;            // unsaved changes vs storage
   var lastAnalysis = null;
   var currentRev = 0;           // text revision counter (local)
@@ -65,7 +69,7 @@
     if (e.key === "Escape") {
       if (!$("findBar").hidden) { closeFind(); return; }
       var open = document.querySelector("details[open]");
-      if (open && !/input|textarea|select/i.test(document.activeElement.tagName)) open.removeAttribute("open");
+      if (open) { open.removeAttribute("open"); var summary=open.querySelector("summary"); if(summary) summary.focus(); e.preventDefault(); }
     }
   });
 
@@ -117,19 +121,23 @@
       return { doc: doc, prefs: prefsOut, recovered: recovered };
     },
     save: function () {
-      if (!prefs.autosave) { setSaveState("Autosave off"); return; }
-      if (prefs.privateSession) { setSaveState("Private session — not saved"); return; }
+      if (!prefs.autosave) { setSaveState("Autosave off"); return Promise.resolve(false); }
+      if (prefs.privateSession) { setSaveState("Private session — not saved"); return Promise.resolve(false); }
       var t = tauri();
-      var payload = { doc: state, prefs: prefs };
+      if (loadFailed || !libraryReady && t && t.library) { setSaveState("Storage unavailable — export your article"); return Promise.resolve(false); }
+      var payload = JSON.parse(JSON.stringify({ doc: state, prefs: prefs }));
       if (t && t.saveDoc) {
-        try {
-          var r = t.saveDoc(payload);
-          // adapter returns a promise in the shell; failures surface async
-          if (r && r.then) r.then(function () { setSaveState("Saved"); dirty = false; }, function () { setSaveState("Saving failed — Download .md to keep a copy."); });
-          else { setSaveState("Saved"); dirty = false; }
-        }
-        catch (e) { setSaveState("Saving failed — Download .md to keep a copy."); }
-        return;
+        setSaveState("Saving…");
+        var snapshot = JSON.stringify(payload.doc);
+        var job = saveQueue.then(function () { return t.saveDoc({ doc: payload.doc, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function () {
+          var i = articles.findIndex(function (a) { return a.id === payload.doc.id; });
+          if (i < 0) articles.push(payload.doc); else articles[i] = payload.doc;
+          if (state.id === payload.doc.id && JSON.stringify(state) === snapshot) { setSaveState("Saved"); dirty = false; }
+          if (!$("workspaceDialog").hidden && document.activeElement === editor) renderLibrary();
+          return true;
+        }, function () { setSaveState("Saving failed — export your article to keep a copy."); return false; });
+        saveQueue = job.then(function () {});
+        return job;
       }
       try {
         var prev = null;
@@ -145,15 +153,17 @@
         localStorage.setItem(LS_DOC, JSON.stringify(state));
         localStorage.setItem(LS_PREFS, JSON.stringify(prefs));
         setSaveState("Saved"); dirty = false;
+        return Promise.resolve(true);
       } catch (e) {
         storageOK = false;
         setSaveState("Saving failed");
         storageMsg = "Saving failed (storage full or blocked): Download .md to keep a copy.";
+        return Promise.resolve(false);
       }
     },
     clear: function () {
       var t = tauri();
-      if (t && t.clearAll) { try { t.clearAll(); } catch (e) {} }
+      if (t && t.clearAll) return saveQueue.then(function () { return t.clearAll(); });
       try {
         localStorage.removeItem(LS_DOC); localStorage.removeItem(LS_PREFS);
         for (var i = 0; i < LS_BACKUPS.length; i++) localStorage.removeItem(LS_BACKUPS[i]);
@@ -163,7 +173,10 @@
     },
   };
 
-  function setSaveState(s) { statusSave.textContent = s; }
+  function setSaveState(s) {
+    statusSave.textContent = s; statusSave.dataset.failed = /failed|unavailable|unreadable/i.test(s) ? "true" : "false";
+    if(statusSave.dataset.failed === "true") copyNote.textContent = s;
+  }
 
   // ---------- worker (Blob, no external file) + main-thread fallback ----------
   var worker = null, workerOK = false;
@@ -173,7 +186,7 @@
       workerOK = true;
       worker.onmessage = function (e) {
         var d = e.data || {};
-        if (d.rev !== lastWorkerRev) return; // stale
+        if (d.rev !== lastWorkerRev || d.rev !== currentRev) return; // stale
         if (d.ok) renderAnalysis(d.result);
       };
       worker.onerror = function () { workerOK = false; analyzeMainThread(); };
@@ -193,7 +206,7 @@
     var rev = currentRev;
     updateLargeDocNotice();
     var req = {
-      text: editor.value, mode: prefs.activeProfile || SINGLE_MODE,
+      text: editor.value, title: state.title, mode: prefs.activeProfile || SINGLE_MODE,
       overrides: buildOverrides(), ignoredTerms: state.ignoredTerms, personalWords: state.personalWords,
       ignoredRuleIds: state.ignoredRuleIds,
       textRevision: rev,
@@ -213,7 +226,7 @@
 
   function analyzeMainThread(req, rev) {
     req = req || {
-      text: editor.value, mode: prefs.activeProfile || SINGLE_MODE, overrides: buildOverrides(),
+      text: editor.value, title: state.title, mode: prefs.activeProfile || SINGLE_MODE, overrides: buildOverrides(),
       ignoredTerms: state.ignoredTerms, personalWords: state.personalWords, ignoredRuleIds: state.ignoredRuleIds,
       textRevision: currentRev,
     };
@@ -223,6 +236,7 @@
     try { r = Engine.analyze(req); }
     catch (e) { return; }
     if (rev < currentRev) return; // stale
+    if (Engine.structureReport) r.structure = Engine.structureReport(req.text, r.config.paragraphWords, !!req.title);
     renderAnalysis(r);
   }
 
@@ -281,10 +295,17 @@
 
   function renderAnalysis(r) {
     lastAnalysis = r;
-    renderBackdrop(editor.value, r);
+    if (Engine.dismissalKey) {
+      var keys=[];
+      function identify(list,prefix){var counts={};list.forEach(function(i){var base=prefix+Engine.dismissalKey(i,editor.value),ordinal=counts[base]||0;counts[base]=ordinal+1;i._legacyDismissalKey=base;i._dismissalKey=base+"|"+ordinal;keys.push(base,i._dismissalKey);});}
+      identify(r.issues,"clarity:");identify((r.structure && r.structure.issues)||[],"structure:");
+      var before=state.dismissedNotes||[];state.dismissedNotes=before.filter(function(k){return keys.includes(k);});if(state.dismissedNotes.length!==before.length) dirty=true;
+    }
+    renderOutline(r.structure);
     renderScore(r);
     renderIssues(r);
-    scheduleSave();
+    renderBackdrop(editor.value, r);
+    if (dirty) scheduleSave();
     clearTimeout(announceTimer);
     announceTimer = setTimeout(announceStatus, 800);
   }
@@ -305,73 +326,18 @@
   }
 
   function renderBackdrop(text, r) {
-    // Build non-overlapping segments with class lists. Sentence marks =
-    // backgrounds; word-level rule issues = per-category underlines.
-    // Red wins (one bg). Sweep-line over sorted cuts: both mark lists are
-    // in document order. Overlapping underlines keep every category class
-    // (stylesheet order wins the paint); the notes list still shows each.
-    var sentMarks = [];
-    for (var i = 0; i < r.sentences.length && sentMarks.length < MAX_BG; i++) {
-      var s = r.sentences[i];
-      if (s.mark && !s.excluded) sentMarks.push({ from: s.from, to: s.to, cls: s.mark === "red" ? "mk-r" : "mk-y" });
-    }
-    var underlines = [];
-    for (var j = 0; j < r.issues.length && underlines.length < MAX_UL; j++) {
-      var is = r.issues[j];
-      if (is.from === is.to) continue;
-      if (is.category === "sentence" || is.category === "paragraph" || is.category === "length") continue;
-      if (activeCatFilter !== "all" && is.category !== activeCatFilter) continue;
-      underlines.push({ from: is.from, to: is.to, cls: catToUl(is.category) });
-    }
-    underlines.sort(function (a, b) { return a.from - b.from || a.to - b.to; });
-    var cutSet = {};
-    cutSet[0] = 1; cutSet[text.length] = 1;
-    var k;
-    for (k = 0; k < sentMarks.length; k++) { cutSet[sentMarks[k].from] = 1; cutSet[sentMarks[k].to] = 1; }
-    for (k = 0; k < underlines.length; k++) { cutSet[underlines[k].from] = 1; cutSet[underlines[k].to] = 1; }
-    var cuts = Object.keys(cutSet).map(Number).sort(function (a, b) { return a - b; });
-    var frag = document.createDocumentFragment();
-    var mi = 0;
-    for (var c = 0; c < cuts.length - 1; c++) {
-      var a = Math.max(0, cuts[c]), b = Math.min(text.length, cuts[c + 1]);
-      if (b <= a) continue;
-      while (mi < sentMarks.length && sentMarks[mi].to <= a) mi++;
-      var cls = [];
-      if (mi < sentMarks.length && sentMarks[mi].from <= a && b <= sentMarks[mi].to) cls.push(sentMarks[mi].cls);
-      // all underline categories covering this slice (cuts align to every
-      // boundary, so coverage is full containment)
-      for (var u = 0; u < underlines.length; u++) {
-        var ub = underlines[u];
-        if (ub.from >= b) break;
-        if (ub.from <= a && b <= ub.to) {
-          if (cls.indexOf(ub.cls) === -1) cls.push(ub.cls);
-        }
-      }
-      var chunk = text.slice(a, b);
-      if (cls.length === 0) {
-        frag.appendChild(document.createTextNode(chunk));
-      } else {
-        var sp = document.createElement("span");
-        sp.className = cls.join(" ");
-        sp.appendChild(document.createTextNode(chunk));
-        frag.appendChild(sp);
-      }
-    }
-    // trailing-newline alignment: textarea renders an extra line for final \n
-    if (text.charAt(text.length - 1) === "\n") {
-      var z = document.createElement("span");
-      z.appendChild(document.createTextNode("​"));
-      frag.appendChild(z);
-    }
-    backdrop.textContent = "";
-    backdrop.appendChild(frag);
-    syncScroll();
+    backdrop.textContent="";
+    if(!activeNote || prefs.review !== "review" || previewOpen) { backdrop.textContent=text; return; }
+    var from=activeNote.from,to=activeNote.to;
+    backdrop.appendChild(document.createTextNode(text.slice(0,from)));
+    var mark=document.createElement("span");mark.className="active-mark";mark.textContent=text.slice(from,to);backdrop.appendChild(mark);
+    backdrop.appendChild(document.createTextNode(text.slice(to)+"\u200b"));syncScroll();
   }
 
   function renderScore(r) {
     var m = r.metrics;
     var wc = m.eligibleWords, tw = m.totalWords;
-    statusWords.textContent = tw === wc ? wc + " words" : wc + " prose words (" + tw + " total)";
+    statusWords.textContent = tw + (tw === 1 ? " word" : " words");
     statusSent.textContent = m.proseSentences === 1 ? "1 sentence" : m.proseSentences + " sentences";
     statusTime.textContent = m.readingTime + " read";
     var target = r.config.targetGrade || 8;
@@ -448,133 +414,77 @@
     todo: "Placeholder",
   };
 
+  function noteKey(issue) { return issue._dismissalKey || reviewer + ":" + Engine.dismissalKey(issue, editor.value); }
+  function currentNotes() { return lastAnalysis ? (lastAnalysis._uiList || []) : []; }
   function renderIssues(r) {
-    issuesEl.textContent = "";
-    selectedIssue = -1;
-    var full = r.issues.filter(function (i) { return i.from !== i.to || i.severity === "limit" || i.severity === "info"; });
-    r._uiFull = full;
-    renderCatSummary(full);
-    var list = activeCatFilter === "all" ? full : full.filter(function (i) { return i.category === activeCatFilter; });
-    issueCount.textContent = full.length ? "(" + (activeCatFilter === "all" ? full.length : list.length + " of " + full.length) + ")" : "";
-    updateNotesChip(full, r);
-    if (!list.length) {
-      var li = document.createElement("li");
-      li.className = "empty-issues";
-      li.appendChild(document.createTextNode(activeCatFilter === "all"
-        ? "No issues found. A clear page is not a promise of perfect prose."
-        : "No “" + (CAT_LABEL[activeCatFilter] || activeCatFilter) + "” notes — filter cleared list. Tap All to reset."));
-      issuesEl.appendChild(li);
-      r._uiList = list;
-      // still re-render backdrop for filter changes (caller re-renders)
-      return;
+    var focused = document.activeElement;
+    var hadReviewFocus = focused && (focused.id === "applyNote" || focused.id === "dismissNote" || focused.id === "issues");
+    var candidates = reviewer === "structure" ? ((r.structure && r.structure.issues) || []) : r.issues;
+    var dismissed = state.dismissedNotes || [];
+    var remaining = candidates.filter(function (i) { return !i.prompt && !(dismissed.includes(noteKey(i)) || dismissed.includes(i._legacyDismissalKey)); });
+    var prompts = candidates.filter(function (i) { return i.prompt && !(dismissed.includes(noteKey(i)) || dismissed.includes(i._legacyDismissalKey)); });
+    r._remaining = remaining; r._prompts = prompts;
+    r._dismissed = candidates.filter(function (i) { return dismissed.includes(noteKey(i)) || dismissed.includes(i._legacyDismissalKey); });
+    var group = $("findingGroup").value || "remaining";
+    r._uiList = group === "prompts" ? prompts : group === "dismissed" ? r._dismissed : remaining;
+    var unfilteredCount=r._uiList.length;
+    if(activeCatFilter!=="all") r._uiList=r._uiList.filter(function(i){return i.category===activeCatFilter;});
+    r._uiFull = r._uiList;
+    var list = r._uiList, position = activeNote ? activeNote.from : editor.selectionStart || 0;
+    var same = activeNote && list.map(function(i,n){return {i:i,n:n};}).filter(function(v){return v.i.ruleId === activeNote.ruleId && v.i.exactText === activeNote.exactText;}).sort(function(a,b){return Math.abs(a.i.from-position)-Math.abs(b.i.from-position);})[0];
+    selectedIssue = same ? same.n : list.findIndex(function (i) { return i.to >= position; });
+    if (selectedIssue < 0 && list.length) selectedIssue = 0;
+    activeNote = list[selectedIssue] || null;
+    issueCount.textContent = "(" + remaining.length + ")";
+    $("issuePosition").textContent = list.length ? (selectedIssue + 1) + " / " + list.length : "";
+    $("prevIssue").disabled = $("nextIssue").disabled = !list.length;
+    issuesEl.textContent = ""; issuesEl.setAttribute("aria-busy", "false");
+    if (!activeNote) {
+      var empty = document.createElement("p"); empty.className = "muted";
+      empty.textContent = activeCatFilter!=="all" && unfilteredCount ? "No notes in this category. Change the filter in Options." : group === "dismissed" ? "No dismissed notes." : group === "prompts" ? "No self-review prompts for this article." : r._dismissed.filter(function(i){return !i.prompt;}).length ? "No remaining findings. Your dismissed notes are kept separately." : "No findings detected. This is not a judgment of the article’s meaning.";
+      issuesEl.appendChild(empty);
+      if (prompts.length && group === "remaining") { var promptButton = document.createElement("button"); promptButton.type="button"; promptButton.textContent="Self-review prompts ("+prompts.length+")"; promptButton.addEventListener("click",function(){ $("findingGroup").value="prompts"; activeNote=null; renderIssues(r); renderBackdrop(editor.value,r); }); issuesEl.appendChild(promptButton); }
+    } else {
+      var issue = activeNote;
+      var category = document.createElement("div"); category.className = "note-category"; category.textContent = issue.prompt ? "Self-review prompt" : (CAT_LABEL[issue.category] || "Structure");
+      var excerpt = document.createElement("p"); excerpt.className = "note-excerpt"; excerpt.textContent = truncate(issue.exactText || "", 180);
+      var explanation = document.createElement("p"); explanation.className = "note-explanation"; explanation.textContent = issue.explanation;
+      issuesEl.appendChild(category); issuesEl.appendChild(excerpt); issuesEl.appendChild(explanation);
+      var actions = document.createElement("div"); actions.className = "note-actions";
+      if (issue.fix && group !== "dismissed") {
+        var apply = document.createElement("button"); apply.id = "applyNote"; apply.type = "button";
+        apply.textContent = issue.fix.replacement ? "Apply “" + issue.fix.replacement + "”" : "Remove phrase";
+        apply.addEventListener("click",function(){if(lastAnalysis === r) applyFix(issue);}); actions.appendChild(apply);
+      }
+      var show = document.createElement("button"); show.type="button"; show.textContent="Show passage";
+      show.addEventListener("click",function(){selectIssue(selectedIssue);}); actions.appendChild(show);
+      var dismiss = document.createElement("button"); dismiss.id="dismissNote"; dismiss.type="button"; dismiss.textContent = group === "dismissed" ? "Restore note" : "Dismiss";
+      dismiss.addEventListener("click",function(){
+        var key = noteKey(issue);
+        var legacy=issue._legacyDismissalKey, hadLegacy=(state.dismissedNotes||[]).includes(legacy);
+        state.dismissedNotes = (state.dismissedNotes || []).filter(function(k){return k!==key && !(group==="dismissed" && k===legacy);});
+        if(group==="dismissed" && hadLegacy) candidates.filter(function(i){return i!==issue && i._legacyDismissalKey===legacy;}).forEach(function(i){if(!state.dismissedNotes.includes(noteKey(i)))state.dismissedNotes.push(noteKey(i));});
+        if (group !== "dismissed") state.dismissedNotes.push(key);
+        dirty=true; activeNote={from:issue.from, ruleId:"", exactText:""}; scheduleSave(); renderIssues(r); renderBackdrop(editor.value,r); issuesEl.focus();
+        srStatus.textContent = group === "dismissed" ? "Note restored." : "Note dismissed.";
+      }); actions.appendChild(dismiss); issuesEl.appendChild(actions);
     }
-    // cap DOM size for very long docs
-    var cap = 400;
-    for (var i = 0; i < Math.min(list.length, cap); i++) {
-      (function (issue, idx) {
-        var b = document.createElement("button");
-        b.type = "button"; b.className = "issue"; b.dataset.sev = issue.severity; b.dataset.cat = issue.category;
-        b.setAttribute("aria-label", (CAT_LABEL[issue.category] || issue.category) + ", " + issue.severity + ": " + issue.explanation);
-        var cat = document.createElement("span"); cat.className = "cat";
-        cat.appendChild(document.createTextNode((CAT_LABEL[issue.category] || issue.category) + " · " + issue.severity));
-        var ex = document.createElement("span"); ex.className = "excerpt";
-        ex.appendChild(document.createTextNode(issue.exactText ? truncate(issue.exactText, 120) : "—"));
-        var why = document.createElement("span"); why.className = "why";
-        why.appendChild(document.createTextNode(issue.explanation));
-        b.appendChild(cat); b.appendChild(ex); b.appendChild(why);
-        if (issue.fix && issue.fix.replacement != null && issue.from !== issue.to) {
-          var f = document.createElement("span"); f.className = "fix";
-          var fb = document.createElement("button");
-          fb.type = "button";
-          var lbl = issue.fix.replacement === "" ? "Remove word" : "Apply: “" + issue.fix.replacement + "”";
-          fb.appendChild(document.createTextNode(lbl));
-          fb.setAttribute("aria-label", lbl + " for " + (CAT_LABEL[issue.category] || issue.category));
-          fb.addEventListener("click", function (ev) { ev.stopPropagation(); applyFix(issue); });
-          f.appendChild(fb); b.appendChild(f);
-        }
-        b.addEventListener("click", function () { selectIssue(idx); });
-        b.id = "issue-" + idx;
-        var li2 = document.createElement("li");
-        li2.appendChild(b);
-        issuesEl.appendChild(li2);
-      })(list[i], i);
-    }
-    if (list.length > cap) {
-      var more = document.createElement("li");
-      more.className = "empty-issues";
-      more.appendChild(document.createTextNode("Showing first " + cap + " of " + list.length + " issues."));
-      issuesEl.appendChild(more);
-    }
-    r._uiList = list;
+    if (!$("findingsView").hidden) renderFindings();
+    if (hadReviewFocus) { var target = $(focused.id); if(target && target.id !== "issues" && !target.disabled) target.focus(); else issuesEl.focus(); }
   }
-
-  var CAT_ORDER = ["passive", "adverb", "wordiness", "simpler", "repeated", "hedge", "todo", "sentence"];
-
-  function renderCatSummary(full) {
-    var box = $("catSummary");
-    if (!box) return;
-    box.textContent = "";
-    if (!full.length) return;
-    var counts = {};
-    for (var i = 0; i < full.length; i++) {
-      var c = full[i].category || "other";
-      counts[c] = (counts[c] || 0) + 1;
-    }
-    function chip(cat, label) {
-      var n = counts[cat] || 0;
-      if (!n) return;
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "chip";
-      b.setAttribute("aria-pressed", activeCatFilter === cat ? "true" : "false");
-      var d = document.createElement("span");
-      d.className = "dot dot-" + (CAT_ORDER.indexOf(cat) !== -1 ? cat : "other");
-      d.setAttribute("aria-hidden", "true");
-      b.appendChild(d);
-      b.appendChild(document.createTextNode(label + " "));
-      var nn = document.createElement("span"); nn.className = "n";
-      nn.appendChild(document.createTextNode(String(n)));
-      b.appendChild(nn);
-      b.setAttribute("aria-label", "Filter to " + n + " " + label + " notes");
-      b.addEventListener("click", function () {
-        activeCatFilter = (activeCatFilter === cat) ? "all" : cat;
-        if (lastAnalysis) {
-          renderBackdrop(editor.value, lastAnalysis);
-          renderIssues(lastAnalysis);
-        }
-      });
-      box.appendChild(b);
-    }
-    // All reset first
-    var all = document.createElement("button");
-    all.type = "button"; all.className = "chip";
-    all.setAttribute("aria-pressed", activeCatFilter === "all" ? "true" : "false");
-    all.appendChild(document.createTextNode("All "));
-    var an = document.createElement("span"); an.className = "n";
-    an.appendChild(document.createTextNode(String(full.length)));
-    all.appendChild(an);
-    all.setAttribute("aria-label", "Show all " + full.length + " notes");
-    all.addEventListener("click", function () {
-      activeCatFilter = "all";
-      if (lastAnalysis) { renderBackdrop(editor.value, lastAnalysis); renderIssues(lastAnalysis); }
+  function renderFindings() {
+    var box=$("findingsList"); box.textContent="";
+    var list=currentNotes();
+    list.slice(0,findingsLimit).forEach(function(issue,index){
+      var li=document.createElement("li"), b=document.createElement("button"); b.type="button";
+      b.id="finding-"+index;b.textContent=(issue.prompt ? "Prompt: " : "")+truncate(issue.exactText || issue.explanation,100);
+      b.setAttribute("aria-current",index===selectedIssue ? "true":"false");
+      b.addEventListener("click",function(){closeFindings(); selectIssue(index);}); li.appendChild(b); box.appendChild(li);
     });
-    box.appendChild(all);
-    var labels = { passive: "passive", adverb: "adverb", wordiness: "wordy", simpler: "simpler", repeated: "repeated", hedge: "hedge", todo: "todo", sentence: "sentence" };
-    for (var k = 0; k < CAT_ORDER.length; k++) chip(CAT_ORDER[k], labels[CAT_ORDER[k]]);
-    // any other categories present
-    for (var key in counts) {
-      if (CAT_ORDER.indexOf(key) === -1) chip(key, CAT_LABEL[key] || key);
-    }
+    $("loadMoreNotes").hidden = list.length <= findingsLimit;
+    if(!list.length) box.textContent="No notes in this group.";
   }
-
-  function updateNotesChip(full, r) {
-    var chipEl = $("notesChip");
-    if (!chipEl) return;
-    if (!full.length) { chipEl.hidden = true; return; }
-    chipEl.hidden = false;
-    var g = r && r.metrics && (r.metrics.grade || r.metrics.provisionalGrade);
-    var gl = g ? (g.label === "College+" ? "College+" : "grade " + g.label) : "no grade yet";
-    chipEl.textContent = full.length + " notes · " + gl + " — tap to review";
-  }
+  function closeFindings(){ $("findingsView").hidden=true; issuesEl.hidden=false; }
 
   function truncate(s, n) {
     s = String(s).replace(/\s+/g, " ");
@@ -582,49 +492,43 @@
   }
 
   function selectIssue(idx) {
-    var list = lastAnalysis && lastAnalysis._uiList;
-    if (!list || !list[idx]) return;
-    selectedIssue = idx;
-    var issue = list[idx];
-    var btns = issuesEl.querySelectorAll(".issue");
-    for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-current", i === idx ? "true" : "false");
-    if (issue.from !== issue.to) {
-      editor.focus();
-      try { editor.setSelectionRange(issue.from, issue.to); } catch (e) {}
-      // ensure visible
-      scrollToOffset(issue.from);
-    }
-    var el = $("issue-" + idx);
-    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: "nearest" }); } catch (e) {} }
+    closePreview(); var list=currentNotes(); if(!list[idx]) return;
+    activeNote=list[idx];selectedIssue=idx;renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis);
+    editor.focus();editor.setSelectionRange(activeNote.from,activeNote.to);scrollToOffset(activeNote.from);rememberWorkspace();
   }
-
+  function offsetY(off) {
+    var mirror=document.createElement("div"), marker=document.createElement("span");
+    var cs=getComputedStyle(editor);
+    ["fontFamily","fontSize","fontWeight","fontStyle","lineHeight","letterSpacing","tabSize","whiteSpace","overflowWrap","wordBreak","padding","border","boxSizing"].forEach(function(k){mirror.style[k]=cs[k];});
+    mirror.style.position="absolute";mirror.style.visibility="hidden";mirror.style.width=editor.clientWidth+"px";mirror.style.height="auto";mirror.style.left="-10000px";
+    mirror.appendChild(document.createTextNode(editor.value.slice(0,off)));marker.textContent="\u200b";mirror.appendChild(marker);mirror.appendChild(document.createTextNode(editor.value.slice(off)));document.body.appendChild(mirror);
+    var y=marker.getBoundingClientRect().top-mirror.getBoundingClientRect().top;mirror.remove();return y;
+  }
   function scrollToOffset(off) {
-    // approximate: temporarily move selection already focuses; ensure textarea scrolls
     try {
-      var ta = editor;
-      var textBefore = ta.value.slice(0, off);
-      var lines = textBefore.split("\n").length;
-      var lineH = parseFloat(getComputedStyle(ta).lineHeight) || 27;
-      ta.scrollTop = Math.max(0, lines * lineH - ta.clientHeight / 2);
-      syncScroll();
-    } catch (e) {}
+      var y=offsetY(off);editor.scrollTop=Math.max(0,Math.min(editor.scrollHeight-editor.clientHeight,y-editor.clientHeight*.35));syncScroll();
+      function reveal(){
+        var top=document.querySelector(".masthead").getBoundingClientRect().bottom+16,bottom=window.innerHeight-20;
+        var inspector=$("reviewInspector");if(!inspector.hidden && window.innerWidth<1360 && !previewOpen) bottom=Math.min(bottom,inspector.getBoundingClientRect().top-20);
+        var line=parseFloat(getComputedStyle(editor).lineHeight)||28, point=editor.getBoundingClientRect().top+y-editor.scrollTop, end=point+line;
+        var mark=document.querySelector(".active-mark");
+        if(mark && activeNote && activeNote.from===off){var rect=mark.getClientRects()[0];if(rect){point=rect.top;end=rect.bottom;}}
+        if(point<top || end>bottom) window.scrollBy(0,point-(top+Math.max(32,bottom-top)*.4));
+      }
+      reveal();if(window.requestAnimationFrame) window.requestAnimationFrame(reveal);
+    } catch(e) { /* Geometry is unavailable in non-layout test environments. */ }
   }
-
   function stepIssue(dir) {
-    var list = lastAnalysis && lastAnalysis._uiList;
-    if (!list || !list.length) return;
-    var n = selectedIssue + dir;
-    if (n < 0) n = list.length - 1;
-    if (n >= list.length) n = 0;
-    selectIssue(n);
-    var el = $("issue-" + n);
-    if (el) el.focus();
+    if(prefs.review!=="review" || previewOpen) setReview("review");
+    var list=currentNotes();if(!list.length) return;
+    var n=(selectedIssue+dir+list.length)%list.length;closeFindings();selectIssue(n);issuesEl.focus();
   }
 
   // one-click fix: single undoable edit, rechecks exactText + revision.
   // Empty replacements (adverb removals) also consume one adjacent space
   // so "ran quickly today" becomes "ran today", not "ran  today".
   function applyFix(issue, silent) {
+    if (transitioning) return false;
     var revAtClick = currentRev;
     var cur = editor.value;
     if (!issue.fix || issue.fix.replacement == null) return false;
@@ -670,53 +574,7 @@
     return true;
   }
 
-  // Bulk: safe non-empty replacements only (wordiness, simpler, repeated).
-  // Adverb removals stay per-note (they delete meaning); hedges never have
-  // fixes. Applied back-to-front so offsets stay valid; each rechecks exactText.
-  function applyAllFixes() {
-    var list = lastAnalysis && (lastAnalysis._uiFull || lastAnalysis._uiList);
-    if (!list || !list.length) return;
-    var cands = list.filter(function (i) {
-      return i.fix && i.fix.replacement != null && i.fix.replacement !== "" && i.from !== i.to;
-    }).sort(function (a, b) { return b.from - a.from; });
-    if (!cands.length) {
-      copyNote.textContent = "No safe replacements to apply.";
-      return;
-    }
-    var okN = 0, skipN = 0;
-    editor.focus();
-    for (var k = 0; k < cands.length; k++) {
-      var it = cands[k];
-      if (editor.value.slice(it.from, it.to) !== it.exactText) { skipN++; continue; }
-      try { editor.setSelectionRange(it.from, it.to); } catch (e) {}
-      var done = false;
-      try { done = document.execCommand("insertText", false, it.fix.replacement); } catch (e) { done = false; }
-      if (!done && editor.setRangeText) {
-        try { editor.setRangeText(it.fix.replacement, it.from, it.to, "end"); done = true; }
-        catch (e) { done = false; }
-      }
-      if (!done) {
-        var cur = editor.value;
-        editor.value = cur.slice(0, it.from) + it.fix.replacement + cur.slice(it.to);
-        done = true;
-      }
-      if (done) okN++; else skipN++;
-    }
-    onTextInput();
-    copyNote.textContent = "Applied " + okN + " safe fix" + (okN === 1 ? "" : "es") +
-      (skipN ? " (" + skipN + " skipped — text changed)" : "") +
-      ". Undo repeatedly to revert.";
-  }
-
-  function highlightNote(idx) {
-    // Click-a-highlight path: mark the note + bring it into view without
-    // stealing the editor caret.
-    var btns = issuesEl.querySelectorAll(".issue");
-    for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-current", i === idx ? "true" : "false");
-    selectedIssue = idx;
-    var el = $("issue-" + idx);
-    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: "nearest" }); } catch (e) {} }
-  }
+  function highlightNote(idx) { var list=currentNotes();if(!list[idx]) return;activeNote=list[idx];renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis); }
 
   function announceStatus() {
     if (!lastAnalysis) return;
@@ -759,9 +617,9 @@
     if (!findMatches.length) return;
     findIdx = ((n % findMatches.length) + findMatches.length) % findMatches.length;
     var at = findMatches[findIdx];
-    if (focusEditor) editor.focus();
+    if (focusEditor && !previewOpen) editor.focus();
     try { editor.setSelectionRange(at, at + findQuery.length); } catch (e) {}
-    scrollToOffset(at);
+    if(previewOpen) scrollReadingTo(at); else scrollToOffset(at);
     renderFindCount();
   }
 
@@ -799,7 +657,7 @@
     $("findBar").hidden = true;
     findQuery = ""; findMatches = []; findIdx = -1;
     $("findCount").textContent = "";
-    editor.focus();
+    if(previewOpen) $("readingPreview").focus(); else editor.focus();
   }
 
   var findDeb = null;
@@ -837,6 +695,12 @@
   }
 
   function onTextInput() {
+    currentRev += 1; // invalidate in-flight worker results immediately, before debounce
+    lastAnalysis = null;
+    issuesEl.setAttribute("aria-busy", "true");
+    var apply=$("applyNote"); if(apply) apply.disabled=true;
+    $("articleOutline").setAttribute("aria-busy", "true");
+    backdrop.textContent = editor.value;
     state.body = editor.value;
     state.updatedAt = new Date().toISOString();
     dirty = true;
@@ -844,6 +708,7 @@
     updateSampleVisibility();
     if (!$("findBar").hidden) recomputeFind();
     scheduleAnalysis();
+    scheduleSave();
   }
 
   // The sample loader is a first-run helper, not a feature: only offer it
@@ -929,60 +794,15 @@
     });
     hlab.appendChild(hsel);
     box.appendChild(hlab);
-    buildRailToggles();
   }
 
-  var RAIL_RULES = [
-    ["passive", "Passive"], ["adverb", "Adverb"], ["wordiness", "Wordy"],
-    ["simpler", "Simpler"], ["repeated", "Repeated"],
-  ];
-
-  function railChecked(key) {
-    var cfg = activeProfileConfig();
-    var cur = cfg.rules[key];
-    return cur !== false && cur !== "off";
-  }
-
-  function buildRailToggles() {
-    var box = $("railToggles");
-    if (!box) return;
-    box.textContent = "";
-    RAIL_RULES.forEach(function (pair) {
-      var key = pair[0];
-      var lab = document.createElement("label");
-      lab.className = "check";
-      lab.title = "Toggle " + pair[1].toLowerCase() + " notes";
-      var cb = document.createElement("input");
-      cb.type = "checkbox"; cb.checked = railChecked(key); cb.dataset.railRule = key;
-      cb.setAttribute("aria-label", pair[1] + " notes on/off");
-      cb.addEventListener("change", function () {
-        var rules = Object.assign({}, activeProfileConfig().rules); rules[key] = cb.checked;
-        persistProfileField("rules", rules);
-        // keep Preferences checkbox in sync without full rebuild
-        var main = $("ruleToggles") && $("ruleToggles").querySelector('select[data-rule="' + key + '"]');
-        if (main) main.value = cb.checked ? "normal" : "off";
-        updateCustomNote(); runAnalysis(); scheduleSave();
-      });
-      lab.appendChild(cb);
-      lab.appendChild(document.createTextNode(pair[1]));
-      box.appendChild(lab);
-    });
-  }
-
-  function syncRailToggle(key, on) {
-    var box = $("railToggles");
-    if (!box) return;
-    var cb = box.querySelector('input[data-rail-rule="' + key + '"]');
-    if (cb) cb.checked = !!on;
-  }
+  function syncRailToggle() {} // Rule controls live in Preferences only.
 
   function updateCustomNote() {
     var n = Object.keys((prefs.profiles && prefs.profiles[prefs.activeProfile]) || {}).length;
     $("customNote").textContent = n ? "Customized (" + n + " override" + (n > 1 ? "s" : "") + ")." : "";
   }
 
-  var applyAllBtn = $("btnApplyAll");
-  if (applyAllBtn) applyAllBtn.addEventListener("click", applyAllFixes);
   // merged Download menu: close the popover after picking a format
   ["btnDownload", "btnDownloadTxt"].forEach(function (id) {
     var b = $(id);
@@ -990,29 +810,6 @@
       var m = $("dlMenu");
       if (m && m.open) { try { m.removeAttribute("open"); } catch (e) {} }
     });
-  });
-  var notesChip = $("notesChip");
-  if (notesChip) notesChip.addEventListener("click", function () {
-    var h = $("issuesH");
-    if (h && h.scrollIntoView) { try { h.scrollIntoView({ block: "start" }); } catch (e) {} }
-    var first = $("issue-0");
-    if (first) { try { first.focus({ preventScroll: true }); } catch (e) {} }
-  });
-
-  var ignoredDeb = null;
-  $("ignoredTerms").addEventListener("input", function (e) {
-    clearTimeout(ignoredDeb);
-    ignoredDeb = setTimeout(function () {
-      state.ignoredTerms = e.target.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-      runAnalysis(); scheduleSave();
-    }, 300);
-  });
-  $("personalWords").addEventListener("input", function (e) {
-    clearTimeout(ignoredDeb);
-    ignoredDeb = setTimeout(function () {
-      state.personalWords = e.target.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 300);
-      runAnalysis(); scheduleSave();
-    }, 300);
   });
   $("profileSel").addEventListener("change", function (e) {
     prefs.activeProfile = e.target.value === "essay" ? "essay" : "clear";
@@ -1068,7 +865,7 @@
     else e.target.value = String(prefs.lineHeight || 1.8);
   });
   $("optHeader").addEventListener("change", function (e) {
-    prefs.includeHeader = e.target.checked; scheduleSave();
+    prefs.exportHeadline = e.target.checked; scheduleSave();
   });
   $("wpm").addEventListener("change", function (e) {
     var v = parseInt(e.target.value, 10);
@@ -1103,7 +900,7 @@
     $("lineHeight").value = String(prefs.lineHeight || 1.8);
     $("wpm").value = prefs.wpm;
     $("optQuotes").checked = !!prefs.includeQuotes;
-    $("optHeader").checked = !!prefs.includeHeader;
+    $("optHeader").checked = prefs.exportHeadline !== false;
     $("optPrivate").checked = !!prefs.privateSession;
     $("optAutoSave").checked = prefs.autosave !== false;
     $("themeSel").value = prefs.theme;
@@ -1112,14 +909,14 @@
 
   // Write / Review
   function setReview(v) {
-    prefs.review = v;
-    document.body.dataset.review = v;
-    $("viewWrite").setAttribute("aria-pressed", v === "write" ? "true" : "false");
-    $("viewReview").setAttribute("aria-pressed", v === "review" ? "true" : "false");
-    scheduleSave();
+    closePreview();prefs.review=v;document.body.dataset.review=v;
+    $("viewWrite").setAttribute("aria-pressed",v==="write" ? "true":"false");$("viewReview").setAttribute("aria-pressed",v==="review" ? "true":"false");$("viewPreview").setAttribute("aria-pressed","false");
+    $("reviewInspector").hidden=v!=="review";
+    if(v==="review" && lastAnalysis){ renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis); }
+    schedulePrefs();
   }
-  $("viewWrite").addEventListener("click", function () { setReview("write"); });
-  $("viewReview").addEventListener("click", function () { setReview("review"); });
+  $("viewWrite").addEventListener("click", function () { rememberWorkspace(); setReview("write"); });
+  $("viewReview").addEventListener("click", function () { rememberWorkspace(); setReview("review"); if(activeNote) scrollToOffset(activeNote.from); });
 
   // ---------- actions ----------
   function confirmReplace() {
@@ -1128,28 +925,34 @@
     return window.confirm("Replace the current draft? Unsaved changes will be lost. Choose Cancel, then Download .md to keep a copy.");
   }
 
-  $("btnNew").addEventListener("click", function () {
+  $("btnNew").addEventListener("click", async function () {
+    if (tauri() && tauri().library) { await newArticle(); return; }
     if (!confirmReplace()) return;
     state = freshDoc();
-    loadDocIntoUI(); runAnalysis(); store.save();
+    loadDocIntoUI(); setReview("write"); runAnalysis(); store.save();
   });
 
   $("btnOpen").addEventListener("click", function () { $("filePick").click(); });
   $("filePick").addEventListener("change", function (e) {
     var f = e.target.files && e.target.files[0];
     if (!f) return;
-    if (!confirmReplace()) { e.target.value = ""; return; }
+    if (!(tauri() && tauri().library) && !confirmReplace()) { e.target.value = ""; return; }
     var rd = new FileReader();
-    rd.onload = function () {
-      var text = String(rd.result || "");
-      // Normalize Windows CRLF to LF so offsets and counts stay stable.
-      text = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-      state = freshDoc();
-      // strip HTML? accept plain text only — FileReader gives text; pasted HTML handled on paste
-      state.body = text;
-      state.title = (f.name || "").replace(/\.(txt|md|markdown)$/i, "");
-      loadDocIntoUI(); runAnalysis(); store.save();
+    rd.onload = async function () {
+      var text = String(rd.result || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      var next = freshDoc(); next.body = text; next.title = (f.name || "").replace(/\.(txt|md|markdown)$/i, "").slice(0,120);
+      if (tauri() && tauri().library) {
+        if (transitioning) { copyNote.textContent = "Finish the current library operation before importing."; return; }
+        transitioning = true; setWorkspaceBusy(true);
+        try {
+          if (!await leaveArticle() || !await saveLibraryArticle(next)) return;
+          state = next; loadDocIntoUI(); setReview("write"); runAnalysis(); setSaveState("Saved");
+        } finally { transitioning = false; setWorkspaceBusy(false); }
+      } else {
+        state = next; loadDocIntoUI(); dirty = true; setReview("write"); runAnalysis(); store.save();
+      }
     };
+    rd.onerror = function () { copyNote.textContent = "Could not read that article. Current writing was kept."; };
     rd.readAsText(f);
     e.target.value = "";
   });
@@ -1177,7 +980,7 @@
     onTextInput();
   });
 
-  $("btnCopy").addEventListener("click", function () { copyText(editor.value, "Body"); });
+  $("btnCopy").addEventListener("click", function () { copyText(exportText(false), "Article"); });
 
   function copyText(text, what) {
     copyNote.textContent = "";
@@ -1212,9 +1015,9 @@
 
   $("btnDownloadTxt").addEventListener("click", function () {
     var name = downloadName();
-    var blob = new Blob([editor.value], { type: "text/plain;charset=utf-8" });
+    var blob = new Blob([exportText(false)], { type: "text/plain;charset=utf-8" });
     if (tauri() && tauri().saveFile) {
-      tauri().saveFile(name + ".txt", editor.value).then(
+      tauri().saveFile(name + ".txt", exportText(false)).then(
         function (ok) {
           if (ok === false) copyNote.textContent = "Save cancelled.";
           else copyNote.textContent = "Saved " + name + ".txt.";
@@ -1233,19 +1036,8 @@
     return name;
   }
 
-  // Optional YAML front-matter (title + export date) for the .md download.
-  // Off by default: the plain default stays content-only.
-  function buildMarkdown() {
-    var body = editor.value;
-    if (!prefs.includeHeader) return body;
-    var lines = ["---"];
-    var t = String(state.title || "").replace(/[\r\n]+/g, " ").replace(/---/g, "").trim().slice(0, 120);
-    if (t) lines.push("title: " + t);
-    try { lines.push("date: " + new Date().toISOString().slice(0, 10)); }
-    catch (e) { /* date best-effort */ }
-    lines.push("---", "", body);
-    return lines.join("\n");
-  }
+  function exportText(markdown) { return Engine.exportArticle ? Engine.exportArticle(state.title,editor.value,{headline:prefs.exportHeadline!==false,markdown:markdown}) : editor.value; }
+  function buildMarkdown() { return exportText(true); }
 
   function fallbackDownload(blob, name, ext, headerAware) {
     var a = document.createElement("a");
@@ -1255,7 +1047,7 @@
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     copyNote.textContent = "Downloaded " + name + "." + ext + " (UTF-8" +
-      (headerAware && prefs.includeHeader ? ", with title/date header" : ", content only") + ").";
+      (prefs.exportHeadline !== false ? ", with headline" : ", body only") + ").";
   }
 
   // ---------- settings export / import (manual file = the sync story) ----------
@@ -1325,19 +1117,21 @@
     state = freshDoc();
     state.title = "Sample";
     state.body = SAMPLE;
-    loadDocIntoUI(); runAnalysis(); store.save();
+    loadDocIntoUI(); setReview("write"); runAnalysis(); store.save();
   });
 
   $("prevIssue").addEventListener("click", function () { stepIssue(-1); });
   $("nextIssue").addEventListener("click", function () { stepIssue(1); });
 
   $("docTitle").addEventListener("input", function (e) {
-    state.title = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; scheduleSave();
+    state.title = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; setSaveState("Editing…"); scheduleSave(); scheduleAnalysis();
   });
 
-  $("btnClearData").addEventListener("click", function () {
-    if (!window.confirm("Clear all local blunted data on this device (draft, backup, preferences)? This cannot be undone. Download a copy first if needed.")) return;
-    store.clear();
+  $("btnClearData").addEventListener("click", async function () {
+    if (!window.confirm("Clear all local blunted data on this device (all articles, trash, backups and preferences)? This cannot be undone. Download a copy first if needed.")) return;
+    clearTimeout(saveTimer); clearTimeout(prefsTimer);
+    try { await store.clear(); } catch (e) { copyNote.textContent = "Could not clear local data. Nothing was reset in the editor."; return; }
+    articles = []; renderLibrary();
     state = freshDoc();
     loadDocIntoUI(); runAnalysis();
     setSaveState("Local data cleared");
@@ -1345,32 +1139,22 @@
 
   $("btnPrint").addEventListener("click", function () { window.print(); });
   window.addEventListener("beforeprint", function () {
-    // A textarea prints as an empty box, so render the draft into the
-    // print-only sheet (title + date + plain text, no highlights).
-    var el = $("printDoc");
-    el.textContent = "";
-    var h = document.createElement("h1");
-    h.appendChild(document.createTextNode(state.title || "Untitled"));
-    var meta = document.createElement("p");
-    meta.className = "print-meta";
-    var dstr = "";
-    try { dstr = new Date().toISOString().slice(0, 10); } catch (e) {}
-    meta.appendChild(document.createTextNode(dstr ? dstr + " · blunted (local only)" : "blunted (local only)"));
-    var body = document.createElement("div");
-    body.className = "print-body";
-    body.appendChild(document.createTextNode(editor.value || ""));
-    el.appendChild(h); el.appendChild(meta); el.appendChild(body);
+    renderReading($("printDoc"));
   });
 
   function freshDoc() {
     return {
-      id: "doc-" + Date.now().toString(36), title: "", modeId: prefs.activeProfile || SINGLE_MODE,
+      id: articleId(), title: "", modeId: prefs.activeProfile || SINGLE_MODE,
       body: "", createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(), ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [], personalWords: [],
     };
   }
 
   function loadDocIntoUI() {
+    closePreview();
+    activeNote=null;
+    clearTimeout(debounceTimer); currentRev += 1; lastAnalysis = null;
+    activeCatFilter = "all";$("categoryFilter").value="all";
     editor.value = state.body || "";
     $("docTitle").value = state.title || "";
     $("ignoredTerms").value = (state.ignoredTerms || []).join(", ");
@@ -1387,19 +1171,372 @@
     saveTimer = setTimeout(function () { store.save(); }, 800);
   }
 
+  // ---------- article workspace ----------
+  function cleanArticle(doc) {
+    var out = Object.assign(freshDoc(), doc);
+    out.title = typeof out.title === "string" ? out.title.slice(0,120) : "";
+    ["ignoredTerms", "personalWords", "ignoredRuleIds", "dismissedNotes"].forEach(function (key) { out[key] = Array.isArray(out[key]) ? out[key].filter(function (v) { return typeof v === "string"; }) : []; });
+    out.ruleOverrides = sanitizeOverrides(out.ruleOverrides);
+    out.createdAt = typeof out.createdAt === "string" ? out.createdAt : new Date().toISOString();
+    out.updatedAt = typeof out.updatedAt === "string" ? out.updatedAt : out.createdAt;
+    return out;
+  }
+  function articleId() {
+    if (window.crypto && window.crypto.randomUUID) return "article-" + window.crypto.randomUUID();
+    return "article-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+  function setWorkspaceBusy(busy) {
+    editor.readOnly = busy; $("docTitle").disabled = busy;
+    $("libraryPanel").setAttribute("aria-busy", busy ? "true" : "false");
+    ["btnNew", "btnOpen", "btnSample", "formatBold", "formatItalic", "formatHeading", "formatList", "btnClearData"].forEach(function (id) { $(id).disabled = busy; });
+  }
+  function renderLibrary() {
+    if (!libraryReady) return;
+    var box = $("libraryList"); box.textContent = "";
+    var query = $("librarySearch").value.toLowerCase(), trash = $("libraryTrash").checked;
+    var list = articles.filter(function (a) { return !!a.trashedAt === trash && (a.title || "Untitled").toLowerCase().includes(query); })
+      .sort(function (a,b) { return (b.updatedAt || "").localeCompare(a.updatedAt || ""); });
+    list.forEach(function (a) {
+      var li = document.createElement("li");
+      var open = document.createElement("button"); open.type = "button";
+      open.className="article-entry";open.setAttribute("aria-label","Open "+(a.title||"Untitled"));
+      var label=document.createElement("strong");label.textContent=a.title||"Untitled";open.appendChild(label);open.disabled=!!a.trashedAt;
+      open.setAttribute("aria-current", a.id === state.id ? "true" : "false");
+      open.addEventListener("click", function () { switchArticle(a.id); }); li.appendChild(open);
+      var date = document.createElement("span"); date.className = "muted";
+      var parsed = new Date(a.updatedAt); date.textContent = " · " + (isNaN(parsed.getTime()) ? "Unknown date" : parsed.toLocaleString()); open.appendChild(date);
+      var menu=document.createElement("details");menu.className="article-menu";
+      var summary=document.createElement("summary");summary.textContent="Actions";summary.setAttribute("aria-label","Actions for "+(a.title||"Untitled"));menu.appendChild(summary);li.appendChild(menu);
+      if (!a.trashedAt) {
+        var rename = document.createElement("button"); rename.type = "button"; rename.textContent = "Rename";
+        rename.setAttribute("aria-label", "Rename " + (a.title || "Untitled"));
+        rename.addEventListener("click", async function () {
+          if (transitioning) return;
+          var title = window.prompt("Article title", a.title || ""); if (title === null) return;
+          transitioning = true; setWorkspaceBusy(true);
+          try {
+          if (!await leaveArticle()) return;
+          var next = Object.assign({}, articles.find(function (item) { return item.id === a.id; }), { title: title.slice(0,120), updatedAt: new Date().toISOString() });
+          if (!await saveLibraryArticle(next)) return;
+          if (state.id === next.id) { state.title = next.title; $("docTitle").value = next.title; }
+          renderLibrary();
+          } finally { transitioning = false; setWorkspaceBusy(false); }
+        }); menu.appendChild(rename);
+      }
+      var toggle = document.createElement("button"); toggle.type = "button"; toggle.textContent = a.trashedAt ? "Restore" : "Move to trash";
+      toggle.setAttribute("aria-label", toggle.textContent + ": " + (a.title || "Untitled"));
+      toggle.addEventListener("click", async function () {
+        if (transitioning) return;
+        transitioning = true; setWorkspaceBusy(true);
+        try {
+        if (!await leaveArticle()) return;
+        var next = Object.assign({}, articles.find(function (item) { return item.id === a.id; }), { trashedAt: a.trashedAt ? null : new Date().toISOString(), updatedAt: new Date().toISOString() });
+        if (!await saveLibraryArticle(next)) return;
+        if (next.trashedAt && state.id === next.id) {
+          var other = articles.find(function (item) { return !item.trashedAt; });
+          state = other ? JSON.parse(JSON.stringify(other)) : freshDoc();
+          loadDocIntoUI(); setReview("write"); runAnalysis();
+        }
+        $("libraryStatus").textContent = next.trashedAt ? "Article moved to trash. Restore it from Show trash." : "Article restored.";
+        renderLibrary(); $("libraryTrash").focus();
+        } finally { transitioning = false; setWorkspaceBusy(false); }
+      }); menu.appendChild(toggle); box.appendChild(li);
+    });
+    if (!list.length) { var empty = document.createElement("li"); empty.textContent = trash ? "Trash is empty." : "No matching articles. Create one to start writing."; box.appendChild(empty); }
+  }
+  async function saveLibraryArticle(doc) {
+    if (!libraryReady || loadFailed) return false;
+    if (prefs.privateSession) { $("libraryStatus").textContent = "Leave private session before changing the saved library."; return false; }
+    var payload = JSON.parse(JSON.stringify(doc));
+    var job = saveQueue.then(function () { return tauri().saveDoc({ doc: payload, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function () {
+      var index = articles.findIndex(function (a) { return a.id === payload.id; });
+      if (index < 0) articles.push(payload); else articles[index] = payload;
+      return true;
+    }, function () { $("libraryStatus").textContent = "Saving failed. Existing articles have been kept; export your current writing."; return false; });
+    saveQueue = job.then(function () {});
+    return job;
+  }
+  async function leaveArticle() {
+    rememberWorkspace();clearTimeout(saveTimer);await saveQueue;if(!dirty) return true;
+    if(prefs.autosave && !prefs.privateSession && await store.save()){
+      if(!dirty) return true;copyNote.textContent="The article changed while saving. Stay here until the latest changes are saved.";return false;
+    }
+    var choice=await chooseLeave(prefs.privateSession?"This private writing has not been saved. Export it from More before discarding if you want a copy.":"Your latest changes have not been saved. You can keep working, save, or discard this working copy.");
+    if(choice==="save") {var enabled=prefs.autosave;prefs.autosave=true;var saved=await store.save();prefs.autosave=enabled;schedulePrefs();return !!saved && !dirty;}
+    if(choice==="discard"){dirty=false;return true;}return false;
+  }
+  async function switchArticle(id) {
+    if (transitioning || id === state.id) return;
+    transitioning = true; setWorkspaceBusy(true);
+    try {
+      if (!await leaveArticle()) return;
+      var next = articles.find(function (a) { return a.id === id && !a.trashedAt; });
+      if (!next) return;
+      state = JSON.parse(JSON.stringify(next)); loadDocIntoUI(); setReview("write"); restoreWorkspace(); runAnalysis(); closePanel("workspaceDialog"); if(previewOpen) $("readingPreview").focus(); else editor.focus();
+      srStatus.textContent = "Opened " + (state.title || "Untitled");
+    } finally { transitioning = false; setWorkspaceBusy(false); }
+  }
+  async function newArticle() {
+    if (transitioning || !libraryReady) return;
+    transitioning = true; setWorkspaceBusy(true);
+    try {
+      if (!await leaveArticle()) return;
+      var next = freshDoc();
+      if (!prefs.privateSession && !await saveLibraryArticle(next)) return;
+      state = next; loadDocIntoUI(); setReview("write"); restoreWorkspace(); runAnalysis(); renderLibrary(); closePanel("workspaceDialog"); $("docTitle").focus();
+    } finally { transitioning = false; setWorkspaceBusy(false); }
+  }
+  $("librarySearch").addEventListener("input", renderLibrary);
+  $("libraryTrash").addEventListener("change", renderLibrary);
+  $("libraryNew").addEventListener("click", newArticle);
+  $("libraryBackup").addEventListener("click", async function () {
+    if (!await leaveArticle()) return;
+    await saveQueue;
+    var data = JSON.stringify({ app: "blunted-library", version: 1, exportedAt: new Date().toISOString(), articles: articles, settings: { prefs: prefs } }, null, 2);
+    try {
+      var ok = await tauri().saveFile("blunted-library.json", data);
+      $("libraryStatus").textContent = ok ? "Library backup saved, including trash and settings." : "Backup cancelled.";
+    } catch (e) { $("libraryStatus").textContent = "Backup failed. Your library is still on this device."; }
+  });
+  $("libraryRestore").addEventListener("click", function () { $("libraryPick").click(); });
+  $("libraryPick").addEventListener("change", function (e) {
+    var file = e.target.files && e.target.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var backup = JSON.parse(String(reader.result)); Engine.validateLibraryBackup(backup);
+        pendingRestore = backup; $("restoreChoices").hidden = false;
+        var conflicts = backup.articles.filter(function (a) { return articles.some(function (b) { return a.id === b.id; }); }).length;
+        $("restoreSummary").textContent = backup.articles.length + " articles, including trash. " + conflicts + " existing IDs. Settings are included; choose whether to restore them.";
+        $("restoreConflict").focus();
+      } catch (err) { $("libraryStatus").textContent = err.message || "Could not read this backup. Nothing changed."; }
+    };
+    reader.onerror = function () { $("libraryStatus").textContent = "Could not read the backup. Nothing changed."; };
+    reader.readAsText(file); e.target.value = "";
+  });
+  $("restoreCancel").addEventListener("click", function () { pendingRestore = null; $("restoreChoices").hidden = true; $("libraryRestore").focus(); });
+  $("restoreConfirm").addEventListener("click", async function () {
+    if (!pendingRestore || transitioning) return;
+    transitioning = true; setWorkspaceBusy(true); $("restoreConfirm").disabled = true;
+    var count = 0;
+    try {
+      if (!await leaveArticle()) return;
+      for (var incoming of pendingRestore.articles) {
+        var doc = cleanArticle(JSON.parse(JSON.stringify(incoming)));
+        if (articles.some(function (a) { return a.id === doc.id; })) {
+          if ($("restoreConflict").value === "skip") continue;
+          doc.id = articleId(); doc.title += " (imported copy)";
+        }
+        if (!await saveLibraryArticle(doc)) { $("libraryStatus").textContent = "Import stopped after " + count + " articles because saving failed. Originals remain intact. Retry with Keep existing to skip completed imports."; return; }
+        count++;
+      }
+      var restoredSettings = false;
+      if ($("restoreSettings").checked && pendingRestore.settings && pendingRestore.settings.prefs) {
+        var nextPrefs = sanitizePrefs(pendingRestore.settings.prefs);
+        try { await tauri().savePrefs(nextPrefs); prefs = nextPrefs; applyPrefs(); setReview(prefs.review); restoredSettings = true; }
+        catch (e) { $("libraryStatus").textContent = "Articles imported, but preferences could not be saved. Current preferences were kept."; renderLibrary(); return; }
+      }
+      pendingRestore = null; $("restoreChoices").hidden = true;
+      $("libraryStatus").textContent = "Imported " + count + " articles. Existing articles were kept. " + (restoredSettings ? "Writing preferences restored." : "Current preferences retained.");
+      renderLibrary(); $("libraryRestore").focus();
+    } finally { transitioning = false; setWorkspaceBusy(false); $("restoreConfirm").disabled = false; }
+  });
+  function renderOutline(report) {
+    if (!report) return;
+    var box = $("articleOutline"); box.textContent = ""; box.setAttribute("aria-busy","false");
+    report.headings.forEach(function (h) {
+      var b = document.createElement("button"); b.type = "button"; b.textContent = h.text;
+      b.style.marginInlineStart = ((h.level - 1) * 12) + "px";
+      b.addEventListener("click", function () { closePanel("workspaceDialog"); if(previewOpen){scrollReadingTo(h.from);$("readingPreview").focus();}else{editor.focus();editor.setSelectionRange(h.from,h.to);scrollToOffset(h.from);}rememberWorkspace(); }); box.appendChild(b);
+    });
+    if (!report.headings.length) box.textContent = "Your headings will appear here.";
+    var sections = $("sectionLengths"); sections.textContent = "";
+    report.sections.forEach(function (section) { var p = document.createElement("p"); p.textContent = section.title + " · " + section.words + " words"; sections.appendChild(p); });
+  }
+  // Preview renders known local markup only. Link inspection never requests a URL.
+  function appendInline(parent,text) {
+    var pattern=/(!?\[([^\]\n]+)\]\(([^\n)]*)\)|`([^`\n]+)`|\*\*([^*\n]+)\*\*|\*([^*\n]+)\*)/g,last=0,m;
+    while((m=pattern.exec(text))){
+      parent.appendChild(document.createTextNode(text.slice(last,m.index)));
+      var node;
+      if(m[2]){
+        if(m[0][0]==="!"){node=document.createElement("span");node.className="image-placeholder";node.textContent="Image omitted: "+m[2]+" ("+m[3]+")";}
+        else {node=document.createElement("details");node.className="source-link";var summary=document.createElement("summary");summary.textContent=m[2];summary.setAttribute("aria-label",m[2]+" — inspect link destination");node.appendChild(summary);var destination=document.createElement("span");destination.textContent=m[3]||"No destination";node.appendChild(destination);}
+      } else {node=document.createElement(m[4]?"code":m[5]?"strong":"em");node.textContent=m[4]||m[5]||m[6];}
+      parent.appendChild(node);last=pattern.lastIndex;
+    }parent.appendChild(document.createTextNode(text.slice(last)));
+  }
+  function renderReading(target){
+    target.textContent="";var blocks=Engine.articleBlocks?Engine.articleBlocks(editor.value):[];
+    if(state.title && !(blocks[0] && blocks[0].type==="heading" && blocks[0].level===1 && blocks[0].text===state.title)){var title=document.createElement("h1");title.textContent=state.title;title.dataset.from="0";target.appendChild(title);}
+    var list=null,listType=null,expected=null;
+    blocks.forEach(function(b){
+      var node;
+      if(b.type==="list" || b.type==="ordered"){
+        if(!list || listType!==b.type){list=document.createElement(b.type==="list"?"ul":"ol");listType=b.type;expected=b.number;if(b.type==="ordered") list.setAttribute("start",String(b.number||1));target.appendChild(list);}
+        node=document.createElement("li");if(b.type==="ordered" && b.number!==expected) node.setAttribute("value",String(b.number));expected=(b.number||1)+1;
+        node.dataset.from=String(b.from);node.dataset.to=String(b.to);appendInline(node,b.text);list.appendChild(node);return;
+      }
+      list=null;node=document.createElement(b.type==="heading"?"h"+b.level:b.type==="quote"?"blockquote":b.type==="code"?"pre":"p");node.dataset.from=String(b.from);node.dataset.to=String(b.to);
+      if(b.type==="code") node.textContent=b.text;else appendInline(node,b.text);target.appendChild(node);
+    });
+    if(!blocks.length && editor.value) target.appendChild(document.createTextNode(editor.value));
+  }
+  function scrollReadingTo(off){
+    var nodes=$("readingPreview").querySelectorAll("[data-from]");var target=null;
+    for(var i=0;i<nodes.length;i++){if(Number(nodes[i].dataset.from)<=off) target=nodes[i];else break;}
+    if(target && target.scrollIntoView) target.scrollIntoView({block:"start"});
+  }
+  function closePreview(){
+    if(!previewOpen) return;var anchor=readingAnchor();previewOpen=false;$("readingPreview").hidden=true;editorWrap.hidden=false;document.body.dataset.preview="false";
+    $("reviewInspector").hidden=prefs.review!=="review";$("viewPreview").setAttribute("aria-pressed","false");$("viewWrite").setAttribute("aria-pressed",prefs.review==="write"?"true":"false");$("viewReview").setAttribute("aria-pressed",prefs.review==="review"?"true":"false");
+    if(anchor!==readEntryAnchor){editor.setSelectionRange(anchor,anchor);scrollToOffset(anchor);}
+  }
+  var readEntryAnchor=0;
+  $("viewPreview").addEventListener("click",function(){
+    if(previewOpen) return;rememberWorkspace();readEntryAnchor=editor.selectionStart||0;renderReading($("readingPreview"));previewOpen=true;$("readingPreview").hidden=false;editorWrap.hidden=true;document.body.dataset.preview="true";$("reviewInspector").hidden=true;
+    $("viewPreview").setAttribute("aria-pressed","true");$("viewWrite").setAttribute("aria-pressed","false");$("viewReview").setAttribute("aria-pressed","false");$("moreMenu").open=false;$("readingPreview").focus();if(readEntryAnchor) scrollReadingTo(readEntryAnchor);readEntryAnchor=readingAnchor();rememberWorkspace();
+  });
+
+  function formatMarkdown(kind) {
+    $("moreMenu").open=false;
+    if (transitioning) return;
+    closePreview();
+    var from = editor.selectionStart, to = editor.selectionEnd, text = editor.value.slice(from,to), replacement;
+    if (kind === "bold" || kind === "italic") { var mark = kind === "bold" ? "**" : "*"; replacement = mark + (text || "text") + mark; }
+    else {
+      from = editor.value.lastIndexOf("\n", from - 1) + 1;
+      text = editor.value.slice(from,to);
+      replacement = text.split("\n").map(function (line) { return (kind === "heading" ? "## " : "- ") + line; }).join("\n");
+    }
+    editor.focus(); editor.setSelectionRange(from,to);
+    var ok = false; try { ok = document.execCommand("insertText", false, replacement); } catch (e) {}
+    if (!ok) editor.setRangeText(replacement, from,to,"end");
+    onTextInput();
+  }
+  ["Bold", "Italic", "Heading", "List"].forEach(function (kind) { $("format" + kind).addEventListener("click", function () { formatMarkdown(kind.toLowerCase()); }); });
+  document.addEventListener("keydown", function (e) {
+    if (document.activeElement !== editor || !(e.metaKey || e.ctrlKey) || e.altKey) return;
+    if (e.key.toLowerCase() === "b" || e.key.toLowerCase() === "i") { e.preventDefault(); formatMarkdown(e.key.toLowerCase() === "b" ? "bold" : "italic"); }
+  });
+  window.BluntedWorkspace = {
+    prepareClose: async function () {
+      if (transitioning) { copyNote.textContent = "Please wait for the current library operation to finish."; return false; }
+      if (await leaveArticle()) { clearTimeout(prefsTimer); if(tauri() && tauri().savePrefs && !prefs.privateSession) { await saveQueue; try{await tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}catch(e){} } return true; }
+      return false;
+    }
+  };
+  window.addEventListener("beforeunload", function (e) {
+    if (dirty && !prefs.privateSession) { store.save(); if (dirty) { e.preventDefault(); e.returnValue = ""; } }
+  });
+
+  ["btnDownload","btnDownloadTxt","btnCopy","btnPrint","btnNew","btnOpen","btnSample"].forEach(function(id){$(id).addEventListener("click",function(){$("moreMenu").open=false;});});
+  document.addEventListener("click",function(e){if(e.target.closest && !e.target.closest("#moreMenu")) $("moreMenu").open=false;});
+  // Panels use native dialog focus containment; their opener receives focus on close.
+  function openPanel(id, focusId) {
+    panelOpener=document.activeElement;panelOpeners[id]=panelOpener;$("moreMenu").open=false;
+    ["workspaceDialog","preferencesDialog","metricsDialog","reviewOptionsDialog"].forEach(function(other){if(id!=="leaveDialog" && other!==id && !$(other).hidden){if($(other).close) $(other).close();$(other).hidden=true;}});
+    var panel=$(id);panel.hidden=false;if(panel.showModal && !panel.open) panel.showModal();
+    if(focusId) $(focusId).focus();
+  }
+  function closePanel(id) {var panel=$(id);if(panel.close && panel.open) panel.close();panel.hidden=true;var opener=panelOpeners[id];if(opener && opener.focus && (!opener.getClientRects || opener.getClientRects().length)) opener.focus();else if(!initializing) $("viewWrite").focus();}
+  function showNavigation(tab) {
+    $("libraryPanel").hidden=tab!=="articles" || !libraryReady;$("portableLibrary").hidden=tab!=="articles" || libraryReady;
+    $("outlinePanel").hidden=tab!=="outline";
+    $("navArticles").setAttribute("aria-pressed",tab==="articles"?"true":"false");$("navOutline").setAttribute("aria-pressed",tab==="outline"?"true":"false");
+    $("workspaceHeading").textContent=tab==="outline"?"Article outline":"Your articles";
+    if(tab==="articles") renderLibrary();
+  }
+  $("openArticles").addEventListener("click",function(){showNavigation("articles");openPanel("workspaceDialog",libraryReady?"librarySearch":"navOutline");});
+  $("openOutline").addEventListener("click",function(){showNavigation("outline");openPanel("workspaceDialog","navOutline");});
+  $("navArticles").addEventListener("click",function(){showNavigation("articles");});$("navOutline").addEventListener("click",function(){showNavigation("outline");});
+  $("openPreferences").addEventListener("click",function(){openPanel("preferencesDialog","themeSel");});
+  $("openReviewMetrics").addEventListener("click",function(){openPanel("metricsDialog");});
+  $("categoryFilter").addEventListener("change",function(){activeCatFilter=$("categoryFilter").value;activeNote=null;if(lastAnalysis){renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis);}});
+  $("openRules").addEventListener("click",function(){openPanel("preferencesDialog","profileSel");});
+  $("openMetrics").addEventListener("click",function(){openPanel("metricsDialog");});
+  $("reviewOptions").addEventListener("click",function(){openPanel("reviewOptionsDialog");});
+  document.querySelectorAll("[data-close]").forEach(function(button){button.addEventListener("click",function(){closePanel(button.dataset.close);});});
+  ["workspaceDialog","preferencesDialog","metricsDialog","reviewOptionsDialog"].forEach(function(id){$(id).addEventListener("cancel",function(e){e.preventDefault();closePanel(id);});});
+  $("leaveDialog").addEventListener("cancel",function(e){e.preventDefault();finishLeave("keep");});
+  function finishLeave(choice){ if(!leaveResolve) return; var resolve=leaveResolve;leaveResolve=null;closePanel("leaveDialog");resolve(choice); }
+  $("leaveKeep").addEventListener("click",function(){finishLeave("keep");});$("leaveDiscard").addEventListener("click",function(){finishLeave("discard");});$("leaveSave").addEventListener("click",function(){finishLeave("save");});
+  function chooseLeave(message){
+    $("leaveMessage").textContent=message;$("leaveSave").hidden=prefs.privateSession || !libraryReady;
+    return new Promise(function(resolve){leaveResolve=resolve;openPanel("leaveDialog","leaveKeep");});
+  }
+  $("allNotes").addEventListener("click",function(){findingsLimit=50;issuesEl.hidden=true;$("findingsView").hidden=false;renderFindings();$("findingGroup").focus();});
+  $("closeFindings").addEventListener("click",function(){closeFindings();issuesEl.focus();});
+  $("findingGroup").value="remaining";
+  $("findingGroup").addEventListener("change",function(){findingsLimit=50;activeNote=null;if(lastAnalysis){renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis);}});
+  $("loadMoreNotes").addEventListener("click",function(){var first=findingsLimit;findingsLimit+=50;renderFindings();var next=$("finding-"+first);if(next) next.focus();});
+  $("reviewerSel").addEventListener("change",function(){reviewer=$("reviewerSel").value;activeCatFilter="all";$("categoryFilter").value="all";activeNote=null;$("findingGroup").value="remaining";closeFindings();if(lastAnalysis){renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis);}rememberWorkspace();});
+  $("resetDismissals").addEventListener("click",function(){if(!window.confirm("Reset dismissal decisions for this article? All dismissed notes will return.")) return;state.dismissedNotes=[];dirty=true;scheduleSave();if(lastAnalysis) renderIssues(lastAnalysis);srStatus.textContent="Dismissal decisions reset.";});
+
+  // UI state is kept in preferences, separately from prose and modification dates.
+  var initializing=true;
+  function sanitizeWorkspace(value) {
+    var out={activeId:"",positions:{}};if(!value || typeof value!=="object") return out;
+    if(typeof value.activeId==="string" && /^[a-zA-Z0-9-]{1,100}$/.test(value.activeId)) out.activeId=value.activeId;
+    if(value.positions && typeof value.positions==="object") Object.keys(value.positions).slice(-1000).forEach(function(id){
+      if(!/^[a-zA-Z0-9-]{1,100}$/.test(id)) return;var p=value.positions[id];if(!p || typeof p!=="object") return;
+      var next={};["start","end","scroll","page","anchor","reviewFrom"].forEach(function(k){if(Number.isFinite(p[k]) && p[k]>=0) next[k]=Math.min(p[k],100000000);});
+      next.reading=p.reading===true;next.reviewer=p.reviewer==="structure"?"structure":"clarity";out.positions[id]=next;
+    });return out;
+  }
+  function schedulePrefs() {
+    if(initializing || loadFailed || prefs.privateSession) return;
+    clearTimeout(prefsTimer);prefsTimer=setTimeout(function(){
+      if(tauri() && tauri().savePrefs){ var job=saveQueue.then(function(){return tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}).catch(function(){copyNote.textContent="Preferences could not be saved. Your article is kept separately.";});saveQueue=job; }
+      else {try{localStorage.setItem(LS_PREFS,JSON.stringify(prefs));}catch(e){copyNote.textContent="Preferences could not be saved.";}}
+    },200);
+  }
+  function readingAnchor(){
+    var nodes=$("readingPreview").querySelectorAll("[data-from]");
+    for(var i=0;i<nodes.length;i++){if(nodes[i].getBoundingClientRect().bottom>88) return Number(nodes[i].dataset.from);}
+    return editor.selectionStart || 0;
+  }
+  function rememberWorkspace(){
+    if(initializing || !state || prefs.privateSession) return;
+    prefs.workspace=sanitizeWorkspace(prefs.workspace);prefs.workspace.activeId=state.id;
+    prefs.workspace.positions[state.id]={start:editor.selectionStart||0,end:editor.selectionEnd||0,scroll:editor.scrollTop||0,page:window.scrollY||0,anchor:previewOpen?readingAnchor():editor.selectionStart||0,reading:previewOpen,reviewer:reviewer,reviewFrom:activeNote?activeNote.from:editor.selectionStart||0};schedulePrefs();
+  }
+  function restoreWorkspace(){
+    var p=prefs.workspace && prefs.workspace.positions[state.id];
+    if(p){editor.setSelectionRange(Math.min(p.start||0,editor.value.length),Math.min(p.end||p.start||0,editor.value.length));editor.scrollTop=p.scroll||0;reviewer=p.reviewer||"clarity";$("reviewerSel").value=reviewer;activeNote={from:p.reviewFrom||p.start||0,ruleId:"",exactText:""};if(window.scrollTo) window.scrollTo(0,p.page||0);}
+    else {editor.setSelectionRange(0,0);editor.scrollTop=0;reviewer="clarity";$("reviewerSel").value=reviewer;activeNote=null;}
+    prefs.workspace=sanitizeWorkspace(prefs.workspace);prefs.workspace.activeId=state.id;syncScroll();
+    if(p && p.reading){editor.setSelectionRange(Math.min(p.anchor||0,editor.value.length),Math.min(p.anchor||0,editor.value.length));$("viewPreview").click();scrollReadingTo(p.anchor||0);}
+  }
+  ["select","keyup","mouseup","scroll","blur"].forEach(function(type){editor.addEventListener(type,function(){clearTimeout(workspaceTimer);workspaceTimer=setTimeout(rememberWorkspace,100);});});
+  window.addEventListener("scroll",function(){clearTimeout(workspaceTimer);workspaceTimer=setTimeout(rememberWorkspace,150);});
+  window.addEventListener("resize",function(){if(prefs.review==="review" && activeNote && !previewOpen) scrollToOffset(activeNote.from);});
+
   // ---------- init ----------
   function init() {
+    editor.disabled = true; $("docTitle").disabled = true; $("btnNew").disabled = true; $("btnOpen").disabled = true;
     var loaded = null;
     try { loaded = store.load(); } catch (e) { loaded = null; }
     // Tauri loadDoc is async (IPC promise); web load is sync.
     if (loaded && typeof loaded.then === "function") {
-      loaded.then(function (v) { initWith(v); }, function () { initWith(null); });
+      loaded.then(function (v) { initWith(v); }, function () { loadFailed = true; initWith(null); copyNote.textContent = "Library could not be loaded. Original files are preserved; restart to retry. Export any new writing."; setSaveState("Library unavailable — changes will not be saved"); });
     } else {
       initWith(loaded);
     }
   }
 
   function initWith(loaded) {
+    if (tauri() && tauri().library && loaded && Array.isArray(loaded.articles)) {
+      articles = loaded.articles.map(cleanArticle);
+      libraryReady = true;
+      var wanted=loaded.prefs && loaded.prefs.workspace && loaded.prefs.workspace.activeId;
+      var active=articles.find(function(a){return a.id===wanted && !a.trashedAt;}) || articles.filter(function(a){return !a.trashedAt;}).sort(function(a,b){return b.updatedAt.localeCompare(a.updatedAt);})[0];
+      loaded.doc = active || freshDoc();
+      $("libraryPanel").hidden = false;
+      $("portableLibrary").hidden=true;
+      $("saveLocation").textContent=loaded.location ? "Saved in: "+loaded.location : "Saved on this device in the selected library folder.";
+      renderLibrary();
+    }
     if (loaded && loaded.needs_folder && tauri() && tauri().chooseFolder) {
       tauri().chooseFolder().then(function (path) {
         initWith(Object.assign({}, loaded, { needs_folder: false }));
@@ -1411,6 +1548,7 @@
       });
       return;
     }
+    editor.disabled = false; $("docTitle").disabled = false; $("btnNew").disabled = false; $("btnOpen").disabled = false;
     var startupFailed = false;
     function startupStep(fn) {
       try { fn(); }
@@ -1426,7 +1564,7 @@
     }
     if (loaded && loaded.doc && typeof loaded.doc.body === "string") {
       startupStep(function () {
-        state = Object.assign(freshDoc(), loaded.doc);
+        state = cleanArticle(loaded.doc);
         state.modeId = normalizeMode(state.modeId);
         delete state.subject;
         if (!state.ruleOverrides || typeof state.ruleOverrides !== "object" || Array.isArray(state.ruleOverrides)) state.ruleOverrides = {};
@@ -1442,7 +1580,7 @@
     startupStep(function () {
       if (!document.body.dataset.font) document.body.dataset.font = prefs.fontFamily || "serif";
     });
-    startupStep(function () { setReview(prefs.review === "write" ? "write" : "review"); });
+    startupStep(function () { setReview(prefs.review === "review" ? "review" : "write"); });
     startupStep(function () {
       editor.value = state.body || "";
       $("docTitle").value = state.title || "";
@@ -1465,7 +1603,10 @@
       copyNote.textContent = storageMsg || "Saved data unreadable. Download a copy before writing.";
     }
     else if (prefs.privateSession) setSaveState("Private session — not saved");
-    else setSaveState("—");
+    else setSaveState(loaded && loaded.doc ? "Saved" : "Ready");
+    startupStep(restoreWorkspace);
+    initializing=false;
+    schedulePrefs();
     startupStep(syncScroll);
     startupStep(runAnalysis);
     if (startupFailed) {
@@ -1476,7 +1617,7 @@
   // Prefs from storage are untrusted input: keep known keys, sane ranges.
   function sanitizePrefs(p) {
     var out = {};
-    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "autosave", "includeQuotes", "includeHeader", "activeProfile", "profiles"];
+    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "autosave", "includeQuotes", "includeHeader", "exportHeadline", "workspace", "activeProfile", "profiles"];
     for (var i = 0; i < allow.length; i++) {
       if (p[allow[i]] !== undefined) out[allow[i]] = p[allow[i]];
     }
@@ -1486,7 +1627,7 @@
     if (!Number.isFinite(out.lineHeight) || out.lineHeight < 1.2 || out.lineHeight > 2.5) delete out.lineHeight;
     if (!Number.isFinite(out.wpm) || out.wpm < 100 || out.wpm > 400) delete out.wpm;
     if (out.review !== "write" && out.review !== "review") delete out.review;
-    ["autosave", "privateSession", "includeQuotes", "includeHeader"].forEach(function (k) { if (typeof out[k] !== "boolean") delete out[k]; });
+    ["autosave", "privateSession", "includeQuotes", "includeHeader", "exportHeadline"].forEach(function (k) { if (typeof out[k] !== "boolean") delete out[k]; });
     if (out.activeProfile !== "clear" && out.activeProfile !== "essay") out.activeProfile = "clear";
     if (!out.profiles || typeof out.profiles !== "object" || Array.isArray(out.profiles)) out.profiles = {};
     ["clear", "essay"].forEach(function (id) {
@@ -1504,6 +1645,7 @@
       if (p.yellowWords && p.redWords && p.redWords < p.yellowWords) { delete p.yellowWords; delete p.redWords; }
       if (p.yellowGrade && p.redGrade && p.redGrade < p.yellowGrade) { delete p.yellowGrade; delete p.redGrade; }
     });
+    out.workspace = sanitizeWorkspace(out.workspace || prefs.workspace);
     return Object.assign({}, prefs, out);
   }
 

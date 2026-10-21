@@ -1,7 +1,7 @@
 [package]
 name = "blunted"
-version = "0.1.6"
-description = "blunted — offline writing clarity with editable Clear and Essay profiles (unsigned development preview)"
+version = "1.0.0"
+description = "blunted — offline article writing with Clear and Essay profiles"
 edition = "2021"
 rust-version = "1.77"
 

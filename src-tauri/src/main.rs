@@ -1,10 +1,14 @@
 // blunted desktop shell — Tauri v2, macOS + Windows.
 // No shell execution, no HTTP, no updater, no remote navigation.
-// Drafts persist atomically under the app-data directory; arbitrary paths are
-// never written except through the system save dialog (user-chosen destination).
+// Articles persist atomically in app storage or the user-selected library folder.
+// Arbitrary export destinations require the system save dialog.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod library;
+
 use serde::{Deserialize, Serialize};
+static ALLOW_EXIT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static LIBRARY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 use std::fs;
 use std::path::PathBuf;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -19,6 +23,7 @@ struct Persisted {
     #[serde(default)]
     recovered: bool,
     needs_folder: bool,
+    location: String,
 }
 
 fn default_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -62,16 +67,6 @@ fn atomic_write(path: &PathBuf, content: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn valid_doc(v: Option<serde_json::Value>) -> Option<serde_json::Value> {
-    match v {
-        Some(serde_json::Value::Object(ref m)) => match m.get("body") {
-            Some(serde_json::Value::String(_)) => v,
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
 #[tauri::command]
 fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
     let configured = configured_dir(&app)?;
@@ -81,50 +76,9 @@ fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
         let text = fs::read_to_string(dir.join(name)).ok()?;
         serde_json::from_str(&text).ok() // corrupt JSON -> None, never a crash
     };
-    // Main slot first; fall back through the backup rotation (newest first).
-    // A backup is only useful if it can restore.
-    let current_name =
-        fs::read_to_string(dir.join("current-draft.txt")).unwrap_or_else(|_| "doc.json".into());
-    let candidate = current_name.trim();
-    let current_name = if PathBuf::from(candidate)
-        .file_name()
-        .and_then(|v| v.to_str())
-        == Some(candidate)
-        && candidate.ends_with(".json")
-    {
-        candidate.to_string()
-    } else {
-        "doc.json".into()
-    };
-    let stem = current_name.strip_suffix(".json").unwrap_or(&current_name);
-    let mut doc = valid_doc(read(&current_name));
-    let mut recovered = false;
-    if doc.is_none() {
-        let backups = [
-            format!("{}.backup.1.json", stem),
-            format!("{}.backup.2.json", stem),
-            format!("{}.backup.3.json", stem),
-        ];
-        for name in backups {
-            doc = valid_doc(read(&name));
-            if doc.is_some() {
-                recovered = true;
-                break;
-            }
-        }
-    }
-    // Legacy single-slot backup from v1 installs.
-    if doc.is_none() {
-        doc = valid_doc(read("doc.backup.json"));
-        if doc.is_some() {
-            recovered = true;
-        }
-    }
+    let (mut doc, mut recovered) = library::read_legacy(&dir);
     if doc.is_none() && configured.is_some() {
-        let old = fs::read_to_string(legacy.join("doc.json"))
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok());
-        doc = valid_doc(old);
+        (doc, recovered) = library::read_legacy(&legacy);
     }
     Ok(Persisted {
         doc,
@@ -139,11 +93,12 @@ fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
         }),
         recovered,
         needs_folder: configured.is_none(),
+        location: dir.to_string_lossy().into_owned(),
     })
 }
 
 #[tauri::command]
-fn blunted_choose_folder(app: AppHandle) -> Result<Option<String>, String> {
+async fn blunted_choose_folder(app: AppHandle) -> Result<Option<String>, String> {
     let selected = app
         .dialog()
         .file()
@@ -163,125 +118,55 @@ fn blunted_choose_folder(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-fn blunted_save(
+async fn blunted_library_load(app: AppHandle) -> Result<library::Library, String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
+    let legacy = blunted_load(app.clone())?;
+    library::load(&data_dir(&app)?, legacy.doc)
+}
+
+#[tauri::command]
+async fn blunted_library_save(
     app: AppHandle,
     doc: serde_json::Value,
     prefs: serde_json::Value,
 ) -> Result<(), String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
     let dir = data_dir(&app)?;
-    let body = doc.get("body").and_then(|v| v.as_str()).unwrap_or("");
-    let title = body
-        .lines()
-        .find(|line| !line.trim().is_empty())
-        .unwrap_or("untitled");
-    let mut stem: String = title
-        .chars()
-        .filter(|c| {
-            !matches!(
-                c,
-                '\\' | '/'
-                    | ':'
-                    | '*'
-                    | '?'
-                    | '"'
-                    | '<'
-                    | '>'
-                    | '|'
-                    | '#'
-                    | '%'
-                    | '&'
-                    | '{'
-                    | '}'
-                    | '$'
-                    | '!'
-                    | '@'
-                    | '+'
-                    | '`'
-                    | '='
-            )
-        })
-        .take(48)
-        .collect();
-    stem = stem.trim().trim_end_matches(['.', ' ']).to_string();
-    if stem.is_empty() {
-        stem = "untitled".into();
-    }
-    if [
-        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
-        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
-    ]
-    .contains(&stem.to_lowercase().as_str())
-    {
-        stem.insert(0, '_');
-    }
-    let doc_name = format!("{}.json", stem);
-    let doc_path = dir.join(&doc_name);
-    let old_name =
-        fs::read_to_string(dir.join("current-draft.txt")).unwrap_or_else(|_| "doc.json".into());
-    let old_candidate = old_name.trim();
-    let old_name = if PathBuf::from(old_candidate)
-        .file_name()
-        .and_then(|v| v.to_str())
-        == Some(old_candidate)
-        && old_candidate.ends_with(".json")
-    {
-        old_candidate.to_string()
-    } else {
-        "doc.json".into()
-    };
-    let old_stem = old_name
-        .strip_suffix(".json")
-        .unwrap_or(&old_name)
-        .to_string();
-    if old_name != doc_name && dir.join(&old_name).exists() {
-        if doc_path.exists() {
-            let _ = fs::remove_file(&doc_path);
-        }
-        fs::rename(dir.join(&old_name), &doc_path).map_err(|e| e.to_string())?;
-        for n in 1..=3 {
-            let old_backup = dir.join(format!("{}.backup.{}.json", old_stem, n));
-            let new_backup = dir.join(format!("{}.backup.{}.json", stem, n));
-            if old_backup.exists() {
-                if new_backup.exists() {
-                    let _ = fs::remove_file(&new_backup);
-                }
-                let _ = fs::rename(old_backup, new_backup);
-            }
-        }
-    }
-    if doc_path.exists() {
-        // rotate last-good backups: .3 <- .2 <- .1 <- current doc
-        let _ = fs::remove_file(dir.join(format!("{}.backup.3.json", stem)));
-        let _ = fs::rename(
-            dir.join(format!("{}.backup.2.json", stem)),
-            dir.join(format!("{}.backup.3.json", stem)),
-        );
-        let _ = fs::rename(
-            dir.join(format!("{}.backup.1.json", stem)),
-            dir.join(format!("{}.backup.2.json", stem)),
-        );
-        let _ = fs::copy(&doc_path, dir.join(format!("{}.backup.1.json", stem)));
-    }
-    atomic_write(
-        &doc_path,
-        &serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?,
-    )?;
+    library::save(&dir, &doc)?;
     atomic_write(
         &dir.join("prefs.json"),
         &serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())?,
-    )?;
-    atomic_write(&dir.join("current-draft.txt"), &doc_name)?;
-    Ok(())
+    )
 }
 
 #[tauri::command]
-fn blunted_clear(app: AppHandle) -> Result<(), String> {
+async fn blunted_save_prefs(app: AppHandle, prefs: serde_json::Value) -> Result<(), String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
+    atomic_write(
+        &data_dir(&app)?.join("prefs.json"),
+        &serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())?,
+    )
+}
+
+#[tauri::command]
+fn blunted_close(app: AppHandle) {
+    ALLOW_EXIT.store(true, std::sync::atomic::Ordering::SeqCst);
+    app.exit(0);
+}
+
+#[tauri::command]
+async fn blunted_clear(app: AppHandle) -> Result<(), String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
     let mut dirs = vec![data_dir(&app)?];
     let legacy = default_dir(&app)?;
     if !dirs.contains(&legacy) {
         dirs.push(legacy);
     }
     for dir in dirs {
+        let articles = dir.join("articles");
+        if articles.exists() {
+            fs::remove_dir_all(articles).map_err(|e| e.to_string())?;
+        }
         if let Ok(name) = fs::read_to_string(dir.join("current-draft.txt")) {
             let candidate = name.trim();
             let name = if PathBuf::from(candidate)
@@ -322,7 +207,7 @@ fn blunted_clear(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn blunted_open_file(app: AppHandle) -> Result<Option<OpenFile>, String> {
+async fn blunted_open_file(app: AppHandle) -> Result<Option<OpenFile>, String> {
     let picked = app
         .dialog()
         .file()
@@ -351,7 +236,7 @@ struct OpenFile {
 }
 
 #[tauri::command]
-fn blunted_save_as(app: AppHandle, name: String, content: String) -> Result<bool, String> {
+async fn blunted_save_as(app: AppHandle, name: String, content: String) -> Result<bool, String> {
     let picked = app
         .dialog()
         .file()
@@ -435,6 +320,21 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         true,
         &[&PredefinedMenuItem::about(app, None, None)?],
     )?;
+    #[cfg(target_os = "macos")]
+    {
+        let application = Submenu::with_items(
+            app,
+            "blunted",
+            true,
+            &[
+                &PredefinedMenuItem::about(app, None, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
+        Menu::with_items(app, &[&application, &file, &edit, &view, &help])
+    }
+    #[cfg(not(target_os = "macos"))]
     Menu::with_items(app, &[&file, &edit, &view, &help])
 }
 
@@ -445,19 +345,36 @@ fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             blunted_load,
+            blunted_library_load,
+            blunted_library_save,
+            blunted_save_prefs,
+            blunted_close,
             blunted_choose_folder,
-            blunted_save,
             blunted_clear,
             blunted_open_file,
             blunted_save_as,
             blunted_copy
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("blunted-close", ());
+            }
+        })
         .menu(build_menu)
         .on_menu_event(|app, event| {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.emit("blunted-menu", event.id.as_ref());
             }
         })
-        .run(tauri::generate_context!())
-        .expect("blunted failed to start");
+        .build(tauri::generate_context!())
+        .expect("blunted failed to start")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if !ALLOW_EXIT.load(std::sync::atomic::Ordering::SeqCst) {
+                    api.prevent_exit();
+                    let _ = app.emit("blunted-close", ());
+                }
+            }
+        });
 }

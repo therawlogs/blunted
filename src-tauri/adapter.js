@@ -26,11 +26,23 @@
   }
 
   window.__BLUNTED_TAURI__ = {
-    loadDoc: function () { return core.invoke("blunted_load"); },
+    loadDoc: async function () {
+      var legacy = await core.invoke("blunted_load");
+      // Folder selection must finish before migrating into that folder.
+      if (legacy.needs_folder) {
+        await core.invoke("blunted_choose_folder");
+        legacy = await core.invoke("blunted_load");
+      }
+      var library = await core.invoke("blunted_library_load");
+      return { doc: null, prefs: legacy.prefs, articles: library.articles,
+        location: legacy.location, recovered: legacy.recovered || library.recovered.length > 0 };
+    },
+    library: true,
     chooseFolder: function () { return core.invoke("blunted_choose_folder"); },
     saveDoc: function (payload) {
-      return core.invoke("blunted_save", { doc: payload.doc, prefs: payload.prefs });
+      return core.invoke("blunted_library_save", { doc: payload.doc, prefs: payload.prefs });
     },
+    savePrefs: function (prefs) { return core.invoke("blunted_save_prefs", { prefs: prefs }); },
     clearAll: function () { return core.invoke("blunted_clear"); },
     copyText: function (text) { return core.invoke("blunted_copy", { text: text }); },
     saveFile: function (name, content) {
@@ -42,25 +54,8 @@
   function onMenu(id) {
     switch (id) {
       case "new": click("btnNew"); break;
-      case "open":
-        // Prefer the native dialog (returns name+content), fall back to picker.
-        core.invoke("blunted_open_file").then(function (f) {
-          if (!f) return;
-          var ta = document.getElementById("editor");
-          var title = document.getElementById("docTitle");
-          if (!ta) return;
-          if (ta.value && !window.confirm("Replace the current draft with " + f.name + "?")) return;
-          ta.value = f.content;
-          if (title) title.value = f.name.replace(/\.(txt|md|markdown)$/i, "");
-          ta.dispatchEvent(new Event("input", { bubbles: true }));
-        }, function () { click("btnOpen"); });
-        break;
-      case "save-as":
-        window.__BLUNTED_TAURI__.saveFile(docTitle(), editorValue()).then(function (ok) {
-          var note = document.getElementById("copyNote");
-          if (note) note.textContent = ok ? "Saved." : "Save cancelled.";
-        });
-        break;
+      case "open": click("btnOpen"); break;
+      case "save-as": click("btnDownload"); break;
       case "find": {
         // In-page find UI (same as Cmd/Ctrl+F). Falls back to editor focus
         // if the find bar is unavailable.
@@ -95,6 +90,9 @@
   }
 
   if (ev && ev.listen) {
+    ev.listen("blunted-close", async function () {
+      if (window.BluntedWorkspace && await window.BluntedWorkspace.prepareClose()) core.invoke("blunted_close");
+    });
     ev.listen("blunted-menu", function (e) { onMenu(e.payload); });
   }
 })();

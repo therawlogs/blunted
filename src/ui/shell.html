@@ -8,104 +8,83 @@
 <title>blunted — offline writing clarity</title>
 <!--BLUNTED:STYLES-->
 </head>
-<body data-review="review" data-theme="system">
-<a class="skip" href="#editor">Skip to editor</a>
-<a class="skip" href="#issues">Skip to notes</a>
-
+<body data-review="write" data-theme="system">
+<a class="skip" href="#editor">Skip to article</a>
+<a class="skip" href="#issues">Skip to review</a>
 <div class="page">
   <header class="masthead">
-    <span class="wordmark">blunted</span>
-    <div class="view-toggle" role="group" aria-label="Editor view">
-      <button type="button" id="viewWrite" aria-pressed="false">Write</button>
-      <span aria-hidden="true">·</span>
-      <button type="button" id="viewReview" aria-pressed="true">Review</button>
+    <div class="brand"><span class="wordmark">blunted</span><button id="openArticles" type="button" aria-haspopup="dialog">Articles</button></div>
+    <div class="header-actions">
+      <div class="view-toggle" role="group" aria-label="Article view">
+        <button id="viewWrite" type="button" aria-pressed="true">Write</button>
+        <button id="viewReview" type="button" aria-pressed="false">Review</button>
+        <button id="viewPreview" type="button" aria-pressed="false">Read</button>
+      </div>
+      <details id="moreMenu" class="more-menu"><summary>More</summary>
+        <div class="menu-content" role="group" aria-label="Article tools">
+          <button type="button" id="openOutline">Outline</button>
+          <details><summary>Format</summary><div class="menu-section">
+            <button id="formatBold" type="button">Bold · ⌘/Ctrl B</button><button id="formatItalic" type="button">Italic · ⌘/Ctrl I</button>
+            <button id="formatHeading" type="button">Heading</button><button id="formatList" type="button">List</button>
+          </div></details>
+          <details id="dlMenu"><summary>Export</summary><div class="menu-section">
+            <label class="check"><input id="optHeader" type="checkbox" checked> Include headline</label>
+            <button id="btnDownload" type="button">Markdown (.md)</button><button id="btnDownloadTxt" type="button">Plain text (.txt)</button>
+          </div></details>
+          <button id="btnCopy" type="button">Copy article</button><button id="btnPrint" type="button">Print</button>
+          <div class="menu-divider"></div><button id="btnNew" type="button">New article</button><button id="btnOpen" type="button">Import article…</button>
+          <button id="openPreferences" type="button">Preferences</button><button id="btnSample" type="button">Try a sample</button>
+        </div>
+      </details>
     </div>
   </header>
-
-  <div class="layout">
-    <main class="editor-col" aria-label="Editor">
-      <input type="text" id="docTitle" maxlength="120" autocomplete="off"
-        placeholder="Title" aria-label="Title (optional)">
-
-      <footer class="statusbar" aria-label="Document status">
-        <span id="gradeMain">—</span>
-        <span id="statusGrade" hidden>—</span>
-        <span id="statusWords">0 words</span>
-        <span id="statusSent"></span>
-        <span id="statusTime"></span>
-        <span id="statusSave" role="status">—</span>
-      </footer>
-      <p class="legend" id="legend">
-        <span class="lg"><span class="sw sw-y" aria-hidden="true"></span>lengthy</span>
-        <span class="lg"><span class="sw sw-r" aria-hidden="true"></span>long</span>
-        <span class="lg"><span class="sw sw-passive" aria-hidden="true"></span>passive</span>
-        <span class="lg"><span class="sw sw-adverb" aria-hidden="true"></span>adverb</span>
-        <span class="lg"><span class="sw sw-wordy" aria-hidden="true"></span>wordy</span>
-        <span class="lg"><span class="sw sw-simpler" aria-hidden="true"></span>simpler</span>
-        <span class="lg"><span class="sw sw-repeated" aria-hidden="true"></span>repeated</span>
-        <span class="lg">— a highlight means review, not wrong.</span>
-      </p>
-
-      <div class="findbar" id="findBar" hidden>
-        <input type="text" id="findInput" autocomplete="off"
-          placeholder="Find in document" aria-label="Find in document">
-        <span id="findCount" role="status"></span>
-        <button type="button" id="findPrev" aria-label="Previous match">←</button>
-        <button type="button" id="findNext" aria-label="Next match">→</button>
-        <button type="button" id="findClose" aria-label="Close find">✕</button>
-      </div>
-
-      <div class="editor-wrap" id="editorWrap">
-        <div class="backdrop" id="backdrop" aria-hidden="true"></div>
-        <textarea id="editor" rows="20" wrap="soft" spellcheck="true"
-          aria-label="Document body. Plain text, Markdown-friendly."
-          aria-describedby="legend"
-          placeholder="Start writing. Everything stays on this device."></textarea>
-      </div>
-      <p class="doc-notice" id="docNotice" role="status" hidden></p>
-
-      <div class="doc-actions" role="group" aria-label="Document actions">
-        <button type="button" id="btnNew">New</button>
-        <button type="button" id="btnOpen">Open</button>
-        <button type="button" id="btnCopy" class="btn-primary">Copy</button>
-        <details class="dl-menu" id="dlMenu">
-          <summary aria-label="Download options">Download ▾</summary>
-          <div class="dl-pop" role="group" aria-label="Download format">
-            <button type="button" id="btnDownload">Markdown (.md)</button>
-            <button type="button" id="btnDownloadTxt">Plain text (.txt)</button>
-          </div>
-        </details>
-        <button type="button" id="btnPrint">Print</button>
-        <button type="button" id="btnSample">Sample</button>
-      </div>
-      <p class="copy-note" id="copyNote" role="status" aria-live="polite"></p>
-    </main>
-
-    <aside class="rail" aria-label="Review">
-      <section class="notes" aria-labelledby="issuesH">
-        <div class="notes-head">
-          <h2 id="issuesH">Notes <span id="issueCount"></span></h2>
-          <div class="issue-nav">
-            <button type="button" id="prevIssue" title="Previous note (Shift+F2)">← Prev</button>
-            <button type="button" id="nextIssue" title="Next note (F2)">Next →</button>
-          </div>
-        </div>
-        <div class="cat-summary" id="catSummary" role="group" aria-label="Filter notes by category"></div>
-        <div class="rail-toggles" id="railToggles" role="group" aria-label="Quick rule toggles"></div>
-        <div><button type="button" id="btnApplyAll" class="quiet" title="Apply all safe replacements (wordy, simpler, repeated)">Apply all safe fixes</button></div>
-        <ol class="issues" id="issues" aria-label="Writing notes"></ol>
-      </section>
-
-      <details class="fold" id="detailsBox">
-        <summary>Details</summary>
-        <p class="grade-sub" id="gradeSub"></p>
-        <div class="grade-meter" id="gradeMeter" hidden aria-hidden="true"><div class="fill" id="gradeFill"></div><div class="target" id="gradeTarget"></div></div>
-        <p class="grade-meter-lbl" id="gradeMeterLbl" hidden></p>
-        <dl class="details" id="detailsList"></dl>
-      </details>
-
-      <details class="fold">
-        <summary>Preferences <span class="muted" id="customNote"></span></summary>
+  <main class="article-column" aria-label="Article">
+    <div class="findbar" id="findBar" hidden>
+      <input id="findInput" type="text" placeholder="Find in article" aria-label="Find in document"><span id="findCount" role="status"></span>
+      <button id="findPrev" type="button" aria-label="Previous match">←</button><button id="findNext" type="button" aria-label="Next match">→</button><button id="findClose" type="button" aria-label="Close find">Close</button>
+    </div>
+    <input id="docTitle" type="text" maxlength="120" autocomplete="off" placeholder="Title" aria-label="Title (optional)">
+    <article id="readingPreview" class="reading-preview" aria-label="Article reading preview" tabindex="0" hidden></article>
+    <div id="editorWrap" class="editor-wrap"><div id="backdrop" class="backdrop" aria-hidden="true"></div>
+      <textarea id="editor" rows="14" wrap="soft" spellcheck="true" aria-label="Document body. Plain text, Markdown-friendly." placeholder="Start writing. Everything stays on this device."></textarea>
+    </div>
+    <footer class="statusbar" aria-label="Article status"><button id="openMetrics" type="button" aria-haspopup="dialog"><span id="statusWords">0 words</span></button><span aria-hidden="true">·</span><span id="statusSave" role="status">Ready</span></footer>
+    <p id="docNotice" class="doc-notice" role="status" hidden></p>
+  </main>
+  <p id="copyNote" class="notice" role="status" aria-live="polite"></p>
+</div>
+<aside id="reviewInspector" class="inspector" aria-label="Editorial review" hidden>
+  <div class="inspector-head"><label class="sr-only" for="reviewerSel">Reviewer</label><select id="reviewerSel" aria-label="Reviewer"><option value="clarity">Clarity</option><option value="structure">Structure</option></select><button type="button" id="reviewOptions" aria-haspopup="dialog">Options</button></div>
+  <div class="review-nav"><button id="prevIssue" type="button" aria-label="Previous note (Shift+F2)">←</button><span id="issuePosition" role="status"></span><button id="nextIssue" type="button" aria-label="Next note (F2)">→</button><button id="allNotes" type="button">All notes <span id="issueCount"></span></button></div>
+  <div id="issues" class="active-note" aria-label="Current editorial note" tabindex="-1"></div>
+  <div id="findingsView" hidden>
+    <div class="findings-controls"><label class="sr-only" for="findingGroup">Notes to show</label><select id="findingGroup"><option value="remaining">Remaining findings</option><option value="prompts">Self-review prompts</option><option value="dismissed">Dismissed notes</option></select><button id="closeFindings" type="button">Back to note</button></div>
+    <ol id="findingsList" aria-label="Editorial findings"></ol><button id="loadMoreNotes" type="button" hidden>Show more notes</button>
+  </div>
+</aside>
+<dialog id="workspaceDialog" aria-labelledby="workspaceHeading" hidden>
+  <div class="panel-head"><h2 id="workspaceHeading">Your articles</h2><button type="button" data-close="workspaceDialog">Close</button></div>
+  <div class="panel-tabs"><button id="navArticles" type="button" aria-pressed="true">Articles</button><button id="navOutline" type="button" aria-pressed="false">Outline</button></div>
+  <section id="libraryPanel" hidden>
+    <div class="library-tools"><input id="librarySearch" type="search" placeholder="Search titles" aria-label="Search article titles"><button id="libraryNew" type="button">New</button>
+      <details><summary>Library options</summary><div class="menu-section"><label class="check"><input id="libraryTrash" type="checkbox"> Show trash</label><button id="libraryBackup" type="button">Back up library</button><button id="libraryRestore" type="button">Restore backup</button><p id="saveLocation" class="muted"></p></div></details>
+    </div>
+    <ul id="libraryList" aria-label="Articles"></ul><p id="libraryStatus" role="status"></p>
+    <div id="restoreChoices" hidden>
+      <p id="restoreSummary"></p>
+      <label>When an article ID already exists
+        <select id="restoreConflict"><option value="copy">Import as a separate copy</option><option value="skip">Keep existing and skip the imported article</option></select>
+      </label>
+      <label><input type="checkbox" id="restoreSettings"> Also restore writing preferences from this backup</label>
+      <button type="button" id="restoreConfirm">Import articles</button>
+      <button type="button" id="restoreCancel">Cancel</button>
+    </div>
+    <input id="libraryPick" type="file" accept=".json,application/json" hidden>
+  </section>
+  <p id="portableLibrary" class="muted">The portable edition keeps one draft. Use More to import or export an article.</p>
+  <section id="outlinePanel" hidden><nav id="articleOutline" aria-label="Article headings"></nav></section>
+</dialog>
+<dialog id="preferencesDialog" aria-labelledby="preferencesHeading" hidden><div class="panel-head"><h2 id="preferencesHeading">Preferences</h2><span id="customNote" class="muted"></span><button type="button" data-close="preferencesDialog">Close</button></div>
         <div class="prefs">
           <label class="prow">Theme
             <select id="themeSel" aria-label="Color theme">
@@ -154,7 +133,6 @@
           </details>
           <label class="check"><input type="checkbox" id="optQuotes"> Include block quotes in checks</label>
           <label class="check"><input type="checkbox" id="optAutoSave" checked> Autosave drafts on this device</label>
-          <label class="check"><input type="checkbox" id="optHeader"> Include title + date header on .md download</label>
           <label class="check"><input type="checkbox" id="optPrivate"> Private session (no draft saving)</label>
           <details>
             <summary>Rules</summary>
@@ -178,25 +156,16 @@
           </details>
           <button type="button" id="btnClearData" class="quiet">Clear local data…</button>
         </div>
-      </details>
-
-      <details class="fold">
-        <summary>About</summary>
-        <p class="muted">English-first analysis. Other scripts stay editable and export intact, but English scores are suppressed for clearly non-English input. Grades are estimates from surface counts — they don’t judge truth, argument, or necessary terms.</p>
-        <p class="muted" id="versionLine"></p>
-      </details>
-    </aside>
-  </div>
-</div>
-
-<div class="sr-status" id="srStatus" role="status" aria-live="polite"></div>
-<button type="button" class="notes-chip" id="notesChip" hidden>Notes</button>
-
-<input type="file" id="filePick" accept=".txt,.md,.markdown,text/plain" hidden>
-<div id="printDoc" aria-hidden="true"></div>
-
+<details><summary>About blunted</summary><p class="muted">English-first, entirely offline. Review notes are patterns to consider, not verdicts about meaning or truth.</p><p id="versionLine" class="muted"></p></details></dialog>
+<dialog id="metricsDialog" aria-labelledby="metricsHeading" hidden><div class="panel-head"><h2 id="metricsHeading">Article details</h2><button type="button" data-close="metricsDialog">Close</button></div>
+<p id="statusTime"></p><p id="statusSent"></p><p id="gradeMain"></p><span id="statusGrade" hidden></span><p id="gradeSub" class="muted"></p><dl id="detailsList" class="details"></dl>
+<div id="gradeMeter" hidden><div id="gradeFill"></div><div id="gradeTarget"></div></div><p id="gradeMeterLbl" hidden></p></dialog>
+<dialog id="reviewOptionsDialog" aria-labelledby="reviewOptionsHeading" hidden><div class="panel-head"><h2 id="reviewOptionsHeading">Review options</h2><button type="button" data-close="reviewOptionsDialog">Close</button></div>
+<label class="prow">Category<select id="categoryFilter"><option value="all">All categories</option><option value="passive">Passive voice</option><option value="adverb">Adverbs</option><option value="wordiness">Wordiness</option><option value="simpler">Word choice</option><option value="repeated">Repeated words</option><option value="hedge">Hedges</option><option value="todo">Placeholders</option><option value="structure">Structure</option></select></label><button id="openReviewMetrics" type="button">Readability details…</button><button id="openRules" type="button">Writing profile and rules…</button><button id="resetDismissals" type="button">Reset all dismissal decisions…</button><h3>Section lengths</h3><div id="sectionLengths"></div><p class="muted">Self-review prompts ask questions. They do not judge your argument.</p></dialog>
+<dialog id="leaveDialog" aria-labelledby="leaveHeading" hidden><h2 id="leaveHeading">Keep this writing?</h2><p id="leaveMessage">The latest changes have not been saved.</p><div class="leave-actions"><button id="leaveKeep" type="button">Keep working</button><button id="leaveSave" type="button">Save to library</button><button id="leaveDiscard" type="button">Discard unsaved changes</button></div></dialog>
+<div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
+<input id="filePick" type="file" accept=".txt,.md,.markdown,text/plain" hidden><div id="printDoc" aria-hidden="true"></div>
 <!--BLUNTED:ENGINE-->
 <!--BLUNTED:WORKER-->
 <!--BLUNTED:APP-->
-</body>
-</html>
+</body></html>

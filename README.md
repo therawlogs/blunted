@@ -1,13 +1,20 @@
 # blunted — offline writing clarity for Mac and Windows
 
-Write, paste, and review English prose offline. Choose a Clear or Essay
-profile, tune checks to your style, then Copy, Download (`.md` / `.txt`), or
-Print. Drafts autosave locally. No accounts, network, telemetry, or sync —
-forever free. Find (Cmd/Ctrl+F),
-Download (Cmd/Ctrl+S), and next/previous note (F2 / Shift+F2) work from
-the keyboard. The editor defaults to a serif face; change it under Preferences.
+Write essays, explainers and opinion pieces entirely offline. Draft in Markdown,
+organize with an outline, read a clean preview, then choose a Clarity or Structure
+review. Keep your voice: notes are prompts for your judgment, and changes require
+an explicit action. No accounts, network, telemetry or sync — forever free.
 
-![blunted app screenshot](docs/images/blunted-app.png)
+The desktop source now includes a small local article library: create, search,
+rename, move to trash and restore. Each article saves independently with rotating
+backups. Export individual articles or back up the whole library. Portable HTML
+keeps its single-draft workflow. These features ship in v1.0.0; older builds do not include them. See [the article workflow and acceptance status](docs/article-workspace.md).
+
+Find (Cmd/Ctrl+F), bold/italic (Cmd/Ctrl+B / Cmd/Ctrl+I), and next/previous
+review note (F2 / Shift+F2) work from the keyboard. New articles start in Write
+mode. Preferences remain available while drafting; reading scores stay secondary.
+
+![blunted app screenshot](docs/images/blunted-minimal-write.png)
 
 ## Paste and flag
 
@@ -20,38 +27,34 @@ reconsider. These are prompts for your judgment, not automatic corrections.
 
 ## Profiles and controls
 
-Choose Clear for general prose or Essay for longer academic writing. Adjust
+Choose Clear for general prose or Essay for longer essays. Profiles tune sentence
+and paragraph thresholds; Clarity and Structure are separate reviewers. Adjust
 thresholds, tune each rule, add words that reflect your voice, or request
 suggestions from a sample. Sample suggestions require your approval. A
 highlight means **review**, not wrong. See `docs/clarity.md`.
 
-## Download & run (unsigned dev preview)
+## Download & run
 
-The v0.1.5 desktop release has been withdrawn because its macOS app bundle
-failed signature validation. Do not install or run v0.1.5. A corrected v0.1.6
-build is in progress. The portable HTML edition is unaffected; the latest
-published portable file is available from [v0.1.4](https://github.com/therawlogs/blunted/releases/tag/v0.1.4).
+Get [blunted v1.0.0](https://github.com/therawlogs/blunted/releases/tag/v1.0.0):
+Mac Apple Silicon DMG, Windows x64 installer, or portable `index.html`.
 
-The Windows installer remains unsigned. The corrected Mac build will use an
-ad-hoc signature, without Developer ID signing or notarization. Do not disable
-Gatekeeper/SmartScreen system-wide. The safest option is the portable HTML:
+The Mac app is ad-hoc signed, without Developer ID signing or notarization.
+The Windows installer is unsigned. Compare downloads with the release's
+`SHA256SUMS.txt`. See [Mac details](docs/mac-release.md) and
+[Windows details](docs/win-release.md) for platform limitations.
 
-1. Download the portable HTML file from the release (e.g. `index.html`).
-2. Turn networking off if you like — double-click it. Everything works.
-3. Write. Drafts autosave locally. Desktop first run asks once for a save
-   folder; the choice persists across app updates. Copy or Download (`.md` /
-   `.txt`) when done.
-   Nothing leaves the device.
+For portable HTML, download `index.html` and open it locally in your browser.
+Desktop first run asks for a local save folder; that choice persists across
+updates. All writing and review runs offline. The desktop edition includes the
+article library; portable HTML keeps one draft.
 
-Mac: Gatekeeper may require explicit approval for the ad-hoc-signed,
-notarization-free app (details: `docs/mac-release.md`). Windows: SmartScreen
-may warn about an unrecognized app; verify the SHA-256 hash first (details:
-`docs/win-release.md`).
+Clean-machine offline installation and independent writer acceptance remain
+pending; see [validation](docs/minimalism-validation.md). v0.1.5 remains withdrawn.
 
 ## Offline / privacy (with limits)
 
 Analysis runs on-device; there is nothing to phone home to. Draft recovery
-(localStorage on web, a chosen local folder on desktop) is convenience storage —
+(localStorage on web, independent article files in a chosen local folder on desktop) is convenience storage —
 a 3-slot rotating backup restores automatically with a visible notice —
 **not** encrypted sync. Anyone with device access may read it. There is
 no sync and there will never be one: your backup is your sync — copy the
@@ -97,7 +100,7 @@ npm run build:tauri:win
 ## Non-goals
 
 AI, translation, spelling/grammar checks, factual checking, plagiarism,
-collaboration, multi-document library, rich text, accounts, sync,
+collaboration, citation management, rich text, accounts, sync,
 publishing, analytics, subscriptions, update checks, browser extensions,
 Linux binaries, code signing / Store distribution.
 
