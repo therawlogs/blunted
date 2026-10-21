@@ -196,3 +196,9 @@ in `package-lock.json`), Rust 1.98.0, Node 26.8.1, CommandLineTools SDK
 - Not done: clean-Mac install, cold-startup timing, idle memory, screenshot.
   Rebuild reproduces `dist/index.html` byte-identically (verified same-sha
   rebuilds); the Rust bundle is not expected to be bit-reproducible.
+
+## v1.0.0
+
+The minimal article workspace is released as v1.0.0. See
+[release artifacts and verification evidence](v1.0-release.md) for source ref,
+build runs, SHA-256 values and remaining installation acceptance checks.

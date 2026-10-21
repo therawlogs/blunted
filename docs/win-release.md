@@ -167,3 +167,9 @@ the v0.1.2 `win-build` run for the exact toolchain), `--bundles nsis`.
 - Engine tests pass on the Windows runner before bundling.
 - Not done: clean-PC install, 100%/125%/150% scaling check, IME/TSF,
   NVDA/JAWS pass, cold startup, CRLF round-trip on a real machine.
+
+## v1.0.0
+
+The minimal article workspace is released as v1.0.0. See
+[release artifacts and verification evidence](v1.0-release.md) for source ref,
+build runs, SHA-256 values and remaining installation acceptance checks.
