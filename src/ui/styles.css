@@ -29,3 +29,10 @@ dialog{color:var(--ink);background:var(--bg);border:1px solid var(--line);border
 @media(max-width:560px){.masthead{height:64px;padding:0 12px;gap:4px}.wordmark{display:none}.brand,.header-actions{gap:4px}.view-toggle{gap:0}.masthead button,.masthead summary{padding-inline:8px;font-size:13px}.article-column{margin-top:28px}#docTitle{font-size:26px}.inspector{bottom:8px;padding:8px 12px;border-radius:8px}.note-excerpt{max-height:3em;overflow:auto}.note-explanation{font-size:12px}#workspaceDialog{margin:72px auto 12px;max-height:calc(100vh - 84px)}.prow{grid-template-columns:1fr}.prow select,.prow input{max-width:100%;width:100%}.findbar button{padding-inline:5px}}
 @media(forced-colors:active){.active-mark{outline:1px solid Highlight}.inspector,dialog{border:1px solid CanvasText}button[aria-pressed="true"]{text-decoration:underline}}
 #printDoc{display:none}@media print{@page{margin:2cm}.page,.inspector,dialog,.sr-only{display:none!important}#printDoc{display:block;font:12pt/1.65 Georgia,serif;color:#000}#printDoc h1{font-size:20pt}#printDoc h1,#printDoc h2,#printDoc h3{break-after:avoid}#printDoc p,#printDoc li{orphans:3;widows:3}.source-link span{display:block}.source-link summary{color:#000}.image-placeholder{display:block;margin:12px 0;border:1px dashed #777}}
+
+/* Recovery and operation results remain beside the feature that owns them. */
+.library-recovery{width:min(42rem,calc(100% - 40px));margin:16px auto 0;padding:12px 16px;border:1px solid var(--accent);border-radius:8px;overflow-wrap:anywhere}
+.library-recovery p{margin:0 0 6px}.recovery-actions{display:flex;flex-wrap:wrap;gap:8px}.recovery-actions button{border:1px solid var(--line);min-height:44px}
+#clearStatus,#importStatus{overflow-wrap:anywhere;white-space:pre-line;padding:8px 0}#clearStatus:empty,#importStatus:empty{padding:0;margin:0}
+#clearStatus:focus,#importStatus:focus{outline:2px solid var(--focus);outline-offset:3px}
+@media(forced-colors:active){.library-recovery,.recovery-actions button{border-color:CanvasText}#clearStatus:focus,#importStatus:focus{outline-color:Highlight}}

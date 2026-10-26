@@ -1,0 +1,73 @@
+use std::{fs,path::PathBuf}; static LIBRARY_LOCK:std::sync::Mutex<()>=std::sync::Mutex::new(());
+#[derive(Clone)] struct AppHandle{root:PathBuf} impl AppHandle {fn path(&self)->&Self{self} fn app_config_dir(&self)->Result<PathBuf,String>{Ok(self.root.clone())}}
+fn data_dir(app:&AppHandle)->Result<PathBuf,String>{Ok(app.root.clone())} fn default_dir(app:&AppHandle)->Result<PathBuf,String>{Ok(app.root.clone())}
+fn configured_dir(app: &AppHandle) -> Result<Option<PathBuf>, String> {
+    let path = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join("blunted-folder.txt");
+    let value = match fs::read_to_string(path) {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+    let dir = PathBuf::from(value.trim());
+    if dir.is_dir() {
+        Ok(Some(dir))
+    } else {
+        Ok(None)
+    }
+}
+
+async fn blunted_clear(app: AppHandle) -> Result<(), String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
+    let mut dirs = vec![data_dir(&app)?];
+    let legacy = default_dir(&app)?;
+    if !dirs.contains(&legacy) {
+        dirs.push(legacy);
+    }
+    for dir in dirs {
+        let articles = dir.join("articles");
+        if articles.exists() {
+            fs::remove_dir_all(articles).map_err(|e| e.to_string())?;
+        }
+        if let Ok(name) = fs::read_to_string(dir.join("current-draft.txt")) {
+            let candidate = name.trim();
+            let name = if PathBuf::from(candidate)
+                .file_name()
+                .and_then(|v| v.to_str())
+                == Some(candidate)
+                && candidate.ends_with(".json")
+            {
+                candidate
+            } else {
+                "doc.json"
+            };
+            let _ = fs::remove_file(dir.join(name));
+            let stem = name.strip_suffix(".json").unwrap_or(name);
+            for n in 1..=3 {
+                let _ = fs::remove_file(dir.join(format!("{}.backup.{}.json", stem, n)));
+            }
+        }
+        for name in [
+            "doc.json",
+            "doc.backup.1.json",
+            "doc.backup.2.json",
+            "doc.backup.3.json",
+            "doc.backup.json",
+            "prefs.json",
+            "current-draft.txt",
+        ] {
+            let _ = fs::remove_file(dir.join(name));
+        }
+    }
+    let folder_config = app
+        .path()
+        .app_config_dir()
+        .map_err(|e| e.to_string())?
+        .join("blunted-folder.txt");
+    let _ = fs::remove_file(folder_config);
+    Ok(())
+}
+
+fn main(){let root=std::env::temp_dir().join(format!("blunted-baseline-clear-{}",std::process::id()));fs::create_dir(&root).unwrap();let app=AppHandle{root:root.clone()};fs::write(root.join("doc.json"),"disposable writing").unwrap();fs::create_dir(root.join("prefs.json")).unwrap();fs::write(root.join("blunted-folder.txt"),root.join("missing-selected").display().to_string()).unwrap();println!("baseline configured missing root: {:?}",configured_dir(&app));let mut future=Box::pin(blunted_clear(app));let waker=std::task::Waker::noop();let mut cx=std::task::Context::from_waker(waker);println!("baseline clear result: {:?}",std::future::Future::poll(future.as_mut(),&mut cx));println!("prefs still exists after claimed success: {}",root.join("prefs.json").exists());fs::remove_dir_all(root).unwrap();}

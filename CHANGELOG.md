@@ -1,7 +1,34 @@
 # Changelog
 
 All notable changes to blunted will be documented here. Format follows
-(loosely) Keep a Changelog; versions are `0.x` development previews.
+(loosely) Keep a Changelog.
+
+## [1.1.0] — 2026-10-26
+
+### Fixed
+
+- Keep writing and export available when the selected library disappears, with
+  an explicit retry that preserves the active article and editing position.
+- Recover Review and Outline after analysis errors without exposing stale notes
+  or changing writing, and retry analysis on the next edit.
+- Report complete, partial and failed Clear outcomes accurately; preserve writing
+  after incomplete clearing and prevent pending saves from recreating cleared data.
+- Keep confirmed backup imports stable through asynchronous saves, preserve
+  originals and report exact imported/skipped counts and preference outcomes.
+- Preserve the last valid portable draft through corrupt saves and storage-quota
+  failures, and distinguish saved articles from failed preference writes.
+- Keep the native window open after a final preferences-save failure until retry
+  succeeds or the writer explicitly exits without saving preferences.
+
+### Changed
+
+- Embed the offline WebView2 installer in new Windows packages instead of the
+  network bootstrapper. Disconnected Windows installation remains unverified.
+
+### Removed
+
+- Unused renderer filesystem-plugin access. Selected-folder persistence and
+  explicit native exports continue through the intended custom commands.
 
 ## [1.0.0] — 2026-10-21
 

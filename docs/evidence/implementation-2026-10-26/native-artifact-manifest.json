@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-26",
+  "baseline": "7c547a625561a3717953c626bdee862bd39aeaa4",
+  "sourceState": "baseline plus uncommitted implementation diff",
+  "command": "npm run build:tauri:mac",
+  "environment": {
+    "macOS": "27.2 (26B118)",
+    "architecture": "arm64",
+    "node": "v26.8.1",
+    "rust": "1.98.0",
+    "tauri": "2.12.0"
+  },
+  "artifacts": [
+    {
+      "path": "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/blunted_1.0.0_aarch64.dmg",
+      "bytes": 2164699,
+      "sha256": "69a190f4c75d996987ddc68107a06eeb5ded7bb881e5acecfe6591fe4bcbe022"
+    },
+    {
+      "path": "src-tauri/target/aarch64-apple-darwin/release/blunted",
+      "bytes": 5051552,
+      "sha256": "ce2e7ef41c7bdd83ce61eaea4509908828569b48ccf473f270d0833309687b1c"
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 247401,
+      "sha256": "dd0056a3a6a06c3cc301c364acf1d40e4d3e3c669656d99a8419acd57a00ec92"
+    },
+    {
+      "path": "src-tauri/frontend/index.html",
+      "bytes": 247446,
+      "sha256": "4e233166672d55807fdcc11bbe07367a05d599af9f190202d38c3714194502b4"
+    }
+  ],
+  "embeddedSignedExecutable": {
+    "sha256": "8d485954b727f2af9233822eb76bdc4c7d78cf893416df40edb23e0a1c80d4ea",
+    "bytes": 5022304
+  },
+  "sourceFiles": [
+    {
+      "path": "src/ui/app.js",
+      "bytes": 107262,
+      "sha256": "ab4b8430e2f638d07e1a295fc9add1476008eec5822d411cebbb0c9b47a86649"
+    },
+    {
+      "path": "src/ui/shell.html",
+      "bytes": 15199,
+      "sha256": "0339aef665068784600e3466cbefc69d576e0f6e9e973731d777b796fe76e7a5"
+    },
+    {
+      "path": "src/ui/styles.css",
+      "bytes": 11935,
+      "sha256": "b45e1e51a7046d2a41d637e4f451df745d9a43b3aaa4ccadfece0d1abcc99a5b"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 11654,
+      "sha256": "6a60acfa6899a7cd147a91048b8839bf070697f43f47cead8fcec2595d8dd804"
+    },
+    {
+      "path": "src-tauri/src/library.rs",
+      "bytes": 11589,
+      "sha256": "7ce69c9c1b4fdb481422c7c169873a978db799813e4ad98739b4ee7a9fe20827"
+    },
+    {
+      "path": "src-tauri/src/storage.rs",
+      "bytes": 11275,
+      "sha256": "6676bfa78386e281ebb13ed91431bba9480437e5a4bc294f8bf72f5e566b0d71"
+    },
+    {
+      "path": "src-tauri/adapter.js",
+      "bytes": 4051,
+      "sha256": "afa7f612e0094b9da574916bcee11336f1c9798938b48ea4b491901663b06dc0"
+    },
+    {
+      "path": "src-tauri/tauri.conf.json",
+      "bytes": 1124,
+      "sha256": "71829801873d1a8a666b3b89a34825ff0f70d98035932614646777e76eba7a5f"
+    },
+    {
+      "path": "src-tauri/capabilities/main.json",
+      "bytes": 427,
+      "sha256": "555a518a2a867a8d0e8dcd2dc12602307d45753087b5119acba7ebb35f29cd10"
+    },
+    {
+      "path": "src-tauri/Cargo.toml",
+      "bytes": 584,
+      "sha256": "31ece31a9456c4457d1da0aa5c2458df415279d74cd3673949315e8c09b9e3c4"
+    },
+    {
+      "path": "src-tauri/Cargo.lock",
+      "bytes": 120398,
+      "sha256": "b155be6a17037d653a6beed73b58f27f5dad04dcf5a402ea2c543a66bc11b577"
+    }
+  ],
+  "verification": {
+    "hdiutilVerify": "VALID",
+    "mountedCodesignDeepStrict": "passed",
+    "temporaryVolume": "detached",
+    "publication": "not performed",
+    "cleanMachineInstallation": "not performed",
+    "WindowsArtifact": "blocked; only aarch64-apple-darwin target installed"
+  }
+}

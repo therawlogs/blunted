@@ -34,10 +34,11 @@
   var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "write", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, exportHeadline: true, workspace: { activeId: "", positions: {} }, activeProfile: "clear", profiles: {} };
   var articles = [], libraryReady = false, loadFailed = false, transitioning = false;
   var saveQueue = Promise.resolve(), pendingRestore = null, previewOpen = false;
+  var clearing = false, persistenceEpoch = 0, restoreReadRevision = 0, closePending = false, importing = false;
   var reviewer = "clarity", activeNote = null, findingsLimit = 50;
   var panelOpener = null, panelOpeners = {}, prefsTimer = null, leaveResolve = null, workspaceTimer = null;
   var dirty = false;            // unsaved changes vs storage
-  var lastAnalysis = null;
+  var lastAnalysis = null, analysisFailureRev = -1;
   var currentRev = 0;           // text revision counter (local)
   var lastWorkerRev = 0;
   var selectedIssue = -1;
@@ -121,6 +122,7 @@
       return { doc: doc, prefs: prefsOut, recovered: recovered };
     },
     save: function () {
+      if (clearing) return Promise.resolve(false);
       if (!prefs.autosave) { setSaveState("Autosave off"); return Promise.resolve(false); }
       if (prefs.privateSession) { setSaveState("Private session — not saved"); return Promise.resolve(false); }
       var t = tauri();
@@ -129,30 +131,37 @@
       if (t && t.saveDoc) {
         setSaveState("Saving…");
         var snapshot = JSON.stringify(payload.doc);
-        var job = saveQueue.then(function () { return t.saveDoc({ doc: payload.doc, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function () {
+        var job = saveQueue.then(function () { return t.saveDoc({ doc: payload.doc, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function (result) {
+          $("libraryRecovery").hidden = true;
           var i = articles.findIndex(function (a) { return a.id === payload.doc.id; });
           if (i < 0) articles.push(payload.doc); else articles[i] = payload.doc;
           if (state.id === payload.doc.id && JSON.stringify(state) === snapshot) { setSaveState("Saved"); dirty = false; }
+          if (result && result.preferencesSaved === false) copyNote.textContent = "Your article was saved, but preferences could not be saved.";
           if (!$("workspaceDialog").hidden && document.activeElement === editor) renderLibrary();
           return true;
-        }, function () { setSaveState("Saving failed — export your article to keep a copy."); return false; });
+        }, function () { setLibraryUnavailable(false); setSaveState("Saving failed — export your article to keep a copy."); return false; });
         saveQueue = job.then(function () {});
         return job;
       }
       try {
-        var prev = null;
-        try { prev = localStorage.getItem(LS_DOC); } catch (e) { prev = null; }
-        if (prev) {
-          // rotate: c <- b <- a <- previous main doc
-          try {
-            localStorage.setItem(LS_BACKUPS[2], localStorage.getItem(LS_BACKUPS[1]) || "");
-            localStorage.setItem(LS_BACKUPS[1], localStorage.getItem(LS_BACKUPS[0]) || "");
-            localStorage.setItem(LS_BACKUPS[0], prev);
-          } catch (e) { /* rotation best-effort; main save matters most */ }
-        }
-        localStorage.setItem(LS_DOC, JSON.stringify(state));
-        localStorage.setItem(LS_PREFS, JSON.stringify(prefs));
-        setSaveState("Saved"); dirty = false;
+        // Read and validate history before any write. Main replacement is the
+        // durability boundary: never rotate over a recovered backup before it.
+        var previous = [];
+        [LS_DOC].concat(LS_BACKUPS).forEach(function (key) {
+          var raw = localStorage.getItem(key);
+          if (parseDoc(raw)) previous.push(raw);
+        });
+        localStorage.setItem(LS_DOC, JSON.stringify(payload.doc));
+        // Main is durable now. Best-effort history contains valid documents only;
+        // quota failure at any rotation boundary still leaves that main copy.
+        try {
+          for (var slot = Math.min(previous.length, LS_BACKUPS.length) - 1; slot >= 0; slot--) {
+            localStorage.setItem(LS_BACKUPS[slot], previous[slot]);
+          }
+        } catch (e) { /* successful main replacement remains available */ }
+        setSaveState("Saved"); dirty = false; storageOK = true; storageMsg = "";
+        try { localStorage.setItem(LS_PREFS, JSON.stringify(prefs)); }
+        catch (e) { copyNote.textContent = "Your article was saved, but preferences could not be saved."; }
         return Promise.resolve(true);
       } catch (e) {
         storageOK = false;
@@ -163,13 +172,17 @@
     },
     clear: function () {
       var t = tauri();
-      if (t && t.clearAll) return saveQueue.then(function () { return t.clearAll(); });
-      try {
-        localStorage.removeItem(LS_DOC); localStorage.removeItem(LS_PREFS);
-        for (var i = 0; i < LS_BACKUPS.length; i++) localStorage.removeItem(LS_BACKUPS[i]);
-        // legacy single-slot backup from v1
-        localStorage.removeItem("blunted.backup.v1");
-      } catch (e) {}
+      if (t && t.clearAll) return t.clearAll();
+      var removed = [], absent = [], failed = [], unknown = [];
+      [LS_DOC, LS_PREFS].concat(LS_BACKUPS, ["blunted.backup.v1"]).forEach(function (key) {
+        var exists;
+        try { exists = localStorage.getItem(key) !== null; }
+        catch (e) { unknown.push(key); failed.push(key + ": contents could not be checked; removal not attempted"); return; }
+        if (!exists) { absent.push(key); return; }
+        try { localStorage.removeItem(key); removed.push(key); }
+        catch (e) { failed.push(key + ": " + (e.message || "removal failed")); }
+      });
+      return { status: failed.length ? (removed.length ? "partial" : "failed") : "complete", removed: removed, absent: absent, failed: failed, unknown: unknown };
     },
   };
 
@@ -177,6 +190,48 @@
     statusSave.textContent = s; statusSave.dataset.failed = /failed|unavailable|unreadable/i.test(s) ? "true" : "false";
     if(statusSave.dataset.failed === "true") copyNote.textContent = s;
   }
+
+  // Library availability owns a persistent surface, separate from save acknowledgements.
+  function setLibraryUnavailable(blockWrites) {
+    if (!tauri() || !tauri().library) return;
+    if (blockWrites !== false) loadFailed = true;
+    $("libraryRecovery").hidden = false;
+    $("portableLibrary").hidden = true;
+    $("libraryRecoveryMessage").textContent = "Library unavailable. Your writing is still here. Export a copy, or retry the original library location.";
+  }
+  $("exportUnavailableArticle").addEventListener("click", function () { $("btnDownload").click(); });
+  $("retryLibrary").addEventListener("click", async function () {
+    var button = $("retryLibrary"), t = tauri();
+    if (button.disabled || !t || !t.retryLibrary || transitioning) return;
+    button.disabled = true;
+    var retryEpoch = persistenceEpoch;
+    try {
+      await saveQueue;
+      var available = await t.retryLibrary();
+      if (retryEpoch !== persistenceEpoch) return;
+      if (available === false) throw new Error("Library unavailable");
+      var restoreEditorFocus = document.activeElement === button;
+      if (available && Array.isArray(available.articles)) articles = available.articles.map(cleanArticle);
+      loadFailed = false; libraryReady = true;
+      $("libraryRecovery").hidden = true;
+      $("portableLibrary").hidden = true;
+      if (available && available.location) $("saveLocation").textContent = "Saved in: " + available.location;
+      $("libraryPanel").hidden = $("workspaceDialog").hidden;
+      renderLibrary();
+      // Availability is not evidence that this article or these preferences were saved.
+      setSaveState(dirty ? "Library available — changes not yet saved" : "Library available");
+      srStatus.textContent = "Library available. Your current writing is unchanged.";
+      if (restoreEditorFocus) {
+        var start = editor.selectionStart, end = editor.selectionEnd, scroll = editor.scrollTop;
+        editor.focus(); editor.setSelectionRange(start, end); editor.scrollTop = scroll;
+      }
+      schedulePrefs();
+      if (dirty) scheduleSave();
+    } catch (e) {
+      setLibraryUnavailable();
+      $("libraryRecoveryMessage").textContent = "Library is still unavailable. Your writing is unchanged. Export a copy, or retry the original library location.";
+    } finally { button.disabled = false; }
+  });
 
   // ---------- worker (Blob, no external file) + main-thread fallback ----------
   var worker = null, workerOK = false;
@@ -187,9 +242,15 @@
       worker.onmessage = function (e) {
         var d = e.data || {};
         if (d.rev !== lastWorkerRev || d.rev !== currentRev) return; // stale
-        if (d.ok) renderAnalysis(d.result);
+        if (analysisFailureRev === d.rev) return;
+        if (!d.ok) { failAnalysis(d.rev); return; }
+        try { renderAnalysis(d.result); } catch (err) { failAnalysis(d.rev); }
       };
-      worker.onerror = function () { workerOK = false; analyzeMainThread(); };
+      worker.onerror = function () {
+        workerOK = false;
+        // A delayed error for an obsolete request cannot fail newer writing.
+        if (lastWorkerRev === currentRev && analysisFailureRev !== currentRev) analyzeMainThread(null, currentRev);
+      };
     }
   } catch (e) { worker = null; workerOK = false; }
 
@@ -216,7 +277,7 @@
       try { worker.postMessage(req); } catch (e) { workerOK = false; analyzeMainThread(req, rev); }
       // safety: if worker silent for 2s, fall back (still render worker if it arrives later with newer rev)
       setTimeout(function () {
-        if (lastAnalysis && lastAnalysis.textRevision >= rev) return;
+        if (rev !== currentRev || analysisFailureRev === rev || lastAnalysis && lastAnalysis.textRevision >= rev) return;
         analyzeMainThread(req, rev);
       }, 2000);
     } else {
@@ -231,13 +292,39 @@
       textRevision: currentRev,
     };
     rev = rev || currentRev;
-    if (rev < currentRev) return; // stale
-    var r;
-    try { r = Engine.analyze(req); }
-    catch (e) { return; }
-    if (rev < currentRev) return; // stale
-    if (Engine.structureReport) r.structure = Engine.structureReport(req.text, r.config.paragraphWords, !!req.title);
-    renderAnalysis(r);
+    if (rev !== currentRev || analysisFailureRev === rev) return;
+    try {
+      var r = Engine.analyze(req);
+      if (Engine.structureReport) r.structure = Engine.structureReport(req.text, r.config.paragraphWords, !!req.title);
+      if (rev !== currentRev) return;
+      renderAnalysis(r);
+    } catch (e) { failAnalysis(rev); }
+  }
+
+  function containsFocus(region, focused) {
+    if (!region || !focused) return false;
+    return region === focused || (region.contains ? region.contains(focused) : Array.prototype.some.call(region.children || [], function (child) { return containsFocus(child, focused); }));
+  }
+
+  function failAnalysis(rev) {
+    if (rev !== currentRev) return;
+    analysisFailureRev = rev; lastAnalysis = null; activeNote = null; selectedIssue = -1;
+    clearTimeout(announceTimer);
+    var outline = $("articleOutline"), focus = document.activeElement;
+    var reviewFocus = containsFocus(issuesEl, focus) || containsFocus($("findingsView"), focus);
+    var outlineFocus = containsFocus(outline, focus);
+    issuesEl.textContent = "Review is unavailable. Your writing is unchanged. Editing again will retry.";
+    issuesEl.hidden = false; issuesEl.setAttribute("aria-busy", "false");
+    outline.textContent = "Outline is unavailable. Your writing is unchanged. Editing again will retry.";
+    outline.setAttribute("aria-busy", "false");
+    $("findingsView").hidden = true; $("findingsList").textContent = "";
+    $("loadMoreNotes").hidden = true; $("sectionLengths").textContent = "";
+    ["gradeMain", "gradeSub", "statusGrade", "statusSent", "statusTime", "detailsList", "versionLine", "issueCount", "issuePosition"].forEach(function (id) { $(id).textContent = ""; });
+    $("gradeMeter").hidden = true; $("gradeMeterLbl").hidden = true;
+    ["prevIssue", "nextIssue", "allNotes"].forEach(function (id) { $(id).disabled = true; });
+    backdrop.textContent = editor.value;
+    if (reviewFocus) issuesEl.focus();
+    else if (outlineFocus) outline.focus();
   }
 
   // Large-document notice: analysis runs off the keystroke path (worker),
@@ -294,6 +381,8 @@
   function esc(s) { return String(s); } // text nodes used everywhere; helper for clarity
 
   function renderAnalysis(r) {
+    if (r.textRevision !== currentRev || analysisFailureRev === currentRev) return;
+    $("allNotes").disabled = false;
     lastAnalysis = r;
     if (Engine.dismissalKey) {
       var keys=[];
@@ -473,6 +562,7 @@
     if (hadReviewFocus) { var target = $(focused.id); if(target && target.id !== "issues" && !target.disabled) target.focus(); else issuesEl.focus(); }
   }
   function renderFindings() {
+    if (analysisFailureRev === currentRev) return;
     var box=$("findingsList"); box.textContent="";
     var list=currentNotes();
     list.slice(0,findingsLimit).forEach(function(issue,index){
@@ -528,7 +618,7 @@
   // Empty replacements (adverb removals) also consume one adjacent space
   // so "ran quickly today" becomes "ran today", not "ran  today".
   function applyFix(issue, silent) {
-    if (transitioning) return false;
+    if (transitioning || closePending) return false;
     var revAtClick = currentRev;
     var cur = editor.value;
     if (!issue.fix || issue.fix.replacement == null) return false;
@@ -926,6 +1016,7 @@
   }
 
   $("btnNew").addEventListener("click", async function () {
+    if (transitioning || closePending) return;
     if (tauri() && tauri().library) { await newArticle(); return; }
     if (!confirmReplace()) return;
     state = freshDoc();
@@ -934,15 +1025,18 @@
 
   $("btnOpen").addEventListener("click", function () { $("filePick").click(); });
   $("filePick").addEventListener("change", function (e) {
+    if (transitioning || closePending) return;
+    var epoch = persistenceEpoch;
     var f = e.target.files && e.target.files[0];
     if (!f) return;
     if (!(tauri() && tauri().library) && !confirmReplace()) { e.target.value = ""; return; }
     var rd = new FileReader();
     rd.onload = async function () {
+      if (transitioning || closePending || epoch !== persistenceEpoch) return;
       var text = String(rd.result || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       var next = freshDoc(); next.body = text; next.title = (f.name || "").replace(/\.(txt|md|markdown)$/i, "").slice(0,120);
       if (tauri() && tauri().library) {
-        if (transitioning) { copyNote.textContent = "Finish the current library operation before importing."; return; }
+        if (transitioning || closePending) { copyNote.textContent = "Finish the current library operation before importing."; return; }
         transitioning = true; setWorkspaceBusy(true);
         try {
           if (!await leaveArticle() || !await saveLibraryArticle(next)) return;
@@ -1068,10 +1162,13 @@
 
   $("btnImportSettings").addEventListener("click", function () { $("settingsPick").click(); });
   $("settingsPick").addEventListener("change", function (e) {
+    if (transitioning || closePending) return;
+    var epoch = persistenceEpoch;
     var f = e.target.files && e.target.files[0];
     if (!f) return;
     var rd = new FileReader();
     rd.onload = function () {
+      if (transitioning || closePending || epoch !== persistenceEpoch) return;
       var ok = false;
       try {
         var data = JSON.parse(String(rd.result || ""));
@@ -1113,6 +1210,7 @@
 
   var SAMPLE = "The Editor’s Test\n\nDr. Rao measured 3.14 ml on Tuesday. It was written in the lab notebook at 9 a.m.\n\nIt is important to note that the samples were collected in order to facilitate subsequent analysis. We utilize approximately 5 ml per run, and the results were surprising.\n\nFriendly staff reply quickly. Really very good.\n\nThe the report needs tightening before Friday.";
   $("btnSample").addEventListener("click", function () {
+    if (transitioning || closePending) return;
     if (editor.value && !window.confirm("Load the labelled sample? This replaces the current draft.")) return;
     state = freshDoc();
     state.title = "Sample";
@@ -1128,13 +1226,27 @@
   });
 
   $("btnClearData").addEventListener("click", async function () {
+    if (transitioning || clearing || closePending) return;
     if (!window.confirm("Clear all local blunted data on this device (all articles, trash, backups and preferences)? This cannot be undone. Download a copy first if needed.")) return;
-    clearTimeout(saveTimer); clearTimeout(prefsTimer);
-    try { await store.clear(); } catch (e) { copyNote.textContent = "Could not clear local data. Nothing was reset in the editor."; return; }
-    articles = []; renderLibrary();
-    state = freshDoc();
-    loadDocIntoUI(); runAnalysis();
-    setSaveState("Local data cleared");
+    transitioning = true; clearing = true; persistenceEpoch++; restoreReadRevision++;
+    clearTimeout(saveTimer); clearTimeout(prefsTimer); clearTimeout(workspaceTimer);
+    setWorkspaceBusy(true);
+    var region = $("clearStatus"); region.textContent = "Clearing local data…"; region.setAttribute("aria-busy", "true");
+    if (!$("preferencesDialog").hidden) region.focus();
+    try {
+      await saveQueue;
+      var result = await store.clear();
+      if (result && (result.status && result.status !== "complete" || result.complete === false)) {
+        var removed = (result.removed || []).length, failed = (result.failed || []).length;
+        region.textContent = (result.status === "partial" || removed ? "Local data was partly cleared. " : "Local data could not be cleared. ") + removed + " removals completed; " + failed + " removals failed. " + ((result.unknown || []).length ? result.unknown.length + " storage locations could not be checked; no removal was attempted there. " : "") + "Your writing is unchanged in the editor; export it to keep a copy.";
+        dirty = true; return;
+      }
+      articles = []; renderLibrary(); state = freshDoc(); loadDocIntoUI(); runAnalysis();
+      region.textContent = "Local data cleared."; setSaveState("Local data cleared");
+    } catch (e) {
+      region.textContent = "Local data could not be completely cleared. Your writing is unchanged in the editor; some files may have been removed. Export your article to keep a copy.";
+      dirty = true;
+    } finally { region.setAttribute("aria-busy", "false"); clearing = false; transitioning = false; setWorkspaceBusy(false); }
   });
 
   $("btnPrint").addEventListener("click", function () { window.print(); });
@@ -1167,8 +1279,10 @@
   }
 
   function scheduleSave() {
+    if (clearing) return;
+    var epoch = persistenceEpoch;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () { store.save(); }, 800);
+    saveTimer = setTimeout(function () { if (!clearing && epoch === persistenceEpoch) store.save(); }, 800);
   }
 
   // ---------- article workspace ----------
@@ -1185,10 +1299,20 @@
     if (window.crypto && window.crypto.randomUUID) return "article-" + window.crypto.randomUUID();
     return "article-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
   }
+  var busyControls = [];
   function setWorkspaceBusy(busy) {
+    if (busy) {
+      busyControls = [];
+      ["preferencesDialog", "reviewOptionsDialog", "libraryPanel"].forEach(function (id) {
+        $(id).querySelectorAll("input, select, textarea, button").forEach(function (control) {
+          if (control.dataset && control.dataset.close) return;
+          busyControls.push({ control: control, disabled: control.disabled }); control.disabled = true;
+        });
+      });
+    } else { busyControls.forEach(function (entry) { entry.control.disabled = entry.disabled; }); busyControls = []; }
     editor.readOnly = busy; $("docTitle").disabled = busy;
     $("libraryPanel").setAttribute("aria-busy", busy ? "true" : "false");
-    ["btnNew", "btnOpen", "btnSample", "formatBold", "formatItalic", "formatHeading", "formatList", "btnClearData"].forEach(function (id) { $(id).disabled = busy; });
+    ["btnNew", "btnOpen", "btnSample", "formatBold", "formatItalic", "formatHeading", "formatList", "btnClearData", "libraryNew", "libraryBackup", "libraryRestore", "libraryPick", "restoreConfirm", "restoreCancel", "restoreConflict", "restoreSettings", "btnImportSettings", "settingsPick"].forEach(function (id) { $(id).disabled = busy; });
   }
   function renderLibrary() {
     if (!libraryReady) return;
@@ -1211,7 +1335,7 @@
         var rename = document.createElement("button"); rename.type = "button"; rename.textContent = "Rename";
         rename.setAttribute("aria-label", "Rename " + (a.title || "Untitled"));
         rename.addEventListener("click", async function () {
-          if (transitioning) return;
+          if (transitioning || closePending) return;
           var title = window.prompt("Article title", a.title || ""); if (title === null) return;
           transitioning = true; setWorkspaceBusy(true);
           try {
@@ -1226,7 +1350,7 @@
       var toggle = document.createElement("button"); toggle.type = "button"; toggle.textContent = a.trashedAt ? "Restore" : "Move to trash";
       toggle.setAttribute("aria-label", toggle.textContent + ": " + (a.title || "Untitled"));
       toggle.addEventListener("click", async function () {
-        if (transitioning) return;
+        if (transitioning || closePending) return;
         transitioning = true; setWorkspaceBusy(true);
         try {
         if (!await leaveArticle()) return;
@@ -1248,11 +1372,12 @@
     if (!libraryReady || loadFailed) return false;
     if (prefs.privateSession) { $("libraryStatus").textContent = "Leave private session before changing the saved library."; return false; }
     var payload = JSON.parse(JSON.stringify(doc));
-    var job = saveQueue.then(function () { return tauri().saveDoc({ doc: payload, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function () {
+    var job = saveQueue.then(function () { return tauri().saveDoc({ doc: payload, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function (result) {
+      if (result && result.preferencesSaved === false) copyNote.textContent = "Your article was saved, but preferences could not be saved.";
       var index = articles.findIndex(function (a) { return a.id === payload.id; });
       if (index < 0) articles.push(payload); else articles[index] = payload;
       return true;
-    }, function () { $("libraryStatus").textContent = "Saving failed. Existing articles have been kept; export your current writing."; return false; });
+    }, function () { setLibraryUnavailable(false); $("libraryStatus").textContent = "Saving failed. Existing articles have been kept; export your current writing."; return false; });
     saveQueue = job.then(function () {});
     return job;
   }
@@ -1266,7 +1391,7 @@
     if(choice==="discard"){dirty=false;return true;}return false;
   }
   async function switchArticle(id) {
-    if (transitioning || id === state.id) return;
+    if (transitioning || closePending || id === state.id) return;
     transitioning = true; setWorkspaceBusy(true);
     try {
       if (!await leaveArticle()) return;
@@ -1277,7 +1402,7 @@
     } finally { transitioning = false; setWorkspaceBusy(false); }
   }
   async function newArticle() {
-    if (transitioning || !libraryReady) return;
+    if (transitioning || closePending || !libraryReady) return;
     transitioning = true; setWorkspaceBusy(true);
     try {
       if (!await leaveArticle()) return;
@@ -1290,6 +1415,8 @@
   $("libraryTrash").addEventListener("change", renderLibrary);
   $("libraryNew").addEventListener("click", newArticle);
   $("libraryBackup").addEventListener("click", async function () {
+    if (transitioning || closePending) return;
+    $("importStatus").textContent = "";
     if (!await leaveArticle()) return;
     await saveQueue;
     var data = JSON.stringify({ app: "blunted-library", version: 1, exportedAt: new Date().toISOString(), articles: articles, settings: { prefs: prefs } }, null, 2);
@@ -1298,48 +1425,57 @@
       $("libraryStatus").textContent = ok ? "Library backup saved, including trash and settings." : "Backup cancelled.";
     } catch (e) { $("libraryStatus").textContent = "Backup failed. Your library is still on this device."; }
   });
-  $("libraryRestore").addEventListener("click", function () { $("libraryPick").click(); });
+  $("libraryRestore").addEventListener("click", function () { if (!transitioning && !closePending) $("libraryPick").click(); });
   $("libraryPick").addEventListener("change", function (e) {
+    if (transitioning || closePending) return;
+    var revision = ++restoreReadRevision;
     var file = e.target.files && e.target.files[0]; if (!file) return;
+    pendingRestore = null; $("restoreChoices").hidden = true; $("importStatus").textContent = "";
     var reader = new FileReader();
     reader.onload = function () {
+      if (revision !== restoreReadRevision || transitioning || closePending) return;
       try {
         var backup = JSON.parse(String(reader.result)); Engine.validateLibraryBackup(backup);
         pendingRestore = backup; $("restoreChoices").hidden = false;
         var conflicts = backup.articles.filter(function (a) { return articles.some(function (b) { return a.id === b.id; }); }).length;
         $("restoreSummary").textContent = backup.articles.length + " articles, including trash. " + conflicts + " existing IDs. Settings are included; choose whether to restore them.";
-        $("restoreConflict").focus();
-      } catch (err) { $("libraryStatus").textContent = err.message || "Could not read this backup. Nothing changed."; }
+        if (!$("workspaceDialog").hidden && !$("libraryPanel").hidden) $("restoreConflict").focus();
+      } catch (err) { $("importStatus").textContent = err.message || "Could not read this backup. Nothing changed."; }
     };
-    reader.onerror = function () { $("libraryStatus").textContent = "Could not read the backup. Nothing changed."; };
-    reader.readAsText(file); e.target.value = "";
+    reader.onerror = function () { if (revision === restoreReadRevision && !transitioning) $("importStatus").textContent = "Could not read the backup. Nothing changed."; };
+    try { reader.readAsText(file); } catch (e) { reader.onerror(); } e.target.value = "";
   });
-  $("restoreCancel").addEventListener("click", function () { pendingRestore = null; $("restoreChoices").hidden = true; $("libraryRestore").focus(); });
+  $("restoreCancel").addEventListener("click", function () { if (transitioning || closePending) return; restoreReadRevision++; pendingRestore = null; $("restoreChoices").hidden = true; $("libraryRestore").focus(); });
   $("restoreConfirm").addEventListener("click", async function () {
-    if (!pendingRestore || transitioning) return;
-    transitioning = true; setWorkspaceBusy(true); $("restoreConfirm").disabled = true;
-    var count = 0;
+    if (!pendingRestore || transitioning || closePending) return;
+    var backup = JSON.parse(JSON.stringify(pendingRestore));
+    var conflict = $("restoreConflict").value, restoreSettings = $("restoreSettings").checked;
+    restoreReadRevision++; persistenceEpoch++; importing = true; transitioning = true;
+    clearTimeout(prefsTimer); clearTimeout(workspaceTimer); setWorkspaceBusy(true);
+    var region = $("importStatus"), count = 0, skipped = 0;
+    region.textContent = "Importing articles…"; region.setAttribute("aria-busy", "true");
+    if (!$("workspaceDialog").hidden) region.focus();
     try {
-      if (!await leaveArticle()) return;
-      for (var incoming of pendingRestore.articles) {
+      if (!await leaveArticle()) { region.textContent = "Import did not start. 0 articles imported; 0 skipped. Current preferences retained."; return; }
+      for (var incoming of backup.articles) {
         var doc = cleanArticle(JSON.parse(JSON.stringify(incoming)));
         if (articles.some(function (a) { return a.id === doc.id; })) {
-          if ($("restoreConflict").value === "skip") continue;
+          if (conflict === "skip") { skipped++; continue; }
           doc.id = articleId(); doc.title += " (imported copy)";
         }
-        if (!await saveLibraryArticle(doc)) { $("libraryStatus").textContent = "Import stopped after " + count + " articles because saving failed. Originals remain intact. Retry with Keep existing to skip completed imports."; return; }
+        if (!await saveLibraryArticle(doc)) { region.textContent = "Import interrupted: " + count + " articles imported; " + skipped + " skipped. Saving failed. Existing articles were kept. Current preferences retained."; return; }
         count++;
       }
       var restoredSettings = false;
-      if ($("restoreSettings").checked && pendingRestore.settings && pendingRestore.settings.prefs) {
-        var nextPrefs = sanitizePrefs(pendingRestore.settings.prefs);
-        try { await tauri().savePrefs(nextPrefs); prefs = nextPrefs; applyPrefs(); setReview(prefs.review); restoredSettings = true; }
-        catch (e) { $("libraryStatus").textContent = "Articles imported, but preferences could not be saved. Current preferences were kept."; renderLibrary(); return; }
+      if (restoreSettings && backup.settings && backup.settings.prefs) {
+        var nextPrefs = sanitizePrefs(backup.settings.prefs);
+        try { await queueNativePreferences(nextPrefs); prefs = nextPrefs; applyPrefs(); setReview(prefs.review); restoredSettings = true; }
+        catch (e) { region.textContent = count + " articles imported; " + skipped + " skipped. Preferences could not be saved. Current preferences retained."; return; }
       }
       pendingRestore = null; $("restoreChoices").hidden = true;
-      $("libraryStatus").textContent = "Imported " + count + " articles. Existing articles were kept. " + (restoredSettings ? "Writing preferences restored." : "Current preferences retained.");
-      renderLibrary(); $("libraryRestore").focus();
-    } finally { transitioning = false; setWorkspaceBusy(false); $("restoreConfirm").disabled = false; }
+      region.textContent = (count === 0 && skipped ? "All articles skipped. " : "Import complete. ") + count + " articles imported; " + skipped + " skipped. " + (restoredSettings ? "Writing preferences restored." : "Current preferences retained.");
+    } catch (e) { region.textContent = "Import interrupted: " + count + " articles imported; " + skipped + " skipped. Current preferences retained."; }
+    finally { renderLibrary(); region.setAttribute("aria-busy", "false"); importing = false; transitioning = false; setWorkspaceBusy(false); }
   });
   function renderOutline(report) {
     if (!report) return;
@@ -1400,7 +1536,7 @@
 
   function formatMarkdown(kind) {
     $("moreMenu").open=false;
-    if (transitioning) return;
+    if (transitioning || closePending) return;
     closePreview();
     var from = editor.selectionStart, to = editor.selectionEnd, text = editor.value.slice(from,to), replacement;
     if (kind === "bold" || kind === "italic") { var mark = kind === "bold" ? "**" : "*"; replacement = mark + (text || "text") + mark; }
@@ -1421,9 +1557,32 @@
   });
   window.BluntedWorkspace = {
     prepareClose: async function () {
-      if (transitioning) { copyNote.textContent = "Please wait for the current library operation to finish."; return false; }
-      if (await leaveArticle()) { clearTimeout(prefsTimer); if(tauri() && tauri().savePrefs && !prefs.privateSession) { await saveQueue; try{await tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}catch(e){} } return true; }
-      return false;
+      if (transitioning || closePending) { copyNote.textContent = "Please wait for the current library operation to finish."; return false; }
+      closePending = true;
+      try {
+        if (!await leaveArticle()) return false;
+        var articleSnapshot = JSON.stringify(state);
+        clearTimeout(prefsTimer); await saveQueue;
+        if (tauri() && tauri().savePrefs && !prefs.privateSession) {
+          for (;;) {
+            var preferenceSnapshot = JSON.stringify(prefs), discardPreferences = false;
+            try { await queueNativePreferences(JSON.parse(preferenceSnapshot)); }
+            catch (e) {
+              var choice = await chooseLeave("Your writing is protected separately. Preferences could not be saved. Retry, keep working, or exit without saving preferences.", "preferences");
+              if (choice === "keep") return false;
+              if (choice === "save") continue;
+              if (choice !== "discard") return false;
+              discardPreferences = true;
+            }
+            // A preferences-only decision never discards writing edited during this await.
+            if (JSON.stringify(state) !== articleSnapshot || dirty || transitioning) return false;
+            if (discardPreferences) break;
+            if (JSON.stringify(prefs) !== preferenceSnapshot) continue;
+            break;
+          }
+        }
+        return !dirty && !transitioning && JSON.stringify(state) === articleSnapshot;
+      } finally { closePending = false; }
     }
   };
   window.addEventListener("beforeunload", function (e) {
@@ -1439,9 +1598,9 @@
     var panel=$(id);panel.hidden=false;if(panel.showModal && !panel.open) panel.showModal();
     if(focusId) $(focusId).focus();
   }
-  function closePanel(id) {var panel=$(id);if(panel.close && panel.open) panel.close();panel.hidden=true;var opener=panelOpeners[id];if(opener && opener.focus && (!opener.getClientRects || opener.getClientRects().length)) opener.focus();else if(!initializing) $("viewWrite").focus();}
+  function closePanel(id) {if (id === "workspaceDialog") { restoreReadRevision++; if (!transitioning) pendingRestore = null; $("importStatus").textContent = ""; } if (id === "preferencesDialog") $("clearStatus").textContent = ""; var panel=$(id);if(panel.close && panel.open) panel.close();panel.hidden=true;var opener=panelOpeners[id];if(opener && opener.focus && (!opener.checkVisibility || opener.checkVisibility()) && (!opener.getClientRects || opener.getClientRects().length)) opener.focus();else if(!initializing) $("viewWrite").focus();}
   function showNavigation(tab) {
-    $("libraryPanel").hidden=tab!=="articles" || !libraryReady;$("portableLibrary").hidden=tab!=="articles" || libraryReady;
+    $("libraryPanel").hidden=tab!=="articles" || !libraryReady;$("portableLibrary").hidden=tab!=="articles" || !!(tauri() && tauri().library);
     $("outlinePanel").hidden=tab!=="outline";
     $("navArticles").setAttribute("aria-pressed",tab==="articles"?"true":"false");$("navOutline").setAttribute("aria-pressed",tab==="outline"?"true":"false");
     $("workspaceHeading").textContent=tab==="outline"?"Article outline":"Your articles";
@@ -1461,8 +1620,14 @@
   $("leaveDialog").addEventListener("cancel",function(e){e.preventDefault();finishLeave("keep");});
   function finishLeave(choice){ if(!leaveResolve) return; var resolve=leaveResolve;leaveResolve=null;closePanel("leaveDialog");resolve(choice); }
   $("leaveKeep").addEventListener("click",function(){finishLeave("keep");});$("leaveDiscard").addEventListener("click",function(){finishLeave("discard");});$("leaveSave").addEventListener("click",function(){finishLeave("save");});
-  function chooseLeave(message){
-    $("leaveMessage").textContent=message;$("leaveSave").hidden=prefs.privateSession || !libraryReady;
+  function chooseLeave(message, variant){
+    if (leaveResolve) return Promise.resolve("keep");
+    var preferences = variant === "preferences";
+    $("leaveHeading").textContent = preferences ? "Preferences could not be saved" : "Keep this writing?";
+    $("leaveKeep").textContent = "Keep working";
+    $("leaveSave").textContent = preferences ? "Retry saving preferences" : "Save to library";
+    $("leaveDiscard").textContent = preferences ? "Exit without saving preferences" : "Discard unsaved changes";
+    $("leaveMessage").textContent=message;$("leaveSave").hidden=!preferences && (prefs.privateSession || !libraryReady);
     return new Promise(function(resolve){leaveResolve=resolve;openPanel("leaveDialog","leaveKeep");});
   }
   $("allNotes").addEventListener("click",function(){findingsLimit=50;issuesEl.hidden=true;$("findingsView").hidden=false;renderFindings();$("findingGroup").focus();});
@@ -1484,9 +1649,17 @@
       next.reading=p.reading===true;next.reviewer=p.reviewer==="structure"?"structure":"clarity";out.positions[id]=next;
     });return out;
   }
+  function queueNativePreferences(value) {
+    var snapshot = JSON.parse(JSON.stringify(value));
+    var job = saveQueue.then(function () { return tauri().savePrefs(snapshot); });
+    saveQueue = job.then(function () {}, function () {});
+    return job;
+  }
   function schedulePrefs() {
-    if(initializing || loadFailed || prefs.privateSession) return;
+    if(initializing || loadFailed || prefs.privateSession || clearing || importing || closePending) return;
+    var epoch = persistenceEpoch;
     clearTimeout(prefsTimer);prefsTimer=setTimeout(function(){
+      if (clearing || importing || closePending || epoch !== persistenceEpoch) return;
       if(tauri() && tauri().savePrefs){ var job=saveQueue.then(function(){return tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}).catch(function(){copyNote.textContent="Preferences could not be saved. Your article is kept separately.";});saveQueue=job; }
       else {try{localStorage.setItem(LS_PREFS,JSON.stringify(prefs));}catch(e){copyNote.textContent="Preferences could not be saved.";}}
     },200);
@@ -1497,7 +1670,7 @@
     return editor.selectionStart || 0;
   }
   function rememberWorkspace(){
-    if(initializing || !state || prefs.privateSession) return;
+    if(initializing || !state || prefs.privateSession || clearing || importing) return;
     prefs.workspace=sanitizeWorkspace(prefs.workspace);prefs.workspace.activeId=state.id;
     prefs.workspace.positions[state.id]={start:editor.selectionStart||0,end:editor.selectionEnd||0,scroll:editor.scrollTop||0,page:window.scrollY||0,anchor:previewOpen?readingAnchor():editor.selectionStart||0,reading:previewOpen,reviewer:reviewer,reviewFrom:activeNote?activeNote.from:editor.selectionStart||0};schedulePrefs();
   }
@@ -1508,8 +1681,8 @@
     prefs.workspace=sanitizeWorkspace(prefs.workspace);prefs.workspace.activeId=state.id;syncScroll();
     if(p && p.reading){editor.setSelectionRange(Math.min(p.anchor||0,editor.value.length),Math.min(p.anchor||0,editor.value.length));$("viewPreview").click();scrollReadingTo(p.anchor||0);}
   }
-  ["select","keyup","mouseup","scroll","blur"].forEach(function(type){editor.addEventListener(type,function(){clearTimeout(workspaceTimer);workspaceTimer=setTimeout(rememberWorkspace,100);});});
-  window.addEventListener("scroll",function(){clearTimeout(workspaceTimer);workspaceTimer=setTimeout(rememberWorkspace,150);});
+  ["select","keyup","mouseup","scroll","blur"].forEach(function(type){editor.addEventListener(type,function(){if(clearing) return;var epoch=persistenceEpoch;clearTimeout(workspaceTimer);workspaceTimer=setTimeout(function(){if(epoch===persistenceEpoch) rememberWorkspace();},100);});});
+  window.addEventListener("scroll",function(){if(clearing) return;var epoch=persistenceEpoch;clearTimeout(workspaceTimer);workspaceTimer=setTimeout(function(){if(epoch===persistenceEpoch) rememberWorkspace();},150);});
   window.addEventListener("resize",function(){if(prefs.review==="review" && activeNote && !previewOpen) scrollToOffset(activeNote.from);});
 
   // ---------- init ----------
@@ -1519,7 +1692,7 @@
     try { loaded = store.load(); } catch (e) { loaded = null; }
     // Tauri loadDoc is async (IPC promise); web load is sync.
     if (loaded && typeof loaded.then === "function") {
-      loaded.then(function (v) { initWith(v); }, function () { loadFailed = true; initWith(null); copyNote.textContent = "Library could not be loaded. Original files are preserved; restart to retry. Export any new writing."; setSaveState("Library unavailable — changes will not be saved"); });
+      loaded.then(function (v) { initWith(v); }, function () { loadFailed = true; initWith(null); setLibraryUnavailable(); copyNote.textContent = "Library could not be loaded. Export any new writing or retry the original location."; setSaveState("Library unavailable — changes will not be saved"); });
     } else {
       initWith(loaded);
     }

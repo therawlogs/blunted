@@ -1,0 +1,112 @@
+[
+  {
+    "width": 375,
+    "viewport": 375,
+    "scrollWidth": 375,
+    "strip": {
+      "left": 20,
+      "right": 355,
+      "height": 139
+    },
+    "actions": [
+      {
+        "name": "Export article",
+        "width": 108,
+        "height": 44
+      },
+      {
+        "name": "Retry library",
+        "width": 100.671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 560,
+    "viewport": 560,
+    "scrollWidth": 560,
+    "strip": {
+      "left": 20,
+      "right": 540,
+      "height": 118
+    },
+    "actions": [
+      {
+        "name": "Export article",
+        "width": 108,
+        "height": 44
+      },
+      {
+        "name": "Retry library",
+        "width": 100.671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 768,
+    "viewport": 768,
+    "scrollWidth": 768,
+    "strip": {
+      "left": 48,
+      "right": 720,
+      "height": 97
+    },
+    "actions": [
+      {
+        "name": "Export article",
+        "width": 108,
+        "height": 44
+      },
+      {
+        "name": "Retry library",
+        "width": 100.671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 1024,
+    "viewport": 1024,
+    "scrollWidth": 1024,
+    "strip": {
+      "left": 176,
+      "right": 848,
+      "height": 97
+    },
+    "actions": [
+      {
+        "name": "Export article",
+        "width": 108,
+        "height": 44
+      },
+      {
+        "name": "Retry library",
+        "width": 100.671875,
+        "height": 44
+      }
+    ]
+  },
+  {
+    "width": 1360,
+    "viewport": 1360,
+    "scrollWidth": 1360,
+    "strip": {
+      "left": 344,
+      "right": 1016,
+      "height": 97
+    },
+    "actions": [
+      {
+        "name": "Export article",
+        "width": 108,
+        "height": 44
+      },
+      {
+        "name": "Retry library",
+        "width": 100.671875,
+        "height": 44
+      }
+    ]
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "environment": {
+    "os": "macOS 27.2 (26B118)",
+    "architecture": "arm64",
+    "tauri": "2.12.0",
+    "runtime": "isolated native debug bundles",
+    "base": "/tmp/blunted-native-contract-20261026",
+    "realUserLibraryTouched": false
+  },
+  "clear": [
+    {
+      "status": "partial",
+      "removed": [
+        "/tmp/blunted-native-contract-20261026/selected/articles",
+        "/tmp/blunted-native-contract-20261026/selected/prefs.json"
+      ],
+      "failed": [
+        "/tmp/blunted-native-contract-20261026/selected/doc.backup.json: Operation not permitted (os error 1)"
+      ],
+      "configurationRetained": true,
+      "unrelatedOriginalRetained": true
+    },
+    {
+      "status": "complete",
+      "removed": [
+        "/tmp/blunted-native-contract-20261026/data/blunted-folder.txt"
+      ],
+      "failed": []
+    },
+    {
+      "status": "complete",
+      "removed": [],
+      "failed": []
+    }
+  ],
+  "nativeClose": {
+    "frontend": "production frontend in disposable native debug .app; close implementation unchanged by later article-save outcome correction",
+    "storage": "/tmp/blunted-native-contract-20261026/selected-full",
+    "trigger": "Cmd+W through native close event",
+    "fault": "prefs.json replaced with disposable directory after clean article loaded",
+    "dialogTitle": "Preferences could not be saved",
+    "initialFocus": "Keep working",
+    "escape": "window remains open, article preview focus restored, synthetic writing unchanged",
+    "retry": "remove synthetic blocking directory while dialog open; Retry saving preferences => native app quit",
+    "reopen": "saved synthetic article preserved after retry exit",
+    "explicitExit": "reintroduce blocking directory; native close; Exit without saving preferences => native app quit",
+    "articleAfterExit": {
+      "id": "native-close",
+      "title": "Synthetic native close fixture",
+      "body": "Synthetic native writing must survive preferences failures.",
+      "createdAt": "2026-10-26T00:00:00Z",
+      "updatedAt": "2026-10-26T00:00:00Z"
+    },
+    "failedPreferencesPathStillDirectory": true,
+    "limit": "does not establish Windows or clean-install acceptance; mocked pending-await/late-edit coverage is recorded separately"
+  }
+}

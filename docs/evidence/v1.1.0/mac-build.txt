@@ -1,0 +1,39 @@
+
+> blunted@1.1.0 build:tauri:mac
+> npm run build && npm run bundle:tauri && tauri build --target aarch64-apple-darwin --bundles dmg
+
+
+> blunted@1.1.0 build
+> node scripts/build.mjs
+
+blunted: wrote /Users/praveen/Documents/Products/blunted/dist/index.html (247401 bytes)
+
+> blunted@1.1.0 bundle:tauri
+> node scripts/bundle-tauri.mjs
+
+bundle-tauri: wrote src-tauri/frontend/index.html + tauri-adapter.js
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build && node scripts/bundle-tauri.mjs`
+
+> blunted@1.1.0 build
+> node scripts/build.mjs
+
+blunted: wrote /Users/praveen/Documents/Products/blunted/dist/index.html (247401 bytes)
+bundle-tauri: wrote src-tauri/frontend/index.html + tauri-adapter.js
+   Compiling blunted v1.1.0 (/Users/praveen/Documents/Products/blunted/src-tauri)
+    Finished `release` profile [optimized] target(s) in 56.84s
+       Built application at: /Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/blunted
+    Bundling blunted.app (/Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app)
+     Signing with identity "-"
+Signing with identity "-"
+Signing /Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app/Contents/MacOS/blunted
+/Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app/Contents/MacOS/blunted: replacing existing signature
+Signing with identity "-"
+Signing /Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app
+/Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app: replacing existing signature
+        Warn skipping app notarization, no APPLE_ID & APPLE_PASSWORD & APPLE_TEAM_ID or APPLE_API_KEY & APPLE_API_ISSUER & APPLE_API_KEY_PATH environment variables found
+    Bundling blunted_1.1.0_aarch64.dmg (/Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/blunted_1.1.0_aarch64.dmg)
+     Running bundle_dmg.sh
+    Cleaning /Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/blunted.app
+    Finished 1 bundle at:
+        /Users/praveen/Documents/Products/blunted/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/blunted_1.1.0_aarch64.dmg (2.06 MiB)

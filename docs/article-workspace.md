@@ -31,8 +31,9 @@ The desktop library stores all articles independently in the selected folder's
 `articles/` subfolder. New article IDs are independent of titles. Existing
 single-draft data is copied once, leaving legacy files untouched. Missing or
 corrupt main files restore from the newest valid backup. If no backup works,
-loading stops with a visible error and files are preserved. Export any writing
-made during that failure; restart after repairing storage to retry.
+loading stops with a visible error and files are preserved. In v1.1.0, use
+**Export article** to keep current writing, then **Retry library** after restoring
+the original location. Retry preserves the active writing and editing position.
 
 Saved means the current article snapshot was written successfully. Save errors
 remain visible and actionable. When switching with unsaved work, choose Keep

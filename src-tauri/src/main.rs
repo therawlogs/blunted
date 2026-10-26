@@ -5,6 +5,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod library;
+mod storage;
 
 use serde::{Deserialize, Serialize};
 static ALLOW_EXIT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -26,38 +27,33 @@ struct Persisted {
     location: String,
 }
 
-fn default_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
+fn default_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
         .path()
         .app_data_dir()
         .map_err(|e| e.to_string())?
-        .join("blunted");
+        .join("blunted"))
+}
+fn default_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = default_path(app)?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
-
-fn configured_dir(app: &AppHandle) -> Result<Option<PathBuf>, String> {
-    let path = app
+fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
         .path()
         .app_config_dir()
         .map_err(|e| e.to_string())?
-        .join("blunted-folder.txt");
-    let value = match fs::read_to_string(path) {
-        Ok(v) => v,
-        Err(_) => return Ok(None),
-    };
-    let dir = PathBuf::from(value.trim());
-    if dir.is_dir() {
-        Ok(Some(dir))
-    } else {
-        Ok(None)
-    }
+        .join("blunted-folder.txt"))
 }
-
+fn configured_dir(app: &AppHandle) -> Result<Option<PathBuf>, String> {
+    storage::configured_path(&config_path(app)?)
+}
 fn data_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = configured_dir(app)?.unwrap_or(default_dir(app)?);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir)
+    match configured_dir(app)? {
+        Some(dir) => Ok(dir),
+        None => default_dir(app), // legitimate first setup only
+    }
 }
 
 fn atomic_write(path: &PathBuf, content: &str) -> Result<(), String> {
@@ -70,8 +66,11 @@ fn atomic_write(path: &PathBuf, content: &str) -> Result<(), String> {
 #[tauri::command]
 fn blunted_load(app: AppHandle) -> Result<Persisted, String> {
     let configured = configured_dir(&app)?;
-    let legacy = default_dir(&app)?;
-    let dir = configured.clone().unwrap_or(legacy.clone());
+    let legacy = default_path(&app)?;
+    let dir = match &configured {
+        Some(dir) => dir.clone(),
+        None => default_dir(&app)?,
+    };
     let read = |name: &str| -> Option<serde_json::Value> {
         let text = fs::read_to_string(dir.join(name)).ok()?;
         serde_json::from_str(&text).ok() // corrupt JSON -> None, never a crash
@@ -110,7 +109,7 @@ async fn blunted_choose_folder(app: AppHandle) -> Result<Option<String>, String>
     let path = file_path
         .as_path()
         .ok_or_else(|| "unsupported folder path".to_string())?;
-    fs::create_dir_all(path).map_err(|e| e.to_string())?;
+    storage::require_root(path)?;
     let config = app.path().app_config_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&config).map_err(|e| e.to_string())?;
     atomic_write(&config.join("blunted-folder.txt"), &path.to_string_lossy())?;
@@ -125,18 +124,23 @@ async fn blunted_library_load(app: AppHandle) -> Result<library::Library, String
 }
 
 #[tauri::command]
+async fn blunted_library_retry(app: AppHandle) -> Result<serde_json::Value, String> {
+    let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
+    let dir = data_dir(&app)?;
+    let library = library::inspect(&dir)?;
+    Ok(
+        serde_json::json!({"articles": library.articles, "location": dir.to_string_lossy(), "recovered": library.recovered}),
+    )
+}
+
+#[tauri::command]
 async fn blunted_library_save(
     app: AppHandle,
     doc: serde_json::Value,
     prefs: serde_json::Value,
-) -> Result<(), String> {
+) -> Result<storage::ArticleSaveReport, String> {
     let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
-    let dir = data_dir(&app)?;
-    library::save(&dir, &doc)?;
-    atomic_write(
-        &dir.join("prefs.json"),
-        &serde_json::to_string_pretty(&prefs).map_err(|e| e.to_string())?,
-    )
+    storage::save_article(&data_dir(&app)?, &doc, &prefs)
 }
 
 #[tauri::command]
@@ -155,55 +159,15 @@ fn blunted_close(app: AppHandle) {
 }
 
 #[tauri::command]
-async fn blunted_clear(app: AppHandle) -> Result<(), String> {
+async fn blunted_clear(app: AppHandle) -> Result<storage::ClearReport, String> {
     let _guard = LIBRARY_LOCK.lock().map_err(|e| e.to_string())?;
-    let mut dirs = vec![data_dir(&app)?];
-    let legacy = default_dir(&app)?;
+    let configured = configured_dir(&app)?;
+    let legacy = default_path(&app)?;
+    let mut dirs = vec![configured.unwrap_or_else(|| legacy.clone())];
     if !dirs.contains(&legacy) {
         dirs.push(legacy);
     }
-    for dir in dirs {
-        let articles = dir.join("articles");
-        if articles.exists() {
-            fs::remove_dir_all(articles).map_err(|e| e.to_string())?;
-        }
-        if let Ok(name) = fs::read_to_string(dir.join("current-draft.txt")) {
-            let candidate = name.trim();
-            let name = if PathBuf::from(candidate)
-                .file_name()
-                .and_then(|v| v.to_str())
-                == Some(candidate)
-                && candidate.ends_with(".json")
-            {
-                candidate
-            } else {
-                "doc.json"
-            };
-            let _ = fs::remove_file(dir.join(name));
-            let stem = name.strip_suffix(".json").unwrap_or(name);
-            for n in 1..=3 {
-                let _ = fs::remove_file(dir.join(format!("{}.backup.{}.json", stem, n)));
-            }
-        }
-        for name in [
-            "doc.json",
-            "doc.backup.1.json",
-            "doc.backup.2.json",
-            "doc.backup.3.json",
-            "doc.backup.json",
-            "prefs.json",
-            "current-draft.txt",
-        ] {
-            let _ = fs::remove_file(dir.join(name));
-        }
-    }
-    let folder_config = app
-        .path()
-        .app_config_dir()
-        .map_err(|e| e.to_string())?
-        .join("blunted-folder.txt");
-    let _ = fs::remove_file(folder_config);
-    Ok(())
+    Ok(storage::clear(&dirs, &config_path(&app)?))
 }
 
 #[tauri::command]
@@ -340,12 +304,12 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             blunted_load,
             blunted_library_load,
+            blunted_library_retry,
             blunted_library_save,
             blunted_save_prefs,
             blunted_close,

@@ -10,6 +10,10 @@ rename, move to trash and restore. Each article saves independently with rotatin
 backups. Export individual articles or back up the whole library. Portable HTML
 keeps its single-draft workflow. These features ship in v1.0.0; older builds do not include them. See [the article workflow and acceptance status](docs/article-workspace.md).
 
+v1.1.0 adds recovery and persistence repairs. See the
+[implementation evidence and remaining acceptance](docs/implementation-evidence-2026-10-26.md)
+and [v1.1.0 notes and local app cleanup](docs/v1.1-release.md).
+
 Find (Cmd/Ctrl+F), bold/italic (Cmd/Ctrl+B / Cmd/Ctrl+I), and next/previous
 review note (F2 / Shift+F2) work from the keyboard. New articles start in Write
 mode. Preferences remain available while drafting; reading scores stay secondary.
@@ -35,7 +39,7 @@ highlight means **review**, not wrong. See `docs/clarity.md`.
 
 ## Download & run
 
-Get [blunted v1.0.0](https://github.com/therawlogs/blunted/releases/tag/v1.0.0):
+Get [blunted v1.1.0](https://github.com/therawlogs/blunted/releases/tag/v1.1.0):
 Mac Apple Silicon DMG, Windows x64 installer, or portable `index.html`.
 
 The Mac app is ad-hoc signed, without Developer ID signing or notarization.
