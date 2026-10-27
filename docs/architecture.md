@@ -46,8 +46,10 @@ backups. There is no title-derived path and no central index to lose. Library
 loading scans article files and backup-only identities. Unrecoverable articles
 block loading and saving rather than disappearing from the library.
 
-`src-tauri/src/library.rs` owns validation, migration, atomic flushed writes and
-recovery. Native commands serialize filesystem operations with a mutex. UI saves
+`src-tauri/src/library.rs` owns article validation, migration, atomic flushed writes
+and recovery. `src-tauri/src/storage.rs` checks configured roots, reports Clear
+outcomes and separates article durability from preference-save results.
+Native commands serialize filesystem operations with a mutex. UI saves
 use immutable snapshots and a promise queue; an old acknowledgement cannot mark
 new edits saved. Switching waits for saving and stops on failure. Native window
 close requests ask the UI to flush before exiting. Abrupt process termination

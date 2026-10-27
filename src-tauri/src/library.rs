@@ -70,10 +70,22 @@ fn read(path: &Path) -> Option<Value> {
     validate(&doc).ok()?;
     Some(doc)
 }
+// Only this child may be created. A configured root that vanished must never
+// be recreated as an empty library after command preflight.
+fn ensure_articles(root: &Path, dir: &Path) -> Result<(), String> {
+    if !fs::metadata(root).map_err(|e| e.to_string())?.is_dir() {
+        return Err("Library location is not a directory".into());
+    }
+    match fs::create_dir(dir) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists && dir.is_dir() => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
 pub fn save(root: &Path, doc: &Value) -> Result<(), String> {
     let id = validate(doc)?;
     let dir = root.join("articles");
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    ensure_articles(root, &dir)?;
     let path = dir.join(format!("{id}.json"));
     if read(&path).is_some() {
         for n in (1..=2).rev() {
@@ -92,7 +104,7 @@ pub fn save(root: &Path, doc: &Value) -> Result<(), String> {
 }
 pub fn load(root: &Path, legacy: Option<Value>) -> Result<Library, String> {
     let dir = root.join("articles");
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    ensure_articles(root, &dir)?;
     let marker = dir.join("migration-v1.done");
     if !marker.exists() {
         if let Some(mut doc) = legacy {
@@ -106,6 +118,26 @@ pub fn load(root: &Path, legacy: Option<Value>) -> Result<Library, String> {
             }
         }
         write(&marker, "migrated")?;
+    }
+    inspect(root)
+}
+// Read-only availability check used by user-triggered retry. Never migrate,
+// create directories, or adopt active editor state.
+pub fn inspect(root: &Path) -> Result<Library, String> {
+    crate::storage::require_root(root)?;
+    let dir = root.join("articles");
+    match fs::metadata(&dir) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Distinguish a legitimate empty root from disappearance after the
+            // initial availability check and before this actual read.
+            crate::storage::require_root(root)?;
+            return Ok(Library {
+                articles: vec![],
+                recovered: vec![],
+            });
+        }
+        Err(error) => return Err(error.to_string()),
+        Ok(_) => {}
     }
     let mut ids = std::collections::BTreeSet::new();
     for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
@@ -161,6 +193,38 @@ mod tests {
     }
     fn doc(id: &str, body: &str) -> Value {
         serde_json::json!({"id":id,"body":body,"title":"Same title","createdAt":"today","updatedAt":"today"})
+    }
+    #[test]
+    fn disappeared_root_is_not_recreated_by_load_or_save() {
+        let r = root();
+        fs::remove_dir_all(&r).unwrap();
+        assert!(load(&r, None).is_err(), "load must fail closed");
+        assert!(!r.exists(), "load recreated unavailable root");
+        assert!(
+            save(&r, &doc("one", "retain in editor")).is_err(),
+            "save must fail closed"
+        );
+        assert!(!r.exists(), "save recreated unavailable root");
+        assert!(inspect(&r).is_err(), "retry must fail closed");
+        assert!(!r.exists(), "retry recreated unavailable root");
+    }
+    #[test]
+    fn retry_inspection_never_creates_or_migrates() {
+        let r = root();
+        fs::write(
+            r.join("doc.json"),
+            serde_json::to_string(&doc("old", "legacy original")).unwrap(),
+        )
+        .unwrap();
+        assert!(inspect(&r).unwrap().articles.is_empty());
+        assert!(!r.join("articles").exists());
+        load(&r, None).unwrap();
+        save(&r, &doc("one", "existing writing")).unwrap();
+        fs::remove_file(r.join("articles/migration-v1.done")).unwrap();
+        assert_eq!(inspect(&r).unwrap().articles[0]["body"], "existing writing");
+        assert!(!r.join("articles/migration-v1.done").exists());
+        assert!(r.join("doc.json").exists());
+        fs::remove_dir_all(r).unwrap();
     }
     #[test]
     fn legacy_named_pointer_and_backups_migrate_into_a_new_folder() {

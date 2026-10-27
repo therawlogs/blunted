@@ -38,6 +38,10 @@
       </details>
     </div>
   </header>
+  <section id="libraryRecovery" class="library-recovery" aria-label="Library recovery" hidden>
+    <p id="libraryRecoveryMessage" role="status" aria-live="polite"></p>
+    <div class="recovery-actions"><button id="exportUnavailableArticle" type="button">Export article</button><button id="retryLibrary" type="button">Retry library</button></div>
+  </section>
   <main class="article-column" aria-label="Article">
     <div class="findbar" id="findBar" hidden>
       <input id="findInput" type="text" placeholder="Find in article" aria-label="Find in document"><span id="findCount" role="status"></span>
@@ -56,7 +60,7 @@
 <aside id="reviewInspector" class="inspector" aria-label="Editorial review" hidden>
   <div class="inspector-head"><label class="sr-only" for="reviewerSel">Reviewer</label><select id="reviewerSel" aria-label="Reviewer"><option value="clarity">Clarity</option><option value="structure">Structure</option></select><button type="button" id="reviewOptions" aria-haspopup="dialog">Options</button></div>
   <div class="review-nav"><button id="prevIssue" type="button" aria-label="Previous note (Shift+F2)">←</button><span id="issuePosition" role="status"></span><button id="nextIssue" type="button" aria-label="Next note (F2)">→</button><button id="allNotes" type="button">All notes <span id="issueCount"></span></button></div>
-  <div id="issues" class="active-note" aria-label="Current editorial note" tabindex="-1"></div>
+  <div id="issues" class="active-note" aria-label="Current editorial note" aria-live="polite" tabindex="-1"></div>
   <div id="findingsView" hidden>
     <div class="findings-controls"><label class="sr-only" for="findingGroup">Notes to show</label><select id="findingGroup"><option value="remaining">Remaining findings</option><option value="prompts">Self-review prompts</option><option value="dismissed">Dismissed notes</option></select><button id="closeFindings" type="button">Back to note</button></div>
     <ol id="findingsList" aria-label="Editorial findings"></ol><button id="loadMoreNotes" type="button" hidden>Show more notes</button>
@@ -69,7 +73,7 @@
     <div class="library-tools"><input id="librarySearch" type="search" placeholder="Search titles" aria-label="Search article titles"><button id="libraryNew" type="button">New</button>
       <details><summary>Library options</summary><div class="menu-section"><label class="check"><input id="libraryTrash" type="checkbox"> Show trash</label><button id="libraryBackup" type="button">Back up library</button><button id="libraryRestore" type="button">Restore backup</button><p id="saveLocation" class="muted"></p></div></details>
     </div>
-    <ul id="libraryList" aria-label="Articles"></ul><p id="libraryStatus" role="status"></p>
+    <ul id="libraryList" aria-label="Articles"></ul><p id="libraryStatus" role="status"></p><p id="importStatus" role="status" tabindex="-1" aria-live="polite" aria-atomic="true"></p>
     <div id="restoreChoices" hidden>
       <p id="restoreSummary"></p>
       <label>When an article ID already exists
@@ -82,7 +86,7 @@
     <input id="libraryPick" type="file" accept=".json,application/json" hidden>
   </section>
   <p id="portableLibrary" class="muted">The portable edition keeps one draft. Use More to import or export an article.</p>
-  <section id="outlinePanel" hidden><nav id="articleOutline" aria-label="Article headings"></nav></section>
+  <section id="outlinePanel" hidden><nav id="articleOutline" aria-label="Article headings" aria-live="polite" tabindex="-1"></nav></section>
 </dialog>
 <dialog id="preferencesDialog" aria-labelledby="preferencesHeading" hidden><div class="panel-head"><h2 id="preferencesHeading">Preferences</h2><span id="customNote" class="muted"></span><button type="button" data-close="preferencesDialog">Close</button></div>
         <div class="prefs">
@@ -154,7 +158,7 @@
             <button type="button" id="btnImportSettings" class="quiet">Import settings…</button>
             <input type="file" id="settingsPick" accept=".json,application/json" hidden>
           </details>
-          <button type="button" id="btnClearData" class="quiet">Clear local data…</button>
+          <button type="button" id="btnClearData" class="quiet">Clear local data…</button><p id="clearStatus" role="status" tabindex="-1" aria-live="polite" aria-atomic="true"></p>
         </div>
 <details><summary>About blunted</summary><p class="muted">English-first, entirely offline. Review notes are patterns to consider, not verdicts about meaning or truth.</p><p id="versionLine" class="muted"></p></details></dialog>
 <dialog id="metricsDialog" aria-labelledby="metricsHeading" hidden><div class="panel-head"><h2 id="metricsHeading">Article details</h2><button type="button" data-close="metricsDialog">Close</button></div>

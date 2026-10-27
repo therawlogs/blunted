@@ -37,6 +37,11 @@
       return { doc: null, prefs: legacy.prefs, articles: library.articles,
         location: legacy.location, recovered: legacy.recovered || library.recovered.length > 0 };
     },
+    // Availability-only retry: never runs folder selection or returns a document
+    // for startup adoption. The UI keeps the active writing and preferences.
+    retryLibrary: async function () {
+      return core.invoke("blunted_library_retry");
+    },
     library: true,
     chooseFolder: function () { return core.invoke("blunted_choose_folder"); },
     saveDoc: function (payload) {

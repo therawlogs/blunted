@@ -1,0 +1,25 @@
+✔ portable failed replacement retains the only valid copy recovered from blunted.backup.v1a (19.418333ms)
+✔ portable failed replacement retains the only valid copy recovered from blunted.backup.v1b (1.751542ms)
+✔ portable failed replacement retains the only valid copy recovered from blunted.backup.v1c (1.939875ms)
+✔ portable rotation validates inputs and retains three previous valid copies (1.539042ms)
+✔ current worker failure clears every derived consumer, stays until next edit and preserves text/save/export (6.223792ms)
+✔ analyze exception creates the shared failure state and editing retries (0.745ms)
+✔ structureReport exception creates the shared failure state and editing retries (0.760959ms)
+✔ worker runtime error falls back through the real main analysis boundary (0.604292ms)
+✔ worker fallback exception fails current analysis without interrupting the active editor (0.550667ms)
+✔ obsolete worker runtime error cannot fail pending newer text (0.616167ms)
+✔ failure moves a removed outline control to its stable local region (0.6695ms)
+✔ portable write rejection at blunted.doc.v1 always leaves a reloadable valid copy (1.7515ms)
+✔ portable write rejection at blunted.backup.v1a always leaves a reloadable valid copy (1.137459ms)
+✔ portable write rejection at blunted.backup.v1b always leaves a reloadable valid copy (1.144375ms)
+✔ portable write rejection at blunted.backup.v1c always leaves a reloadable valid copy (1.878667ms)
+✔ portable write rejection at blunted.prefs.v1 always leaves a reloadable valid copy (1.148542ms)
+✔ aggregate quota pressure during replacement preserves persisted recovery and working text (2.445292ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 106.532792

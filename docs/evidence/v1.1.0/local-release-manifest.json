@@ -1,0 +1,30 @@
+{
+  "version": "1.1.0",
+  "sourceBaseline": "7c547a625561a3717953c626bdee862bd39aeaa4",
+  "sourceState": "local reviewed repair diff plus v1.1.0 metadata",
+  "artifacts": [
+    {
+      "path": "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/blunted_1.1.0_aarch64.dmg",
+      "bytes": 2164447,
+      "sha256": "aeaa8f125fa6a572a300830bb8f31149bd5fdda7d42d890c1b196668d09acf95"
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 247401,
+      "sha256": "dd0056a3a6a06c3cc301c364acf1d40e4d3e3c669656d99a8419acd57a00ec92"
+    },
+    {
+      "path": "/Applications/blunted.app/Contents/MacOS/blunted",
+      "bytes": 5022304,
+      "sha256": "33a347f8b432f9c8208b2282b51b0a7bf2e8aaf908ec2061e6633123368be635"
+    }
+  ],
+  "launch": {
+    "observedAbout": "blunted Version 1.1.0 (1.1.0)",
+    "savedWritingShown": true,
+    "articleFilesUnchanged": 4,
+    "writingContentRecorded": false
+  },
+  "signing": "ad-hoc; strict deep verification passed; no notarization",
+  "coldMachineAcceptance": false
+}

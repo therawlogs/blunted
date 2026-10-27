@@ -1,0 +1,39 @@
+{
+  "kept": "/Applications/blunted.app",
+  "version": "1.1.0",
+  "identifier": "app.blunted.dev-preview",
+  "binarySHA256": "33a347f8b432f9c8208b2282b51b0a7bf2e8aaf908ec2061e6633123368be635",
+  "duplicatesMovedToTrash": [
+    {
+      "source": "/Applications/blunted.app",
+      "version": "1.0.0",
+      "identifier": "app.blunted.dev-preview",
+      "trash": "/Users/praveen/.Trash/blunted-1.0.0-20261026-224219-0.app"
+    },
+    {
+      "source": "/Users/praveen/Documents/Products/blunted/src-tauri/target/release/bundle/macos/blunted.app",
+      "version": "1.0.0",
+      "identifier": "app.blunted.dev-preview",
+      "trash": "/Users/praveen/.Trash/blunted-1.0.0-20261026-224219-1.app"
+    },
+    {
+      "source": "/Users/praveen/Documents/Products/blunted/src-tauri/target/debug/bundle/macos/blunted Writer QA.app",
+      "version": "0.1.6",
+      "identifier": "app.blunted.writer-qa",
+      "trash": "/Users/praveen/.Trash/blunted Writer QA-0.1.6-20261026-224219-2.app"
+    },
+    {
+      "source": "/Users/praveen/Documents/Products/blunted/src-tauri/target/debug/bundle/macos/blunted.app",
+      "version": "1.0.0",
+      "identifier": "app.blunted.contract-full-disposable",
+      "trash": "/Users/praveen/.Trash/blunted-1.0.0-20261026-224219-3.app"
+    },
+    {
+      "source": "/private/tmp/blunted-native-contract-20261026/blunted-full-product.app",
+      "version": "1.0.0",
+      "identifier": "app.blunted.contract-full-disposable",
+      "trash": "/Users/praveen/.Trash/blunted-full-product-1.0.0-20261026-224219-4.app"
+    }
+  ],
+  "dataDeletion": "none; only identified .app bundles were moved"
+}

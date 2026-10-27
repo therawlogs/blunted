@@ -1,0 +1,1 @@
+{"identifier": "app.blunted.contract-disposable", "build": {"frontendDist": "/tmp/blunted-native-contract-20261026/frontend", "beforeBuildCommand": ""}, "app": {"appDirectoriesOverride": "/tmp/blunted-native-contract-20261026/data", "windows": [{"title": "blunted disposable IPC verification", "width": 650, "height": 450}]}, "bundle": {"active": true}}

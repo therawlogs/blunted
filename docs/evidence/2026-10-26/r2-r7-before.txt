@@ -1,0 +1,80 @@
+✔ portable failed replacement retains the only valid copy recovered from blunted.backup.v1a (19.642916ms)
+✔ portable failed replacement retains the only valid copy recovered from blunted.backup.v1b (1.716541ms)
+✖ portable failed replacement retains the only valid copy recovered from blunted.backup.v1c (5.034583ms)
+✔ portable rotation validates inputs and retains three previous valid copies (1.690333ms)
+✖ current worker failure clears every derived consumer, stays until next edit and preserves text/save/export (4.922209ms)
+✖ analyze exception creates the shared failure state and editing retries (0.5965ms)
+✖ structureReport exception creates the shared failure state and editing retries (0.584333ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 3
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.727708
+
+✖ failing tests:
+
+test at tests/analysis-portable.test.js:52:2
+✖ portable failed replacement retains the only valid copy recovered from blunted.backup.v1c (5.034583ms)
+  TypeError [ERR_INVALID_ARG_TYPE]: The "message" argument must be one of type string or function. Received undefined
+      at innerFail (node:internal/assert/utils:135:11)
+      at innerOk (node:internal/assert/utils:169:5)
+      at strict.ok (node:assert:197:3)
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/analysis-portable.test.js:57:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    code: 'ERR_INVALID_ARG_TYPE'
+  }
+
+test at tests/analysis-portable.test.js:66:1
+✖ current worker failure clears every derived consumer, stays until next edit and preserves text/save/export (4.922209ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Review is unavailable/. Input:
+
+  'No findings detected. This is not a judgment of the article’s meaning.'
+
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/analysis-portable.test.js:70:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'No findings detected. This is not a judgment of the article’s meaning.',
+    expected: /Review is unavailable/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/analysis-portable.test.js:82:2
+✖ analyze exception creates the shared failure state and editing retries (0.5965ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Review is unavailable/. Input:
+
+  ''
+
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/analysis-portable.test.js:84:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Review is unavailable/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at tests/analysis-portable.test.js:82:2
+✖ structureReport exception creates the shared failure state and editing retries (0.584333ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Review is unavailable/. Input:
+
+  ''
+
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/analysis-portable.test.js:84:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: /Review is unavailable/,
+    operator: 'match',
+    diff: 'simple'
+  }

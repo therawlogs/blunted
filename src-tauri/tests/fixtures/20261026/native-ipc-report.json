@@ -1,0 +1,44 @@
+{
+  "fsReadDenied": {
+    "denied": true,
+    "error": "fs.read_text_file not allowed. Plugin not found"
+  },
+  "fsWriteDenied": {
+    "denied": true,
+    "error": "fs.write_text_file not allowed. Plugin not found"
+  },
+  "configuredLoad": {
+    "doc": null,
+    "prefs": {
+      "theme": "light"
+    },
+    "recovered": false,
+    "needs_folder": false,
+    "location": "/tmp/blunted-native-contract-20261026/selected"
+  },
+  "backupRecoveryBeforeWrites": {
+    "articles": [
+      {
+        "body": "First synthetic revision",
+        "id": "contract-fixture",
+        "title": "Disposable verification"
+      }
+    ],
+    "recovered": [
+      "contract-fixture"
+    ]
+  },
+  "selectedSave": true,
+  "backupRotation": true,
+  "selectedLoad": {
+    "articles": [
+      {
+        "body": "Second synthetic revision",
+        "id": "contract-fixture",
+        "title": "Disposable verification"
+      }
+    ],
+    "recovered": []
+  },
+  "preferences": true
+}

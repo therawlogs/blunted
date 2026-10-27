@@ -1,0 +1,12 @@
+✔ unavailable desktop library owns a persistent recovery strip and retries without adopting loaded writing (22.122209ms)
+✔ retry retains failure actions and only restores focus when Retry still owns focus (2.045292ms)
+✔ save failure keeps export reachable and unrelated notices cannot replace the warning (2.335458ms)
+✔ article acknowledgement stays distinct from a rejected preferences write (2.076708ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.674333

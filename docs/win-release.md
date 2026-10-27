@@ -29,11 +29,13 @@ Compare the full SHA-256 value with the release listing before opening the
 artifact. For local builds, pass the generated artifact path instead. Hash generation confirms which bytes were built; it does not
 confirm installation or launch on a clean PC.
 
-WebView2: `webviewInstallMode` is `embedBootstrapper` (+~1.8 MB). On
-Windows 10 (April 2018+) and Windows 11 the WebView2 runtime ships with
-the OS, so most users install nothing extra. If the runtime is missing or
-too old, the installer fetches it (network needed for that step only).
-The app itself never makes network requests.
+WebView2: `webviewInstallMode` is `offlineInstaller`. New installers embed
+the offline WebView2 runtime installer so a missing runtime can be installed
+without downloading it on the end-user machine. Building the installer can
+require downloading the runtime build input. This configuration has not yet
+been accepted on disconnected Windows machines with runtime absent and present;
+no new Windows installer has been built in this Mac-only implementation run.
+The app's writing and review workflow remains offline.
 
 Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
 
@@ -44,7 +46,10 @@ Installer mode: per-user (no admin prompt), installs under `%LOCALAPPDATA%`.
    you accept the risk and verified the SHA-256 hash.
    Alternative: download the `.zip`, right-click → Properties → Unblock
    before extracting; extracted files then carry no Mark-of-Web.
-2. Offline startup: writing, analysis, Open, Copy, Download, settings work
+2. Disable networking before installation. Run separate runtime-absent and
+   runtime-present cases; record Windows version, architecture, runtime state,
+   installer filename and SHA-256, install/upgrade outcome and preserved library.
+   Offline startup: writing, analysis, Open, Copy, Download, settings work
    with networking disabled; no app-initiated remote requests.
 3. CRLF round-trip: open a `\r\n` file, edit, Download — newlines and
    UTF-8/Markdown preserved. Reserved names (`CON`, `PRN`, `AUX`, `NUL`,

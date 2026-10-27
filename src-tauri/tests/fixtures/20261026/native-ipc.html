@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><h1>Disposable native IPC verification</h1><button id="export">Export synthetic fixture</button><button id="clear">Clear synthetic fixture</button><button id="folder">Choose disposable folder</button><pre id="dialogResult"></pre><script>document.getElementById('clear').onclick=async()=>{document.getElementById('dialogResult').textContent=JSON.stringify(await window.__TAURI__.core.invoke('blunted_clear'))};document.getElementById('export').onclick=async()=>{document.getElementById('dialogResult').textContent=JSON.stringify(await window.__TAURI__.core.invoke('blunted_save_as',{name:'blunted-disposable-export.md',content:'# Synthetic export\n\nNo user writing.'}))};document.getElementById('folder').onclick=async()=>{document.getElementById('dialogResult').textContent=JSON.stringify(await window.__TAURI__.core.invoke('blunted_choose_folder'))};</script><pre id="report">Running…</pre><script>
+(async()=>{const invoke=window.__TAURI__.core.invoke;const report={};
+const check=async(name,fn)=>{try{report[name]=await fn()}catch(e){report[name]={error:String(e)}};document.getElementById('report').textContent=JSON.stringify(report,null,2)};
+await check('fsReadDenied',async()=>{try{await invoke('plugin:fs|read_text_file',{path:'/tmp/blunted-native-contract-20261026/selected/original.txt'});return false}catch(e){return {denied:true,error:String(e)}}});
+await check('fsWriteDenied',async()=>{try{await invoke('plugin:fs|write_text_file',{path:'/tmp/blunted-native-contract-20261026/selected/forbidden.txt',contents:'forbidden'});return false}catch(e){return {denied:true,error:String(e)}}});
+await check('configuredLoad',()=>invoke('blunted_load')); await check('backupRecoveryBeforeWrites',()=>invoke('blunted_library_load'));
+const doc={id:'contract-fixture',title:'Disposable verification',body:'First synthetic revision'};
+await check('selectedSave',async()=>{await invoke('blunted_library_save',{doc,prefs:{theme:'dark'}});return true});
+doc.body='Second synthetic revision';await check('backupRotation',async()=>{await invoke('blunted_library_save',{doc,prefs:{theme:'dark'}});return true});
+await check('selectedLoad',()=>invoke('blunted_library_load'));
+await check('preferences',async()=>{await invoke('blunted_save_prefs',{prefs:{theme:'light'}});return true});
+await invoke('blunted_library_save',{doc:{id:'verification-report',title:'Fixture report',body:JSON.stringify(report,null,2)},prefs:{theme:'light'}});
+})();</script>

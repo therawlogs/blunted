@@ -1,0 +1,42 @@
+[
+  {
+    "path": "/Applications/blunted.app",
+    "version": "1.0.0",
+    "build": "1.0.0",
+    "identifier": "app.blunted.dev-preview",
+    "binarySHA256": "9b311cc63186d2437fe65f0f4ef2c3af942cfee77e1470a1e01f8262a80a03c0",
+    "modified": 1793033141.0
+  },
+  {
+    "path": "/Users/praveen/Documents/Products/blunted/src-tauri/target/release/bundle/macos/blunted.app",
+    "version": "1.0.0",
+    "build": "1.0.0",
+    "identifier": "app.blunted.dev-preview",
+    "binarySHA256": "9ae8cc5c883d3802746ccab1836da385674764a3873277daf1004bd78c8f43b0",
+    "modified": 1792600860.662039
+  },
+  {
+    "path": "/Users/praveen/Documents/Products/blunted/src-tauri/target/debug/bundle/macos/blunted Writer QA.app",
+    "version": "0.1.6",
+    "build": "0.1.6",
+    "identifier": "app.blunted.writer-qa",
+    "binarySHA256": "955e397107a8211a8eb485438d8958a70405f67ef68e4a6908dc14cdc0c55940",
+    "modified": 1792600240.9209015
+  },
+  {
+    "path": "/Users/praveen/Documents/Products/blunted/src-tauri/target/debug/bundle/macos/blunted.app",
+    "version": "1.0.0",
+    "build": "1.0.0",
+    "identifier": "app.blunted.contract-full-disposable",
+    "binarySHA256": "60b8a4b051a0d91740cda85b5ac56fd5a7d847f5df6c29a2e33d85a7b1a26e54",
+    "modified": 1793033356.2970731
+  },
+  {
+    "path": "/private/tmp/blunted-native-contract-20261026/blunted-full-product.app",
+    "version": "1.0.0",
+    "build": "1.0.0",
+    "identifier": "app.blunted.contract-full-disposable",
+    "binarySHA256": "60b8a4b051a0d91740cda85b5ac56fd5a7d847f5df6c29a2e33d85a7b1a26e54",
+    "modified": 1793033388.5633185
+  }
+]
