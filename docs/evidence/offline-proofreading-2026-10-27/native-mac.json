@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-27",
+  "identifier": "app.blunted.offline-qa-20261027",
+  "appDirectoriesOverride": "/tmp/blunted-offline-native-20261027/data",
+  "selectedLibrary": "/tmp/blunted-offline-native-20261027/library",
+  "frontendSha256": "03731577e2621e0ae7a367f7e6199f7a6a5ca42049187d84e19c1ca7c3ab0e2b",
+  "executableSha256": "6b7d1414c85801aa4b3d41defd12c8085d4848cf49a071ccc66d1788d5a68c60",
+  "checks": {
+    "spellingApply": "I recieve the package. \u2192 I receive the package.; single Cmd+Z restored original",
+    "agreementApply": "She go home. \u2192 She goes home.; single Cmd+Z restored original",
+    "articleApply": "This is a example. \u2192 This is an example.; single Cmd+Z restored original",
+    "unicodeApply": "\ud83d\ude00 I recieve the package. \u2192 \ud83d\ude00 I receive the package.; single Cmd+Z restored exact original",
+    "settings": "Native Spelling/Grammar checkboxes and English-variety selector exposed; turning spelling off removed typo finding and saved preference",
+    "cleanup": "Native app observed isRunning:false after Cmd+Q; exact disposable QA bundle removed and Launch Services registration removed. /Applications/blunted.app unchanged."
+  },
+  "limits": "Isolated debug WKWebView app on development Mac, synthetic data only. Network was not disabled at OS level; bundled worker rejects non-data fetches. Not Windows, clean-machine or VoiceOver acceptance. Final portable build additionally changes status wording and preserves exact Harper deletion ranges."
+}

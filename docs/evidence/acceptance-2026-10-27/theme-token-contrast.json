@@ -1,0 +1,49 @@
+{
+  "method": "WCAG relative luminance of current CSS theme tokens against the solid theme background; bounded text/focus token check, not complete rendered-component contrast acceptance.",
+  "themes": {
+    "light": {
+      "ink": {
+        "foreground": "#24221f",
+        "background": "#faf9f7",
+        "ratio": 15.08
+      },
+      "muted": {
+        "foreground": "#6b655b",
+        "background": "#faf9f7",
+        "ratio": 5.49
+      },
+      "accent": {
+        "foreground": "#285b91",
+        "background": "#faf9f7",
+        "ratio": 6.66
+      },
+      "focus": {
+        "foreground": "#0b5fff",
+        "background": "#faf9f7",
+        "ratio": 4.87
+      }
+    },
+    "dark": {
+      "ink": {
+        "foreground": "#ece7dd",
+        "background": "#191816",
+        "ratio": 14.4
+      },
+      "muted": {
+        "foreground": "#b1a99c",
+        "background": "#191816",
+        "ratio": 7.62
+      },
+      "accent": {
+        "foreground": "#9ac2eb",
+        "background": "#191816",
+        "ratio": 9.54
+      },
+      "focus": {
+        "foreground": "#9ac2eb",
+        "background": "#191816",
+        "ratio": 9.54
+      }
+    }
+  }
+}

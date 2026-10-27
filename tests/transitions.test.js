@@ -28,7 +28,7 @@ const article=(id,body='A saved article.')=>({id,title:id,body,createdAt:'2026-1
 const ticks=async()=>{for(let i=0;i<12;i++) await Promise.resolve();};
 async function harness({docs=[article('one'),article('two')],fail=false, deferred=false, portable=false,loadError=false,worker=false,savedPrefs=null}={}) {
   const nodes=new Map(), listeners={},timers=new Map(), saved=[],files=[],prefsSaved=[]; let timer=0,hold=null;
-  const document={readyState:'loading',addEventListener(type,cb){(listeners[type]||=[]).push(cb);},getElementById(id){if(!nodes.has(id)){const n=this.createElement(id==='editor'?'textarea':'div');n.id=id;if(['workspaceDialog','preferencesDialog','metricsDialog','reviewOptionsDialog','leaveDialog','findingsView'].includes(id))n.hidden=true;nodes.set(id,n);}return nodes.get(id);},createElement(tag){const n=new Node(tag);n.document=this;return n;},createTextNode(t){const n=this.createElement('#text');n.textContent=t;return n;},createDocumentFragment(){return this.createElement('fragment');},querySelector(){return null;},querySelectorAll(){return [];},execCommand(){return false;}};
+  const document={readyState:'loading',addEventListener(type,cb){(listeners[type]||=[]).push(cb);},getElementById(id){if(!nodes.has(id)){const n=this.createElement(id==='editor'?'textarea':'div');n.id=id;if(['workspaceDialog','preferencesDialog','metricsDialog','reviewOptionsDialog','leaveDialog','clearConfirmDialog','findingsView'].includes(id))n.hidden=true;nodes.set(id,n);}return nodes.get(id);},createElement(tag){const n=new Node(tag);n.document=this;return n;},createTextNode(t){const n=this.createElement('#text');n.textContent=t;return n;},createDocumentFragment(){return this.createElement('fragment');},querySelector(){return null;},querySelectorAll(){return [];},execCommand(){return false;}};
   document.body=document.createElement('body'); document.documentElement=document.createElement('html'); document.activeElement=document.body;
   const bridge={library:true,loadDoc:async()=>{if(loadError)throw Error('load failed');return {articles:structuredClone(docs),prefs:structuredClone(savedPrefs)};},saveDoc:async payload=>{if(fail)throw Error('disk full');if(deferred)await new Promise(r=>hold=r);saved.push(structuredClone(payload.doc));},savePrefs:async value=>{prefsSaved.push(structuredClone(value));},saveFile:async(name,content)=>{files.push({name,content});return true;},clearAll:async()=>{}};
   const window={BluntedEngine:{analyze,MODES,...writer},__BLUNTED_TAURI__:portable?null:bridge,addEventListener(type,cb){(listeners['window:'+type]||=[]).push(cb);},confirm(){return true;},prompt(){return 'Renamed';}};
@@ -44,10 +44,11 @@ async function harness({docs=[article('one'),article('two')],fail=false, deferre
   return {context,get,saved,files,prefsSaved,storage,listeners,document,bridge,window,workers, release(){deferred=false;hold?.();},setFail(v){fail=v;},async click(id){await get(id).fire('click');await ticks();},async input(id,value){get(id).value=value;await get(id).fire('input');await ticks();},async timers(ms){for(const [id,t] of [...timers])if(t.ms<=ms){timers.delete(id);t.cb();}await ticks();}};
 }
 const buttons=n=>n.children.flatMap(c=>[...(c.tagName==='BUTTON'?[c]:[]),...buttons(c)]);
+async function confirmClear(h) { await h.click('btnClearData'); await h.click('clearConfirm'); }
 
 test('Clear portable removal rejection preserves writing and reports failure',async()=>{
  const h=await harness({portable:true});await h.input('editor','Keep this writing.');await h.timers(800);
- h.context.localStorage.removeItem=()=>{throw Error('denied');};await h.click('openPreferences');await h.click('btnClearData');
+ h.context.localStorage.removeItem=()=>{throw Error('denied');};await h.click('openPreferences');await confirmClear(h);
  assert.equal(h.get('editor').value,'Keep this writing.');assert.match(h.get('clearStatus').textContent,/could not|failed/i);
 });
 test('final preferences failure keeps native close open',async()=>{
@@ -56,16 +57,16 @@ test('final preferences failure keeps native close open',async()=>{
 });
 test('Clear drains prior save, blocks repeats and leaves no timer resurrection',async()=>{
  const h=await harness({deferred:true});await h.input('editor','Pending save.');await h.timers(800);let calls=0;h.bridge.clearAll=async()=>{calls++;assert.equal(h.saved.length,1);return {status:'complete',removed:[],failed:[]};};
- await h.click('openPreferences');const clearing=h.get('btnClearData').fire('click');await ticks();assert.equal(h.get('editor').readOnly,true);assert.equal(h.document.activeElement,h.get('clearStatus'));
- await h.click('btnClearData');assert.equal(calls,0);h.release();await clearing;await h.timers(1000);assert.equal(calls,1);assert.equal(h.saved.length,1);assert.equal(h.get('editor').value,'');assert.equal(h.get('editor').readOnly,false);assert.equal(h.document.activeElement,h.get('clearStatus'));
+ await h.click('openPreferences');await h.click('btnClearData');const clearing=h.get('clearConfirm').fire('click');await ticks();assert.equal(h.get('editor').readOnly,true);assert.equal(h.document.activeElement,h.get('clearStatus'));
+ await confirmClear(h);assert.equal(calls,0);h.release();await clearing;await h.timers(1000);assert.equal(calls,1);assert.equal(h.saved.length,1);assert.equal(h.get('editor').value,'');assert.equal(h.get('editor').readOnly,false);assert.equal(h.document.activeElement,h.get('clearStatus'));
 });
 test('partial native Clear reports counts and retains editor with controls unlocked',async()=>{
- const h=await harness();h.bridge.clearAll=async()=>({status:'partial',removed:['one'],failed:['two denied']});await h.click('openPreferences');await h.click('btnClearData');
+ const h=await harness();h.bridge.clearAll=async()=>({status:'partial',removed:['one'],failed:['two denied']});await h.click('openPreferences');await confirmClear(h);
  assert.equal(h.get('editor').value,'A saved article.');assert.match(h.get('clearStatus').textContent,/partly cleared.*1 removals completed; 1 removals failed/);assert.equal(h.get('btnClearData').disabled,false);
  h.get('copyNote').textContent='Copied';assert.match(h.get('clearStatus').textContent,/partly/);
 });
 test('failed native Clear unlocks and deliberate panel closure keeps opener focus',async()=>{
- const h=await harness();let finish;h.bridge.clearAll=()=>new Promise((r,j)=>finish=j);h.get('openPreferences').focus();await h.click('openPreferences');const attempt=h.get('btnClearData').fire('click');await ticks();
+ const h=await harness();let finish;h.bridge.clearAll=()=>new Promise((r,j)=>finish=j);h.get('openPreferences').focus();await h.click('openPreferences');await h.click('btnClearData');const attempt=h.get('clearConfirm').fire('click');await ticks();
  await h.get('preferencesDialog').fire('cancel');assert.equal(h.document.activeElement,h.get('openPreferences'));finish(Error('denied'));await attempt;assert.equal(h.document.activeElement,h.get('openPreferences'));assert.equal(h.get('editor').readOnly,false);assert.match(h.get('clearStatus').textContent,/could not/);
 });
 async function pick(h,articles,settings){h.get('libraryPick').files=[{content:JSON.stringify({app:'blunted-library',version:1,articles,settings})}];await h.get('libraryPick').fire('change');}
@@ -102,10 +103,10 @@ test('repeated close requests cannot replace the pending resolver',async()=>{
 test('Clear invalidates in-flight portable article and settings readers',async()=>{
  const h=await harness({portable:true});const readers=[];h.context.FileReader=class{readAsText(f){this.result=f.content;readers.push(this);}};
  h.get('filePick').files=[{name:'old.md',content:'Must not resurrect'}];await h.get('filePick').fire('change');h.get('settingsPick').files=[{content:JSON.stringify({app:'blunted',prefs:{theme:'dark'}})}];await h.get('settingsPick').fire('change');
- await h.click('btnClearData');readers[0].onload();readers[1].onload();await h.timers(1000);assert.equal(h.get('editor').value,'');assert.equal(h.storage.has('blunted.doc.v1'),false);assert.equal(h.storage.has('blunted.prefs.v1'),false);
+ await confirmClear(h);readers[0].onload();readers[1].onload();await h.timers(1000);assert.equal(h.get('editor').value,'');assert.equal(h.storage.has('blunted.doc.v1'),false);assert.equal(h.storage.has('blunted.prefs.v1'),false);
 });
 test('portable Clear complete and already absent removals report completion without writes',async()=>{
- const h=await harness({portable:true});await h.input('editor','Disposable saved draft');await h.timers(800);assert.ok(h.storage.size);await h.click('btnClearData');assert.equal(h.storage.size,0);assert.equal(h.get('clearStatus').textContent,'Local data cleared.');await h.click('btnClearData');assert.equal(h.storage.size,0);assert.equal(h.get('editor').value,'');await h.timers(1000);assert.equal(h.storage.size,0);
+ const h=await harness({portable:true});await h.input('editor','Disposable saved draft');await h.timers(800);assert.ok(h.storage.size);await confirmClear(h);assert.equal(h.storage.size,0);assert.equal(h.get('clearStatus').textContent,'Local data cleared.');await confirmClear(h);assert.equal(h.storage.size,0);assert.equal(h.get('editor').value,'');await h.timers(1000);assert.equal(h.storage.size,0);
 });
 test('deliberately closing Articles during import retains opener focus through completion',async()=>{
  const h=await harness();let release;h.bridge.saveDoc=p=>new Promise(r=>release=()=>{h.saved.push(structuredClone(p.doc));r();});h.get('openArticles').focus();await h.click('openArticles');await pick(h,[article('new','Synthetic import')]);const importing=h.get('restoreConfirm').fire('click');await ticks();await h.get('workspaceDialog').fire('cancel');assert.equal(h.document.activeElement,h.get('openArticles'));release();await importing;assert.equal(h.document.activeElement,h.get('openArticles'));assert.equal(h.get('workspaceDialog').hidden,true);assert.equal(h.saved.at(-1).body,'Synthetic import');
@@ -115,10 +116,10 @@ test('pending final preferences save owns transition and Clear cannot race or re
  h.bridge.savePrefs=()=>new Promise(resolve=>{finishPreferences=()=>{persistedPreferences=true;resolve();};});
  h.bridge.clearAll=async()=>{clearCalls++;persistedPreferences=false;return {status:'complete',removed:['preferences'],failed:[]};};
  const closing=h.window.BluntedWorkspace.prepareClose();await ticks();assert.equal(typeof finishPreferences,'function');
- await h.click('btnClearData');assert.equal(clearCalls,0,'Clear must respect final close ownership');
+ await confirmClear(h);assert.equal(clearCalls,0,'Clear must respect final close ownership');
  await h.click('libraryNew');assert.equal(h.saved.length,0,'competing new article must respect close ownership');
  finishPreferences();assert.equal(await closing,true);assert.equal(persistedPreferences,true);
- await h.click('btnClearData');assert.equal(clearCalls,1);assert.equal(persistedPreferences,false);await h.timers(1000);assert.equal(persistedPreferences,false);
+ await confirmClear(h);assert.equal(clearCalls,1);assert.equal(persistedPreferences,false);await h.timers(1000);assert.equal(persistedPreferences,false);
 });
 test('confirmed preferences import invalidates pending preference timers and owns queued write',async()=>{
  const h=await harness();const writes=[];let finishImport,persistedTheme;
@@ -137,10 +138,55 @@ test('explicit preferences-only exit discards changed preferences without anothe
 });
 test('portable Clear does not count already absent keys as removed when sole main deletion fails',async()=>{
  const h=await harness({portable:true});await h.input('editor','Only persisted main');await h.timers(800);for(const key of [...h.storage.keys()])if(key!=='blunted.doc.v1')h.storage.delete(key);
- h.context.localStorage.removeItem=key=>{if(key==='blunted.doc.v1')throw Error('denied');h.storage.delete(key);};await h.click('btnClearData');
+ h.context.localStorage.removeItem=key=>{if(key==='blunted.doc.v1')throw Error('denied');h.storage.delete(key);};await confirmClear(h);
  assert.match(h.get('clearStatus').textContent,/could not be cleared. 0 removals completed; 1 removals failed/);assert.doesNotMatch(h.get('clearStatus').textContent,/partly/);assert.equal(h.get('editor').value,'Only persisted main');assert.equal(h.storage.size,1);
 });
 test('portable Clear truthfully reports unreadable storage without claiming unknown removals',async()=>{
  const h=await harness({portable:true});await h.input('editor','Keep unreadable draft');await h.timers(800);h.context.localStorage.getItem=key=>{if(key==='blunted.doc.v1')throw Error('read denied');return h.storage.get(key)??null;};
- await h.click('btnClearData');assert.match(h.get('clearStatus').textContent,/1 storage locations could not be checked; no removal was attempted there/);assert.ok(h.storage.has('blunted.doc.v1'));assert.equal(h.get('editor').value,'Keep unreadable draft');
+ await confirmClear(h);assert.match(h.get('clearStatus').textContent,/1 storage locations could not be checked; no removal was attempted there/);assert.ok(h.storage.has('blunted.doc.v1'));assert.equal(h.get('editor').value,'Keep unreadable draft');
+});
+
+test('grouped settings expose the requested section and keep keyboard focus on its opener',async()=>{
+ const h=await harness();await h.click('openPreferences');
+ assert.equal(h.get('settingsAppearancePanel').hidden,false);assert.equal(h.get('settingsReviewPanel').hidden,true);assert.equal(h.document.activeElement,h.get('themeSel'));
+ await h.click('settingsLibrary');assert.equal(h.get('settingsLibraryPanel').hidden,false);assert.equal(h.get('settingsAppearancePanel').hidden,true);assert.equal(h.get('settingsLibrary').attrs['aria-pressed'],'true');
+ await h.click('openRules');assert.equal(h.get('settingsReviewPanel').hidden,false);assert.equal(h.get('settingsLibraryPanel').hidden,true);assert.equal(h.document.activeElement,h.get('profileSel'));
+});
+test('grouped settings retain existing preferences and announce successful persistence',async()=>{
+ const h=await harness({savedPrefs:{theme:'dark',fontFamily:'mono',fontSize:19,lineHeight:2.1,wpm:240}});
+ await h.click('openPreferences');assert.equal(h.get('themeSel').value,'dark');assert.equal(h.get('fontFamily').value,'mono');
+ h.get('themeSel').value='light';await h.get('themeSel').fire('change');assert.match(h.get('preferencesStatus').textContent,/Saving/);await h.timers(200);
+ assert.equal(h.prefsSaved.at(-1).theme,'light');assert.equal(h.prefsSaved.at(-1).fontFamily,'mono');assert.equal(h.prefsSaved.at(-1).wpm,240);assert.match(h.get('preferencesStatus').textContent,/saved on this device/);
+});
+test('settings save failure is visible in its dialog and a subsequent change retries',async()=>{
+ const h=await harness();h.bridge.savePrefs=async()=>{throw Error('denied');};await h.click('openPreferences');h.get('themeSel').value='dark';await h.get('themeSel').fire('change');await h.timers(200);
+ assert.match(h.get('preferencesStatus').textContent,/could not be saved/);assert.equal(h.get('preferencesStatus').attrs['data-failed'],'true');assert.equal(h.get('editor').value,'A saved article.');
+ h.bridge.savePrefs=async()=>{};h.get('themeSel').value='light';await h.get('themeSel').fire('change');await h.timers(200);assert.equal(h.get('preferencesStatus').attrs['data-failed'],'false');assert.match(h.get('preferencesStatus').textContent,/saved on this device/);
+});
+test('settings save independently of article autosave and private sessions keep changes temporary',async()=>{
+ const h=await harness();h.get('optAutoSave').checked=false;await h.get('optAutoSave').fire('change');h.get('themeSel').value='dark';await h.get('themeSel').fire('change');await h.timers(200);
+ assert.equal(h.prefsSaved.at(-1).theme,'dark');assert.equal(h.prefsSaved.at(-1).autosave,false);assert.equal(h.saved.length,0);
+ const writes=h.prefsSaved.length;h.get('themeSel').value='light';await h.get('themeSel').fire('change');h.get('optPrivate').checked=true;await h.get('optPrivate').fire('change');await h.timers(1000);
+ assert.equal(h.prefsSaved.length,writes);assert.match(h.get('preferencesStatus').textContent,/temporary/);
+});
+
+
+test('Clear requires explicit confirmation and Cancel or Escape leaves storage untouched',async()=>{
+ const h=await harness({portable:true});await h.input('editor','Keep this disposable draft.');await h.timers(800);const stored=[...h.storage];await h.click('openPreferences');await h.click('settingsLibrary');
+ await h.click('btnClearData');assert.equal(h.get('clearConfirmDialog').hidden,false);assert.equal(h.document.activeElement,h.get('clearCancel'));assert.deepEqual([...h.storage],stored);assert.notEqual(h.get('editor').readOnly,true);
+ await h.click('clearCancel');assert.equal(h.get('clearConfirmDialog').hidden,true);assert.equal(h.document.activeElement,h.get('btnClearData'));assert.deepEqual([...h.storage],stored);
+ await h.click('clearConfirm');assert.deepEqual([...h.storage],stored,'a stale confirmation must not delete');
+ await h.click('btnClearData');await h.get('clearConfirmDialog').fire('cancel');assert.equal(h.get('clearConfirmDialog').hidden,true);assert.equal(h.document.activeElement,h.get('btnClearData'));assert.deepEqual([...h.storage],stored);assert.equal(h.get('editor').value,'Keep this disposable draft.');
+});
+test('native close dismisses Clear confirmation and requires a separate close attempt',async()=>{
+ const h=await harness();let clearCalls=0;h.bridge.clearAll=async()=>{clearCalls++;return {status:'complete',removed:[],failed:[]};};await h.click('openPreferences');await h.click('settingsLibrary');await h.click('btnClearData');
+ assert.equal(await h.window.BluntedWorkspace.prepareClose(),false);assert.equal(h.get('clearConfirmDialog').hidden,true);assert.equal(h.document.activeElement,h.get('btnClearData'));assert.equal(clearCalls,0);assert.equal(h.get('editor').value,'A saved article.');
+ assert.equal(await h.window.BluntedWorkspace.prepareClose(),true);assert.equal(clearCalls,0);
+});
+test('closing after complete Clear does not recreate cleared preferences',async()=>{
+ const h=await harness();let persistedPreferences=true,writes=0;
+ h.bridge.savePrefs=async()=>{writes++;persistedPreferences=true;};
+ h.bridge.clearAll=async()=>{persistedPreferences=false;return {status:'complete',removed:['preferences'],failed:[]};};
+ await h.click('openPreferences');await h.click('settingsLibrary');await confirmClear(h);assert.equal(persistedPreferences,false);assert.equal(h.get('clearStatus').textContent,'Local data cleared.');
+ const before=writes;assert.equal(await h.window.BluntedWorkspace.prepareClose(),true);assert.equal(writes,before,'close must not save preferences after Clear');assert.equal(persistedPreferences,false);await h.timers(1000);assert.equal(persistedPreferences,false);
 });

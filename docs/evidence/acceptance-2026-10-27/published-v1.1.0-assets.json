@@ -1,0 +1,36 @@
+{
+  "releaseId": 424964111,
+  "tag": "v1.1.0",
+  "assets": [
+    {
+      "name": "blunted-win-x64-setup.zip",
+      "size": 219451292,
+      "state": "uploaded",
+      "digest": "sha256:af29b684fb8e0c11402c610e6b582da4f467a3b5d10f2de47d9a7106411df19a"
+    },
+    {
+      "name": "blunted_1.1.0_aarch64.dmg",
+      "size": 2164447,
+      "state": "uploaded",
+      "digest": "sha256:aeaa8f125fa6a572a300830bb8f31149bd5fdda7d42d890c1b196668d09acf95"
+    },
+    {
+      "name": "blunted_1.1.0_x64-setup.exe",
+      "size": 219403467,
+      "state": "uploaded",
+      "digest": "sha256:0dfdf9bb4e36fff07b3fd7a572b2bf9c81c1203ab3a929da32ab411aa7340c4d"
+    },
+    {
+      "name": "index.html",
+      "size": 247401,
+      "state": "uploaded",
+      "digest": "sha256:dd0056a3a6a06c3cc301c364acf1d40e4d3e3c669656d99a8419acd57a00ec92"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 355,
+      "state": "uploaded",
+      "digest": "sha256:9137bf2ae881644fb954131b6a1a7d2a1468e907f9a283eb80784b10e8193e6b"
+    }
+  ]
+}

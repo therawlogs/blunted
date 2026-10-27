@@ -1,0 +1,20 @@
+   Compiling blunted v1.2.0 (/Users/praveen/Documents/Products/blunted/src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.29s
+     Running unittests src/main.rs (src-tauri/target/debug/deps/blunted-f61fe2f3aa9a0e36)
+
+running 12 tests
+test library::tests::disappeared_root_is_not_recreated_by_load_or_save ... ok
+test library::tests::invalid_paths_and_write_failure ... ok
+test library::tests::unreadable_article_fails_without_destroying_original ... ok
+test library::tests::retry_inspection_never_creates_or_migrates ... ok
+test storage::tests::clear_reports_complete_absent_partial_and_failed_without_ignoring_errors ... ok
+test storage::tests::absent_invalid_and_missing_configuration_are_distinct ... ok
+test storage::tests::clear_removes_named_legacy_copies_only_inside_selected_root ... ok
+test library::tests::migration_and_same_titles_are_independent ... ok
+test library::tests::legacy_named_pointer_and_backups_migrate_into_a_new_folder ... ok
+test storage::tests::unreadable_config_and_root_preserve_selection_and_files ... ok
+test storage::tests::durable_article_is_acknowledged_separately_from_failed_preferences ... ok
+test library::tests::corrupt_or_missing_main_recovers_and_trash_survives ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+

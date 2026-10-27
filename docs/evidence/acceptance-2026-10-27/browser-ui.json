@@ -1,0 +1,138 @@
+{
+  "at": "2026-10-27T05:47:30.736Z",
+  "checks": {
+    "replacement": {
+      "preview": [
+        "utilize",
+        "use"
+      ],
+      "after": "We use tools.",
+      "oneStepBrowserUndo": true
+    },
+    "removal": {
+      "preview": [
+        "quickly ",
+        "(Remove this text)"
+      ],
+      "after": "We ran today.",
+      "oneStepBrowserUndo": true
+    },
+    "heading": {
+      "preview": [
+        "#### Example",
+        "# Example"
+      ],
+      "after": "# Example\n\nA short paragraph.",
+      "oneStepBrowserUndo": true
+    },
+    "settings": {
+      "Appearance": {
+        "visible": true,
+        "active": "settingsAppearance",
+        "pressed": "true"
+      },
+      "Review": {
+        "visible": true,
+        "active": "settingsReview",
+        "pressed": "true"
+      },
+      "Library": {
+        "visible": true,
+        "active": "settingsLibrary",
+        "pressed": "true"
+      },
+      "tabFocus": "settingsReview"
+    },
+    "narrow": [
+      {
+        "section": "Appearance",
+        "viewport": 375,
+        "pageWidth": 375,
+        "dialogWidth": 349,
+        "dialogScrollWidth": 349,
+        "panelWidth": 317,
+        "panelScrollWidth": 317
+      },
+      {
+        "section": "Review",
+        "viewport": 375,
+        "pageWidth": 375,
+        "dialogWidth": 349,
+        "dialogScrollWidth": 349,
+        "panelWidth": 317,
+        "panelScrollWidth": 317
+      },
+      {
+        "section": "Library",
+        "viewport": 375,
+        "pageWidth": 375,
+        "dialogWidth": 349,
+        "dialogScrollWidth": 349,
+        "panelWidth": 317,
+        "panelScrollWidth": 317
+      }
+    ],
+    "targets": [
+      {
+        "id": "Close",
+        "width": 56.421875,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "settingsAppearance",
+        "width": 103,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "settingsReview",
+        "width": 103,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "settingsLibrary",
+        "width": 103,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "optAutoSave",
+        "width": 18,
+        "height": 18,
+        "clickableLabelHeight": 44
+      },
+      {
+        "id": "optPrivate",
+        "width": 18,
+        "height": 18,
+        "clickableLabelHeight": 44
+      },
+      {
+        "id": "btnExportSettings",
+        "width": 130.84375,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "btnImportSettings",
+        "width": 131.09375,
+        "height": 44,
+        "clickableLabelHeight": null
+      },
+      {
+        "id": "btnClearData",
+        "width": 133.25,
+        "height": 44,
+        "clickableLabelHeight": null
+      }
+    ],
+    "preferenceSaveNotice": "Settings saved on this device.",
+    "preferenceReload": {
+      "theme": "dark",
+      "bodyTheme": "dark"
+    }
+  },
+  "limits": "Isolated Chromium headless portable UI, not installed native or screen reader."
+}

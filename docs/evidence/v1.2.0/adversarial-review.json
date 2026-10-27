@@ -1,0 +1,12 @@
+{
+  "review": "native in-host adversarial",
+  "result": "no remaining production blocker after repairs",
+  "repairs": [
+    "Immediate revision invalidation for title edits prevents stale heading Apply",
+    "Invalidate dictionary cache on dialect changes before reimport"
+  ],
+  "fixtureReview": "summary mode, plus focused title regression reproduction",
+  "outsideProvider": "not run",
+  "helperMetadata": "unavailable due sandbox EPERM; no official bound gstack review receipt claimed",
+  "productionFingerprint": "1ee0f6edeacc49c11a6f4e97485f8c7888cb9de6c57ea86e5599c738a107fe5d"
+}

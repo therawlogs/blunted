@@ -14,6 +14,15 @@ v1.1.0 adds recovery and persistence repairs. See the
 [implementation evidence and remaining acceptance](docs/implementation-evidence-2026-10-26.md)
 and [v1.1.0 notes and local app cleanup](docs/v1.1-release.md).
 
+The **v1.2.0 release candidate** adds English spelling and grammar checking powered
+by bundled Harper, alongside Clarity and Structure. Preview the original and
+proposed text, choose a spelling alternative, then Apply one undoable change.
+American, British, Australian, Canadian and Indian English are available in
+Settings → Review. The engine and dictionary are embedded: no account, service or
+runtime download. These additions are not in the published v1.1.0 assets.
+See [offline proofreading and verification](docs/offline-proofreading.md) and
+[v1.2.0 release status](docs/v1.2-release.md).
+
 Find (Cmd/Ctrl+F), bold/italic (Cmd/Ctrl+B / Cmd/Ctrl+I), and next/previous
 review note (F2 / Shift+F2) work from the keyboard. New articles start in Write
 mode. Preferences remain available while drafting; reading scores stay secondary.
@@ -41,6 +50,8 @@ highlight means **review**, not wrong. See `docs/clarity.md`.
 
 Get [blunted v1.1.0](https://github.com/therawlogs/blunted/releases/tag/v1.1.0):
 Mac Apple Silicon DMG, Windows x64 installer, or portable `index.html`.
+The v1.2.0 update is being prepared; publication and local Applications-upgrade
+evidence are recorded separately in [its release status](docs/v1.2-release.md).
 
 The Mac app is ad-hoc signed, without Developer ID signing or notarization.
 The Windows installer is unsigned. Compare downloads with the release's
@@ -68,8 +79,9 @@ exported `.md` where you like. Details: `docs/privacy.md`.
 
 ```sh
 node --version   # >= 20
+npm ci           # install pinned build/checking dependencies
 npm test         # engine and startup regression fixtures
-npm run build    # -> dist/index.html (~200 KB, deterministic)
+npm run build    # -> dist/index.html (~27.7 MB, including offline grammar engine)
 ```
 
 Mac shell (Apple Silicon; needs Xcode Command Line Tools + Rust):
@@ -95,20 +107,21 @@ npm run build:tauri:win
   English scores/rules are suppressed for clearly non-English input. French
   and other languages may come later; the engine stays English-only for now.
 - Detectors are heuristics with documented false positives (`docs/rules.md`).
-  No grammar checking, no semantic rewrites, no tone judgment, no citation
-  checking.
+  v1.2.0 adds rule/dictionary-based English spelling and grammar checks; it does
+  not add semantic rewrites, tone judgment, or citation checking.
 - blunted itself makes no AI requests. Where your OS offers system writing
   tools (right-click in the editor), they remain available — they run under
   your OS vendor's policy, not blunted's, and blunted sends nothing itself.
 
 ## Non-goals
 
-AI, translation, spelling/grammar checks, factual checking, plagiarism,
+Generative AI, translation, factual checking, plagiarism,
 collaboration, citation management, rich text, accounts, sync,
 publishing, analytics, subscriptions, update checks, browser extensions,
 Linux binaries, code signing / Store distribution.
 
 ## License
 
-MIT — see `LICENSE`. Notices: `THIRD_PARTY_NOTICES.md`. Contributing:
+Original blunted code is MIT — see `LICENSE`. Bundled Harper is Apache-2.0;
+see [third-party notices](THIRD_PARTY_NOTICES.md). Contributing:
 `CONTRIBUTING.md`. Security: `SECURITY.md`.

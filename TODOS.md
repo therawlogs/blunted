@@ -4,6 +4,10 @@ The owner requested v1.1 publication after the incomplete implementation ledger 
 reported on 26 October 2026. These obligations remain open; publication is not proof
 of acceptance. Deferred from plan: docs/implementation-contract-2026-10-26.md.
 
+Reconciled 27 October: the changed Windows installer and verified publication are
+complete. See [current acceptance evidence](docs/acceptance-2026-10-27.md).
+Offline installation/runtime checks below remain separate requirements.
+
 - [ ] **P1** Record disconnected Windows installation with WebView2 absent and present,
   offline launch, and upgrade/library preservation, identifying installer SHA-256,
   OS and architecture. CI builds do not satisfy this.
@@ -14,8 +18,13 @@ of acceptance. Deferred from plan: docs/implementation-contract-2026-10-26.md.
   confirmation/focus/storage acceptance using disposable fixtures.
 - [ ] **P1** Complete installed native Undo across views on Mac and Windows; complete
   VoiceOver/Windows screen-reader, IME, actual 200% zoom, targets and contrast checks.
+  Current isolated Mac WKWebView Undo and Chromium 200% settings zoom passed;
+  untouched installed-release/clean-Mac, Windows, native zoom and assistive-technology
+  boundaries remain open.
 - [ ] **P1** Measure typing latency on representative hardware and article sizes;
-  preserve conditions/results without inventing a numerical threshold.
+  preserve conditions/results without inventing a numerical threshold. One-Mac
+  headless Chromium input-to-frame measurements are now recorded; installed-native
+  and representative-hardware measurements remain open.
 - [ ] **P1** Observe five independent writers through the contract's complete article,
   review, export, reopen and separate-library backup-restore workflow. Participant
   recruitment/messages require separate authorization.

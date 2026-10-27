@@ -3,6 +3,23 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog.
 
+## [1.2.0] - 2026-10-27
+
+- Bundle Harper 3.0.0 for fully offline English spelling, grammar and punctuation
+  checking. Preview alternatives, Apply individual undoable edits, keep intentional
+  words for an article, and choose among five English varieties in Settings.
+
+- Preview the original and proposed text before applying supported Clarity edits
+  or Structure heading-level corrections. Edits stay offline and use native Undo;
+  stale suggestions cannot change newer writing.
+- Group settings into Appearance, Review and Library, with advanced review controls,
+  separate destructive data controls and visible settings-save feedback.
+- Preserve CRLF heading recognition and formatting in Structure review.
+- Require an explicit in-app confirmation before clearing local data, and keep
+  closing after Clear from recreating preferences.
+- Reconcile published v1.1.0 artifacts with the remaining acceptance ledger;
+  record additional local verification without claiming clean-machine acceptance.
+
 ## [1.1.0] — 2026-10-26
 
 ### Fixed

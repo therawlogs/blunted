@@ -28,8 +28,14 @@
   rendered via `innerHTML`, logged to console, or placed in URLs. External
   links (none bundled) would open only in the system browser on deliberate
   click.
-- **No CSP theater.** The portable file ships without remote resources, eval,
-  or fetches; a Blob worker is used only for analysis. The threat model and
+- **Bundled proofreading.** Harper's WebAssembly engine and dictionary are
+  embedded in the HTML. Spelling and grammar run in a dedicated Blob worker;
+  it permits only the embedded WASM data-URL fetch and rejects external fetches.
+  Article voice words are supplied locally, reset when the article's word list
+  changes, and discarded from the worker when local data is cleared. No checking
+  service, account or runtime download is used.
+- **No CSP theater.** The portable file ships without remote resources or eval.
+  Local Blob workers handle analysis and proofreading. The threat model and
   its limits are stated here instead of implied by headers.
 
 Reading preview uses local text and known markup only. Raw HTML stays literal;

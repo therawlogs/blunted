@@ -1,0 +1,34 @@
+{
+  "review": "prelanding source review after title/dialect fixes",
+  "reviewedAt": "2026-10-27T06:48:51.519760+00:00",
+  "fingerprint": "b401ab98f1504f163ce6299c5acf71f42e4bd3cc3903ba6bfd282300a81e243c",
+  "sourceFiles": {
+    "src/proofreader/engine.js": "7b1d5c566559fc26f2c5002b6de6e1c1f95512c4781c4d70b2f03ca26dcb2fab",
+    "src/proofreader/client.js": "29a6d32c5b9133223c7a8335b176723d72612b369f16e6919bbe2001649c9419",
+    "src/proofreader/worker.js": "bb8ad5875f9eabc1333f13016cd1644a2a9de31eed24e5718e94367948f3cf9e",
+    "src/ui/app.js": "d4730c0f924a1709d32d3bda094328d00dfe38c52708d761c248f72470e043d9",
+    "src/ui/shell.html": "85fc1fd7fc8dd53d0c94fe69b1b382b854d7366d44e3ee1e64bc1b98b48a62cf",
+    "src/ui/styles.css": "9984f5c3fe60b0805a7eed718da7a5396a9ecfbba63845d26d082e7d53f6f232",
+    "src/writer/article.js": "b534ae1b1ee6ef18e956a0b5d7f9658da0d50428ae96ea151b08c482e806bde4",
+    "scripts/build.mjs": "13f56cc30027a1ce9f8f57965836274440ad4d08e1897a52a5f0171b3fe68a0b",
+    "package.json": "466c77fa705e1bc5ff5dd397569ee2e0cac9c6b02dace7dfaa3eebf377ec27d2",
+    "package-lock.json": "a56843b40761de8bbe758a2aa2c9f17550e4aca5504dccabc6d2abdca71dc8dd"
+  },
+  "blockers": [],
+  "resolved": [
+    "Title input immediately invalidates current revision and Apply without rewriting the body",
+    "Dialect reset invalidates custom-dictionary cache before reimport"
+  ],
+  "nodeTests": {
+    "passed": 133,
+    "failed": 0,
+    "log": "/tmp/blunted-release-code-review-tests.txt"
+  },
+  "gateReview": "Changed test hunks read manually; added coverage and explicit Clear-confirmation adaptation, no unsupported relaxation found. Official gate scan unavailable due EPERM.",
+  "limits": [
+    "Read-only static source review and Node tests, not fresh browser/native or clean-machine acceptance",
+    "Official gstack review start/gate/fingerprint ledger unavailable due sandbox EPERM",
+    "No external Claude/Greptile review performed by this child",
+    "No source changes made"
+  ]
+}

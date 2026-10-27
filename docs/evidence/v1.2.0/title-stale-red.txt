@@ -1,0 +1,30 @@
+✖ editing the title immediately invalidates a heading correction before analysis debounce (22.30025ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 80.482125
+
+✖ failing tests:
+
+test at tests/analysis-portable.test.js:224:1
+✖ editing the title immediately invalidates a heading correction before analysis debounce (22.30025ms)
+  AssertionError [ERR_ASSERTION]: the pre-title heading fix must not apply during the150ms debounce
+  + actual - expected
+  
+  + '# Section\n\nBody.'
+  - '### Section\n\nBody.'
+  
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/analysis-portable.test.js:231:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '# Section\n\nBody.',
+    expected: '### Section\n\nBody.',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

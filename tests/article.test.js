@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { articleBlocks, structureReport, dismissalKey, validateLibraryBackup } from '../src/writer/article.js';
+import { articleBlocks, structureReport, correctionForIssue, dismissalKey, validateLibraryBackup } from '../src/writer/article.js';
 import { analyze } from '../src/engine/analyze.js';
 
 test('structure preserves Unicode offsets and ignores headings in code, quotes and front matter', () => {
@@ -59,6 +59,37 @@ test('a separate article title supplies the top heading level', () => {
 test('ordered lists retain their source numbering',()=>{
  const blocks=articleBlocks('3. First finding\n4. Second finding\n9. Another finding');
  assert.deepEqual(blocks.map(b=>b.number),[3,4,9]);
+});
+
+test('heading corrections preserve Unicode, indentation, Markdown and CRLF', () => {
+  for (const [text, expected] of [
+    ['# Title\n\n  #### Café *birds* ###\n\nBody.', '  ## Café *birds* ###'],
+    ['### First 🐦\r\n\r\nBody.', '# First 🐦\r'],
+    ['Café *birds*\n  -----  \n\nBody.', 'Café *birds*\n  =====  ']
+  ]) {
+    const issue = structureReport(text).issues.find(i => i.ruleId === 'heading-gap');
+    const edit = correctionForIssue(text, issue);
+    assert.equal(edit.replacement, expected);
+    const corrected = text.slice(0, edit.from) + edit.replacement + text.slice(edit.to);
+    assert.equal(structureReport(corrected).issues.filter(i => i.ruleId === 'heading-gap').length, 0);
+    assert.equal(corrected.slice(edit.from + edit.replacement.length), text.slice(edit.to));
+  }
+});
+
+test('heading corrections respect a separate article title; judgment-based notes have no edits', () => {
+  const text = '#### Section\n\n' + 'word '.repeat(130);
+  const issues = structureReport(text, 120, true).issues;
+  assert.equal(correctionForIssue(text, issues.find(i => i.ruleId === 'heading-gap')).replacement, '## Section');
+  for (const issue of issues.filter(i => i.ruleId !== 'heading-gap')) assert.equal(correctionForIssue(text, issue), null);
+});
+
+test('shared correction rejects stale or malformed ranges and previews full deletions', () => {
+  const text = 'We ran quickly today.';
+  const issue = {from: 7, to: 14, exactText: 'quickly', fix: {replacement: ''}};
+  assert.deepEqual(correctionForIssue(text, issue), {from: 7, to: 15, expectedText: 'quickly ', replacement: ''});
+  for (const invalid of [{...issue, from: -1}, {...issue, to: 99}, {...issue, from: 7.5}, {...issue, exactText: 'slowly'}, {...issue, fix: {replacement: null}}, {...issue, to: 7}]) assert.equal(correctionForIssue(text, invalid), null);
+  assert.equal(correctionForIssue('Different writing.', issue), null);
+  assert.deepEqual(correctionForIssue(text, {...issue, fix: {replacement: '', consumeAdjacentSpace: false}}), {from: 7, to: 14, expectedText: 'quickly', replacement: ''});
 });
 test('article exports include the headline by default without application metadata',async()=>{
  const {exportArticle}=await import('../src/writer/article.js');

@@ -1,5 +1,12 @@
 # Implementation evidence and remaining acceptance
 
+**27 October reconciliation:** the historical implementation snapshot below preceded
+publication. v1.1.0 was subsequently published from `548301e6fc46282b483a680311be72e75ccc5f5d`;
+the changed Windows installer was built and all five asset digests verified.
+See [release reconciliation](v1.1-release.md) and
+[current local acceptance](acceptance-2026-10-27.md). Later working-tree review/settings
+changes are not part of the published binary until separately packaged/released.
+
 Date: 26 October 2026. Baseline and read-only remote HEAD: `7c547a625561a3717953c626bdee862bd39aeaa4`. The remote was checked with `git ls-remote origin HEAD`; the first sandbox attempt lacked DNS, and the approved read-only retry succeeded. Implementation is the current working-tree diff. The pre-existing review, contract and unrelated `marketing/` files were preserved. Nothing was published, pushed or deployed.
 
 The user's subsequent request, “spin sub agents and get this done”, authorized implementation. Three agents handled native storage/permissions/packaging, transitions/import/exit, and analysis/portable persistence. The coordinating agent handled library recovery, integration, browser checks and documentation. A separate final engineering pass reviewed the integrated changes; its concrete findings were reproduced and repaired. No remaining source blocker was identified in that review. Platform and participant gates below remain incomplete.
@@ -16,11 +23,11 @@ The user's subsequent request, “spin sub agents and get this done”, authoriz
 | R6 stable import | **Locally verified** — immutable choices, stale readers, exact counts/content, partial/settings failures and queued preference regressions; browser file input/import and keyboard checks | **Blocked** — installed Windows/clean-Mac workflow and screen-reader acceptance |
 | R7 portable last-good copy | **Locally verified** — every backup slot/write boundary and aggregate quota fixtures; real Chromium localStorage quota failure and successful reload recovery | **Blocked** — remaining supported browser/platform acceptance |
 | R8 preferences exit | **Locally verified** — preferences retry/discard, dialog reset, late edits, prior article discard and repeated-close regressions; browser native-dialog initial focus/Escape/restoration | **Blocked** — installed Windows and clean-Mac final-exit acceptance; additional disposable native results are recorded in the native report |
-| R9 offline installer | **Implemented—unverified** — `offlineInstaller` configuration, documentation and native build checks; fresh Mac artifacts built | **Blocked** — no Windows MSVC builder or disconnected Windows machine/VM; new Windows artifact and absent/present-runtime installation/upgrade evidence required |
+| R9 offline installer | **Build verified** — `offlineInstaller` configuration; fresh Windows NSIS artifact built in CI and published with its own verified SHA-256 | **Pending environment** — disconnected Windows absent/present-runtime installation, offline launch and upgrade preservation remain unrun |
 | Cross-cutting accessibility/Undo/performance | **Locally verified** for the bounded responsive, theme, forced-colors and keyboard checks below | **Blocked** — actual browser/native 200% zoom, installed platform Undo, IME, VoiceOver/Windows screen reader and representative-hardware typing acceptance |
 | Five writer workflows | Not applicable | **Blocked** — five independent participants have not been recruited/authorized or observed |
 
-All nine source packages have been implemented. **Contract complete is not claimed.** The stricter implementation-complete label is also withheld while the required changed Windows artifact remains unbuilt. Blocked requirements retain their original acceptance scope in [the contract](implementation-contract-2026-10-26.md).
+All nine source packages and the changed Windows artifact have been implemented/built. **Contract complete is not claimed.** Pending requirements retain their original acceptance scope in [the contract](implementation-contract-2026-10-26.md).
 
 ## Reproduction and regression receipts
 
@@ -55,9 +62,9 @@ A [200% CSS zoom smoke check](evidence/implementation-2026-10-26/blunted-css-zoo
 
 ## Remaining execution and release boundary
 
-- Supply a Windows MSVC builder, build the changed unsigned NSIS artifact and record its own SHA-256. On disconnected Windows machines/VMs, record OS/architecture/runtime state and installer hash for runtime-absent and runtime-present installation, offline launch and upgrade/data preservation.
+- The Windows MSVC build and artifact SHA-256 are complete. On disconnected Windows machines/VMs, record OS/architecture/runtime state and installer hash for runtime-absent and runtime-present installation, offline launch and upgrade/data preservation.
 - Run installed clean-Mac disconnected installation/launch and upgrade acceptance using the fresh local artifact. Local mounted-image checks and a disposable development runtime cannot establish this.
 - Complete actual 200% zoom, native Undo across all views on both platforms, IME, VoiceOver and Windows screen-reader checks, action-target/contrast checks beyond the measured recovery actions, and representative-hardware/document typing latency. Do not infer these from VM tests or engine timings.
 - With separate participant authorization, observe five independent writers through the complete required workflow and record failures/helpfulness. No recruitment messages were sent.
 
-No release, upload, merge, paid signing, purchase or deployment is authorized by these results. Existing historical release hashes remain historical. Temporary verification services and disposable native apps are stopped at session completion; evidence files remain available for review.
+The original implementation results did not authorize publication; the later direct release request did, and publication is recorded separately above. These results do not authorize paid signing or purchases. Existing historical release hashes remain historical. Temporary verification services and disposable native apps are stopped at session completion; evidence files remain available for review.

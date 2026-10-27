@@ -1,6 +1,6 @@
 # Architecture
 
-One engine, two deliverables.
+Local readability/structure analysis plus bundled proofreading, two deliverables.
 
 ```
 src/engine/        pure JS: no DOM, storage, clipboard, FS, or network
@@ -18,25 +18,40 @@ src/engine/        pure JS: no DOM, storage, clipboard, FS, or network
 
 src/writer/        pure article blocks, structure review, dismissals, backup validation
 
-src/ui/            browser UI, dependency-free
+src/proofreader/   bundled Harper 3.0.0 English spelling/grammar adapter
+  engine.js        local linter, Markdown protection, exact UTF-16 edits
+  worker.js        dedicated WASM worker; rejects external fetches
+  client.js        one active check plus the latest pending request, timeout/reset
+
+src/ui/            browser UI with no external runtime assets
   shell.html       HTML skeleton with build placeholders
   styles.css       system fonts, light/dark/system, forced-colors
   app.js           state, backdrop renderer, issue list, storage adapter
 
-scripts/build.mjs  deterministic concat → dist/index.html (no timestamps)
+scripts/build.mjs  deterministic concat + esbuild worker bundle → dist/index.html
+                    (embedded WASM/dictionary, no timestamps)
 dist/index.html    released portable artifact (generated, not edited)
 
 src-tauri/         Desktop shell (macOS + Windows): main.rs commands + menus,
                     capabilities/main.json (least privilege), adapter.js
                     (shell-only bridge, injected by bundle-tauri.mjs)
-tests/             node:test fixtures (engine + preset)
+tests/             node:test engine, preset, article, persistence and proofreading fixtures
 docs/              formulas, rules, clarity, privacy, a11y, mac/win-release
 ```
 
 Data flow: `textarea → debounce 150ms → (Blob Worker | main-thread fallback)
-→ analyze({text, profile, overrides…}) → render backdrop + score + issue list`.
-Revision counters discard stale results. The engine never touches the DOM;
-the UI never implements analysis.
+→ analyze({text, profile, overrides…}) → dedicated Harper Blob worker
+→ merge current-revision notes → render backdrop + score + issue list`.
+Harper checking is skipped when both spelling and grammar switches are off or
+the existing language gate suppresses English checks. Revision counters discard
+stale results and errors. The analysis engines never touch the DOM; the UI
+coordinates checks and renders their results.
+
+The proofreader embeds its WebAssembly binary and dictionary in the generated
+HTML. Its worker permits only the embedded WASM data-URL fetch, with no remote
+service or online fallback. Custom words come from the active article. Exact
+source-range validation protects Apply; selected replacements use the existing
+native Undo path. Reset terminates the worker when local data is cleared.
 
 Storage: the portable web adapter uses localStorage (one draft, prefs and three
 rotating backups). The desktop adapter loads the legacy draft and migrates it

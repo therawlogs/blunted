@@ -23,6 +23,35 @@ on essays, explainers and opinion pieces. Older versions do not include this wor
    headline by default; turn that option off for body-only output. Application
    metadata stays out of prose. Print uses the clean reading layout.
 
+### Preview and apply changes (v1.2.0)
+
+The v1.2.0 candidate also includes [offline English spelling and grammar](offline-proofreading.md)
+in Clarity. It offers spelling alternatives, article-scoped **Keep this word**,
+and separate spelling/grammar switches plus English varieties in Settings → Review.
+
+Supported Clarity notes and Structure heading-level gaps show **Original** and
+**Proposed** text. Choose **Apply change** for one edit, then Cmd/Ctrl+Z to undo.
+Removing a phrase previews the neighboring space that will also be removed.
+Heading corrections preserve the heading's wording, indentation and Markdown.
+After applying a change, review runs again. Editing the article invalidates older
+suggestions immediately. Paragraph-length notes and opening prompts remain
+guidance without automatic rewrites. No model, network or download is used.
+
+If the editor cannot apply an undoable change, it keeps the writing unchanged
+and asks you to edit the passage manually.
+
+### Settings (v1.2.0)
+
+Open **More → Settings** for **Appearance**, **Review** and **Library** sections.
+Appearance controls theme and typography. Review contains profiles, reading speed,
+rules and article vocabulary exceptions; numerical thresholds and sample tuning
+are under **Advanced review settings**. Library contains saving, private sessions,
+settings transfer and a separately labelled destructive Clear area.
+
+Global preferences save independently of article autosave. A status line reports
+successful or failed settings writes; changes in private sessions stay temporary.
+Vocabulary exceptions belong to the current article and follow its save behavior.
+
 The article column stays at a maximum of 42rem in all modes. Review uses a
 288px side inspector from 1360px, and a bottom inspector below that width.
 Navigation and reading positions are stored separately from article dates.
@@ -61,16 +90,21 @@ Clarity/Structure reviews; export/backup and acceptance checks.
 
 Automated checks:
 
-- `npm test`: 58 passing tests covering engine and startup regressions, independent article workflows,
+- Pre-release baseline `npm test`: 132 passing tests covering engine and startup regressions, independent article workflows,
   queued-save acknowledgements, switching after failure, trash/restore,
   preview selection/scroll preservation, dismissals and backup conflict choices.
-- `cargo test --offline --manifest-path src-tauri/Cargo.toml`: five passing filesystem
+- Pre-release baseline `cargo test --locked --offline --manifest-path src-tauri/Cargo.toml`: 12 passing filesystem
   migration, same-title independence, corrupt/missing main recovery, trash
   persistence, invalid paths and write failures.
 - Article fixtures target 1,000, 5,000 and 20,000 words, verify exact UTF-16 note
   offsets and report engine plus structure duration. These are not UI latency
   measurements or guarantees about hardware performance.
 - `npm run build` and `npm run bundle:tauri`: portable and native frontend bundles.
+
+The baseline receipts, spelling/grammar checks, and single-machine input-to-frame
+measurements are in [offline proofreading](offline-proofreading.md). Final release
+artifacts, checks and the local Applications upgrade are tracked separately in
+[v1.2.0 release status](v1.2-release.md).
 
 Local verification on macOS used an ad-hoc-signed debug QA bundle with a
 separate application identifier and a disposable folder under `/private/tmp`.

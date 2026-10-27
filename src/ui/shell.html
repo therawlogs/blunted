@@ -33,7 +33,7 @@
           </div></details>
           <button id="btnCopy" type="button">Copy article</button><button id="btnPrint" type="button">Print</button>
           <div class="menu-divider"></div><button id="btnNew" type="button">New article</button><button id="btnOpen" type="button">Import article…</button>
-          <button id="openPreferences" type="button">Preferences</button><button id="btnSample" type="button">Try a sample</button>
+          <button id="openPreferences" type="button">Settings</button><button id="btnSample" type="button">Try a sample</button>
         </div>
       </details>
     </div>
@@ -60,6 +60,7 @@
 <aside id="reviewInspector" class="inspector" aria-label="Editorial review" hidden>
   <div class="inspector-head"><label class="sr-only" for="reviewerSel">Reviewer</label><select id="reviewerSel" aria-label="Reviewer"><option value="clarity">Clarity</option><option value="structure">Structure</option></select><button type="button" id="reviewOptions" aria-haspopup="dialog">Options</button></div>
   <div class="review-nav"><button id="prevIssue" type="button" aria-label="Previous note (Shift+F2)">←</button><span id="issuePosition" role="status"></span><button id="nextIssue" type="button" aria-label="Next note (F2)">→</button><button id="allNotes" type="button">All notes <span id="issueCount"></span></button></div>
+  <p id="proofreadingStatus" class="muted proofreading-status" role="status" aria-live="polite"></p>
   <div id="issues" class="active-note" aria-label="Current editorial note" aria-live="polite" tabindex="-1"></div>
   <div id="findingsView" hidden>
     <div class="findings-controls"><label class="sr-only" for="findingGroup">Notes to show</label><select id="findingGroup"><option value="remaining">Remaining findings</option><option value="prompts">Self-review prompts</option><option value="dismissed">Dismissed notes</option></select><button id="closeFindings" type="button">Back to note</button></div>
@@ -88,88 +89,78 @@
   <p id="portableLibrary" class="muted">The portable edition keeps one draft. Use More to import or export an article.</p>
   <section id="outlinePanel" hidden><nav id="articleOutline" aria-label="Article headings" aria-live="polite" tabindex="-1"></nav></section>
 </dialog>
-<dialog id="preferencesDialog" aria-labelledby="preferencesHeading" hidden><div class="panel-head"><h2 id="preferencesHeading">Preferences</h2><span id="customNote" class="muted"></span><button type="button" data-close="preferencesDialog">Close</button></div>
-        <div class="prefs">
-          <label class="prow">Theme
-            <select id="themeSel" aria-label="Color theme">
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-          <label class="prow">Text size <span id="fontVal"></span>
-            <input type="range" id="fontSize" min="13" max="24" step="1" value="16">
-          </label>
-          <label class="prow">Font
-            <select id="fontFamily" aria-label="Editor font">
-              <option value="system">System</option>
-              <option value="serif">Serif</option>
-              <option value="mono">Monospace</option>
-            </select>
-          </label>
-          <label class="prow">Line spacing
-            <select id="lineHeight" aria-label="Line spacing">
-              <option value="1.5">Compact</option>
-              <option value="1.8">Comfortable</option>
-              <option value="2.1">Roomy</option>
-            </select>
-          </label>
-          <label class="prow">Reading speed (words/min)
-            <input type="number" id="wpm" min="100" max="400" step="10" value="200">
-          </label>
-          <label class="prow">Writing profile
-            <select id="profileSel" aria-label="Writing profile"><option value="clear">Clear</option><option value="essay">Essay</option></select>
-          </label>
-          <details><summary>Profile thresholds</summary>
-            <label class="prow">Target reading grade<input type="number" id="targetGrade" min="1" max="30"></label>
-            <label class="prow">Yellow sentence length (words)<input type="number" id="yellowWords" min="5" max="100"></label>
-            <label class="prow">Red sentence length (words)<input type="number" id="redWords" min="8" max="150"></label>
-            <label class="prow">Yellow reading grade<input type="number" id="yellowGrade" min="1" max="30"></label>
-            <label class="prow">Red reading grade<input type="number" id="redGrade" min="2" max="35"></label>
-            <label class="prow">Minimum words before grade checks<input type="number" id="minGradeWords" min="5" max="100"></label>
-            <button type="button" id="btnResetMode" class="quiet">Reset profile defaults</button>
-          </details>
-          <details><summary>Learn from a sample</summary>
-            <p class="muted">Paste writing you like. Suggestions stay local and are applied only when you accept them.</p>
-            <textarea id="learnSample" rows="5" aria-label="Writing sample"></textarea>
-            <button type="button" id="btnLearnSample">Suggest profile changes</button>
-            <div id="learnSuggestions" aria-live="polite"></div>
-          </details>
-          <label class="check"><input type="checkbox" id="optQuotes"> Include block quotes in checks</label>
-          <label class="check"><input type="checkbox" id="optAutoSave" checked> Autosave drafts on this device</label>
-          <label class="check"><input type="checkbox" id="optPrivate"> Private session (no draft saving)</label>
-          <details>
-            <summary>Rules</summary>
-            <div class="rules" id="ruleToggles"></div>
-          </details>
-          <details>
-            <summary>Ignored words</summary>
-            <p class="muted">Comma-separated. Matching notes are hidden without touching neighbours.</p>
-            <input type="text" id="ignoredTerms" autocomplete="off" placeholder="e.g. onboarding, kubectl">
-          </details>
-          <details><summary>My voice words</summary>
-            <p class="muted">Words in this list are treated as intentional and won’t receive word choice notes.</p>
-            <input type="text" id="personalWords" autocomplete="off" placeholder="e.g. utilize, onboarding">
-          </details>
-          <details>
-            <summary>Backup &amp; settings</summary>
-            <p class="muted">No sync, by design. Move files yourself: Download your draft (.md) plus this settings file, and carry both to the other device.</p>
-            <button type="button" id="btnExportSettings" class="quiet">Export settings (.json)…</button>
-            <button type="button" id="btnImportSettings" class="quiet">Import settings…</button>
-            <input type="file" id="settingsPick" accept=".json,application/json" hidden>
-          </details>
-          <button type="button" id="btnClearData" class="quiet">Clear local data…</button><p id="clearStatus" role="status" tabindex="-1" aria-live="polite" aria-atomic="true"></p>
+<dialog id="preferencesDialog" aria-labelledby="preferencesHeading" aria-describedby="preferencesIntro" hidden>
+  <div class="panel-head"><h2 id="preferencesHeading">Settings</h2><button type="button" data-close="preferencesDialog">Close</button></div>
+  <p id="preferencesIntro" class="muted settings-intro">Make this writing space your own. Changes stay on this device.</p>
+  <div class="settings-layout">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <button type="button" id="settingsAppearance" aria-pressed="true" aria-controls="settingsAppearancePanel">Appearance</button>
+      <button type="button" id="settingsReview" aria-pressed="false" aria-controls="settingsReviewPanel">Review</button>
+      <button type="button" id="settingsLibrary" aria-pressed="false" aria-controls="settingsLibraryPanel">Library</button>
+    </nav>
+    <div class="settings-content prefs">
+      <section id="settingsAppearancePanel" aria-labelledby="settingsAppearanceHeading">
+        <h3 id="settingsAppearanceHeading">Appearance</h3><p class="muted">Choose how your article looks while you write and read.</p>
+        <label class="prow">Theme<select id="themeSel" aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <label class="prow"><span>Text size <span id="fontVal"></span></span><input type="range" id="fontSize" min="13" max="24" step="1" value="16"></label>
+        <label class="prow">Font<select id="fontFamily" aria-label="Editor font"><option value="system">System</option><option value="serif">Serif</option><option value="mono">Monospace</option></select></label>
+        <label class="prow">Line spacing<select id="lineHeight" aria-label="Line spacing"><option value="1.5">Compact</option><option value="1.8">Comfortable</option><option value="2.1">Roomy</option></select></label>
+      </section>
+      <section id="settingsReviewPanel" aria-labelledby="settingsReviewHeading" hidden>
+        <h3 id="settingsReviewHeading">Review</h3><p class="muted">Choose the patterns you want help noticing. Review notes are suggestions; you decide what to change.</p>
+        <div class="settings-group proofreading-settings"><h4>Spelling and grammar</h4><p class="muted">English checks run entirely on this device, including the dictionary. Preview each suggestion before Apply. No account, connection or download is needed.</p>
+          <label class="check"><input type="checkbox" id="optSpelling" checked> Check spelling</label>
+          <label class="check"><input type="checkbox" id="optGrammar" checked> Check grammar and punctuation</label>
+          <label class="prow">English variety<select id="proofreadingDialect"><option value="american">American</option><option value="british">British</option><option value="australian">Australian</option><option value="canadian">Canadian</option><option value="indian">Indian</option></select></label>
         </div>
-<details><summary>About blunted</summary><p class="muted">English-first, entirely offline. Review notes are patterns to consider, not verdicts about meaning or truth.</p><p id="versionLine" class="muted"></p></details></dialog>
+        <label class="prow">Writing profile<select id="profileSel" aria-label="Writing profile"><option value="clear">Clear</option><option value="essay">Essay</option></select></label>
+        <p id="customNote" class="muted"></p>
+        <label class="prow">Reading speed (words/min)<input type="number" id="wpm" min="100" max="400" step="10" value="200"></label>
+        <p class="muted">Used to estimate reading time, without changing your writing.</p>
+        <label class="check"><input type="checkbox" id="optQuotes"> Include block quotes in checks</label>
+        <details><summary>Review rules</summary><div class="rules" id="ruleToggles"></div></details>
+        <details><summary>Words to ignore</summary><p class="muted">Separate words with commas. Matching notes are hidden for this article. These choices save with the article; use Save if autosave is off.</p><input type="text" id="ignoredTerms" aria-label="Words to ignore" autocomplete="off" placeholder="e.g. onboarding, kubectl"></details>
+        <details><summary>Words in my voice</summary><p class="muted">Keep these intentional words out of spelling and word-choice suggestions for this article. Separate words with commas.</p><input type="text" id="personalWords" aria-label="Words in my voice" autocomplete="off" placeholder="e.g. utilize, onboarding"></details>
+        <details id="advancedReview"><summary>Advanced review settings</summary>
+          <p class="muted">Adjust when review notes appear. These numbers guide checks; they do not measure the quality of an article.</p>
+          <label class="prow">Target reading grade<input type="number" id="targetGrade" min="1" max="30"></label>
+          <label class="prow">Long sentence: words<input type="number" id="yellowWords" min="5" max="100"></label>
+          <label class="prow">Very long sentence: words<input type="number" id="redWords" min="8" max="150"></label>
+          <label class="prow">High reading grade<input type="number" id="yellowGrade" min="1" max="30"></label>
+          <label class="prow">Very high reading grade<input type="number" id="redGrade" min="2" max="35"></label>
+          <label class="prow">Minimum words for grade checks<input type="number" id="minGradeWords" min="5" max="100"></label>
+          <button type="button" id="btnResetMode" class="settings-secondary">Reset profile defaults</button>
+          <details><summary>Learn from a sample</summary><p class="muted">Paste writing you like. Suggestions stay local and change your profile only when you accept them.</p><textarea id="learnSample" rows="5" aria-label="Writing sample"></textarea><button type="button" id="btnLearnSample" class="settings-secondary">Suggest profile changes</button><div id="learnSuggestions" aria-live="polite"></div></details>
+        </details>
+      </section>
+      <section id="settingsLibraryPanel" aria-labelledby="settingsLibraryHeading" hidden>
+        <h3 id="settingsLibraryHeading">Library</h3><p class="muted">Control what is saved on this device. There is no cloud sync.</p>
+        <label class="check"><input type="checkbox" id="optAutoSave" checked> Autosave writing on this device</label>
+        <label class="check"><input type="checkbox" id="optPrivate"> Private session: do not save drafts</label>
+        <p class="muted">Export writing you want to keep before leaving a private session.</p>
+        <div class="settings-group"><h4>Move your settings</h4><p class="muted">Export a settings file to carry your preferences to another device. Your articles and library backups are separate.</p><div class="settings-actions"><button type="button" id="btnExportSettings" class="settings-secondary">Export settings…</button><button type="button" id="btnImportSettings" class="settings-secondary">Import settings…</button></div><input type="file" id="settingsPick" accept=".json,application/json" hidden></div>
+        <div class="settings-danger"><h4>Clear local data</h4><p class="muted">Remove all articles, trash, backups and preferences from this device. Export anything you want to keep first. You will be asked to confirm.</p><button type="button" id="btnClearData" class="settings-secondary">Clear local data…</button><p id="clearStatus" role="status" tabindex="-1" aria-live="polite" aria-atomic="true"></p></div>
+        <details class="settings-about"><summary>About blunted</summary><p class="muted">English-first, entirely offline. Review notes are patterns to consider, not verdicts about meaning or truth. Spelling and grammar powered by bundled Harper 3.0.0.</p><p id="versionLine" class="muted"></p><details><summary>Third-party notices</summary><pre class="third-party-notices"><!--BLUNTED:NOTICES--></pre></details></details>
+      </section>
+    </div>
+  </div>
+  <p id="preferencesStatus" class="settings-status muted" role="status" aria-live="polite" aria-atomic="true">Changes save automatically on this device.</p>
+</dialog>
+<dialog id="clearConfirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="clearConfirmHeading" aria-describedby="clearConfirmMessage" hidden>
+  <h2 id="clearConfirmHeading">Clear all local data?</h2>
+  <p id="clearConfirmMessage">This removes all blunted articles, trash, backups and preferences from this device. This cannot be undone. Cancel and export anything you want to keep first.</p>
+  <div class="leave-actions"><button type="button" id="clearCancel" autofocus>Cancel</button><button type="button" id="clearConfirm">Clear all local data</button></div>
+</dialog>
 <dialog id="metricsDialog" aria-labelledby="metricsHeading" hidden><div class="panel-head"><h2 id="metricsHeading">Article details</h2><button type="button" data-close="metricsDialog">Close</button></div>
 <p id="statusTime"></p><p id="statusSent"></p><p id="gradeMain"></p><span id="statusGrade" hidden></span><p id="gradeSub" class="muted"></p><dl id="detailsList" class="details"></dl>
 <div id="gradeMeter" hidden><div id="gradeFill"></div><div id="gradeTarget"></div></div><p id="gradeMeterLbl" hidden></p></dialog>
 <dialog id="reviewOptionsDialog" aria-labelledby="reviewOptionsHeading" hidden><div class="panel-head"><h2 id="reviewOptionsHeading">Review options</h2><button type="button" data-close="reviewOptionsDialog">Close</button></div>
-<label class="prow">Category<select id="categoryFilter"><option value="all">All categories</option><option value="passive">Passive voice</option><option value="adverb">Adverbs</option><option value="wordiness">Wordiness</option><option value="simpler">Word choice</option><option value="repeated">Repeated words</option><option value="hedge">Hedges</option><option value="todo">Placeholders</option><option value="structure">Structure</option></select></label><button id="openReviewMetrics" type="button">Readability details…</button><button id="openRules" type="button">Writing profile and rules…</button><button id="resetDismissals" type="button">Reset all dismissal decisions…</button><h3>Section lengths</h3><div id="sectionLengths"></div><p class="muted">Self-review prompts ask questions. They do not judge your argument.</p></dialog>
+<label class="prow">Category<select id="categoryFilter"><option value="all">All categories</option><option value="spelling">Spelling</option><option value="grammar">Grammar</option><option value="passive">Passive voice</option><option value="adverb">Adverbs</option><option value="wordiness">Wordiness</option><option value="simpler">Word choice</option><option value="repeated">Repeated words</option><option value="hedge">Hedges</option><option value="todo">Placeholders</option><option value="structure">Structure</option></select></label><button id="openReviewMetrics" type="button">Readability details…</button><button id="openRules" type="button">Writing profile and rules…</button><button id="resetDismissals" type="button">Reset all dismissal decisions…</button><h3>Section lengths</h3><div id="sectionLengths"></div><p class="muted">Self-review prompts ask questions. They do not judge your argument.</p></dialog>
 <dialog id="leaveDialog" aria-labelledby="leaveHeading" hidden><h2 id="leaveHeading">Keep this writing?</h2><p id="leaveMessage">The latest changes have not been saved.</p><div class="leave-actions"><button id="leaveKeep" type="button">Keep working</button><button id="leaveSave" type="button">Save to library</button><button id="leaveDiscard" type="button">Discard unsaved changes</button></div></dialog>
 <div id="srStatus" class="sr-only" role="status" aria-live="polite"></div>
 <input id="filePick" type="file" accept=".txt,.md,.markdown,text/plain" hidden><div id="printDoc" aria-hidden="true"></div>
 <!--BLUNTED:ENGINE-->
 <!--BLUNTED:WORKER-->
+<!--BLUNTED:PROOFREADER-->
 <!--BLUNTED:APP-->
 </body></html>
