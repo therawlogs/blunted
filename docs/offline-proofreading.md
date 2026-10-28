@@ -1,6 +1,6 @@
 # Offline spelling and grammar
 
-Status: **v1.2.0 release candidate**, 27 October 2026. The implementation and
+Status: **v1.2.0**, released 28 October 2026. The implementation and
 pre-release checks below are complete. Publication and the Applications upgrade
 are separate steps recorded in [the v1.2.0 release status](v1.2-release.md).
 

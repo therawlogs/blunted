@@ -1,5 +1,7 @@
 # v1.1 acceptance and local follow-up
 
+Update, 28 October 2026: the correction/settings work described below now ships in v1.2.0. See [the release and installed-upgrade evidence](v1.2-release.md). Historical v1.1 findings remain scoped to their original date; the open environment-dependent acceptance items remain open.
+
 Date: 27 October 2026. The published v1.1.0 source is
 `548301e6fc46282b483a680311be72e75ccc5f5d`; merged main is
 `b839c9541380c66aebb93f81b6f99b66d2af2774`. Subsequent offline-correction and

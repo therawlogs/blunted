@@ -14,12 +14,12 @@ v1.1.0 adds recovery and persistence repairs. See the
 [implementation evidence and remaining acceptance](docs/implementation-evidence-2026-10-26.md)
 and [v1.1.0 notes and local app cleanup](docs/v1.1-release.md).
 
-The **v1.2.0 release candidate** adds English spelling and grammar checking powered
+The **v1.2.0 release** adds English spelling and grammar checking powered
 by bundled Harper, alongside Clarity and Structure. Preview the original and
 proposed text, choose a spelling alternative, then Apply one undoable change.
 American, British, Australian, Canadian and Indian English are available in
 Settings → Review. The engine and dictionary are embedded: no account, service or
-runtime download. These additions are not in the published v1.1.0 assets.
+runtime download. These additions ship in v1.2.0.
 See [offline proofreading and verification](docs/offline-proofreading.md) and
 [v1.2.0 release status](docs/v1.2-release.md).
 
@@ -48,10 +48,10 @@ highlight means **review**, not wrong. See `docs/clarity.md`.
 
 ## Download & run
 
-Get [blunted v1.1.0](https://github.com/therawlogs/blunted/releases/tag/v1.1.0):
+Get [blunted v1.2.0](https://github.com/therawlogs/blunted/releases/tag/v1.2.0):
 Mac Apple Silicon DMG, Windows x64 installer, or portable `index.html`.
-The v1.2.0 update is being prepared; publication and local Applications-upgrade
-evidence are recorded separately in [its release status](docs/v1.2-release.md).
+Publication and local Applications-upgrade
+evidence are recorded in [its release status](docs/v1.2-release.md).
 
 The Mac app is ad-hoc signed, without Developer ID signing or notarization.
 The Windows installer is unsigned. Compare downloads with the release's

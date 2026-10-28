@@ -1,0 +1,26 @@
+{
+  "tag": "v1.2.0",
+  "source": "1c844078dc5430f0e374f34b8c1985c9e9fe374e",
+  "assets": [
+    {
+      "name": "blunted-win-x64-setup.zip",
+      "size": 228457802,
+      "sha256": "1ffd01ed86a72ec0d82d4db994006a208bd6ce1201782b2a3158b3d03fe3e4d9"
+    },
+    {
+      "name": "blunted_1.2.0_aarch64.dmg",
+      "size": 11026305,
+      "sha256": "f9055cfa2748238709fc9adebbe4e39eff8a35ee896c978276865885f8e2cb30"
+    },
+    {
+      "name": "blunted_1.2.0_x64-setup.exe",
+      "size": 228407230,
+      "sha256": "2d79baa83acfa134cc58a974af9dc0934edaaf7f3d5f88602b910287dd3d9b38"
+    },
+    {
+      "name": "index.html",
+      "size": 27721057,
+      "sha256": "b5a08c52018577740848872d1c57fad6bc1d9a026cb18a9439437e1bc91a8505"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "version": "1.2.0",
+  "verifiedOn": "2026-10-28",
+  "installedPath": "/Applications/blunted.app",
+  "bundleIdentifier": "app.blunted.dev-preview",
+  "executableSha256": "9ccda2109cdf16b7017476ee9328f2f3db3745c2f2068351830bfa6dd2f51e42",
+  "strictDeepCodesignVerified": true,
+  "launchRequestedSuccessfully": true,
+  "activeLocationInventory": [
+    "/Applications/blunted.app"
+  ],
+  "launchServicesPaths": [
+    "/Applications/blunted.app"
+  ],
+  "duplicateCopies": "Old app bundles retained recoverably in Trash; stale launcher registrations removed",
+  "priorUpgradeObservation": {
+    "date": "2026-10-27",
+    "writingFilesCompared": 4,
+    "writingHashesUnchangedBeforeAndAfterLaunch": true,
+    "nativeAboutVersion": "1.2.0",
+    "offlineReviewCompleted": true,
+    "grammarAndApplyVisible": true
+  },
+  "acceptanceLimit": "Development Mac upgrade; clean-machine and Windows runtime acceptance remain open"
+}
