@@ -1,0 +1,103 @@
+{
+  "audit_id": "blunted-v12-scoped-doc-audit-20261027",
+  "mode": "scoped source/evidence documentation preparation; not gstack candidate-bound audit",
+  "at": "2026-10-27T06:49:33.716903+00:00",
+  "base": "b839c9541380c66aebb93f81b6f99b66d2af2774",
+  "branch": "codex/release-v1.2.0",
+  "status": "updated",
+  "files_updated": [
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "docs/architecture.md",
+    "docs/offline-proofreading.md",
+    "docs/article-workspace.md",
+    "docs/v1.2-release.md"
+  ],
+  "files_reviewed": [
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "docs/architecture.md",
+    "docs/offline-proofreading.md",
+    "docs/article-workspace.md",
+    "docs/v1.2-release.md",
+    "src/proofreader/engine.js",
+    "src/proofreader/client.js",
+    "src/proofreader/worker.js",
+    "src/ui/app.js",
+    "src/ui/shell.html",
+    "scripts/build.mjs",
+    "package.json",
+    "src-tauri/Cargo.toml",
+    "docs/evidence/offline-proofreading-2026-10-27/build.json",
+    "docs/evidence/offline-proofreading-2026-10-27/browser-offline.json",
+    "docs/evidence/offline-proofreading-2026-10-27/native-mac.json",
+    "tests/proofreader.test.js",
+    "tests/proofreader-client.test.js"
+  ],
+  "hashes": {
+    "README.md": "a6d76cf55aa67b9378b86d06ead4f40dd3db5a3bb35b6a4f1f3c3fd909422f23",
+    "THIRD_PARTY_NOTICES.md": "7ebc2690b3dad6cbfaca45955b4c32d5f7616e594e80dfc8c23b23543d97367a",
+    "docs/architecture.md": "fb4bc78ceebb72616595d7c53d14b51701ca0f33c38c5672ed2ffd5ea56f5c45",
+    "docs/offline-proofreading.md": "62f91cd8ec58df60ea09e6e3b6109a9fb5d45355c6963bd469c5084419536068",
+    "docs/article-workspace.md": "55c46b1844e145a1f6a5e7ceb5756901d847cce7609a8d047626ee1cfc352e2c",
+    "docs/v1.2-release.md": "f5c6eaab2b5e17b4f14656f41582be0fa62687891d2ce2741cdacb47eba665cc",
+    "src/proofreader/engine.js": "7b1d5c566559fc26f2c5002b6de6e1c1f95512c4781c4d70b2f03ca26dcb2fab",
+    "src/proofreader/client.js": "29a6d32c5b9133223c7a8335b176723d72612b369f16e6919bbe2001649c9419",
+    "src/proofreader/worker.js": "bb8ad5875f9eabc1333f13016cd1644a2a9de31eed24e5718e94367948f3cf9e",
+    "src/ui/app.js": "d4730c0f924a1709d32d3bda094328d00dfe38c52708d761c248f72470e043d9",
+    "src/ui/shell.html": "85fc1fd7fc8dd53d0c94fe69b1b382b854d7366d44e3ee1e64bc1b98b48a62cf",
+    "scripts/build.mjs": "13f56cc30027a1ce9f8f57965836274440ad4d08e1897a52a5f0171b3fe68a0b",
+    "package.json": "466c77fa705e1bc5ff5dd397569ee2e0cac9c6b02dace7dfaa3eebf377ec27d2",
+    "src-tauri/Cargo.toml": "5d99faaab509513844d907b0c9676607ec6a2be3ce5ee3fd8aa413d0f55f9b51",
+    "docs/evidence/offline-proofreading-2026-10-27/build.json": "ca9ff4747bd22d121c996c5b346d607c054ffb680559f111e671d2964b659c69",
+    "docs/evidence/offline-proofreading-2026-10-27/browser-offline.json": "419a09f30a9f013f420bfade48ec14fd508446f87b75447f1f475060f39c3e17",
+    "docs/evidence/offline-proofreading-2026-10-27/native-mac.json": "4ecbe20730c8b1dd7d7be17ba048e0da1dbff9b27c074f22f8be76783d3df876",
+    "tests/proofreader.test.js": "2159ec2c344d35fe30c1608ddb61d59a86b39f50ab693d92c5464026a6ac3837",
+    "tests/proofreader-client.test.js": "b346bef9aee69e4f2257e8b2e936e69ebe3d68d8deaf922bb05d035d5c984f31"
+  },
+  "checks": {
+    "git diff --check": "passed",
+    "local markdown links in edited docs": "all resolve",
+    "remote links": "not fetched in this audit"
+  },
+  "source_and_evidence_limit": "Parent is performing a title-edit staleness repair and new tests. Final candidate source/hash/counts must be rechecked after that repair; this audit does not assert final CI, publication or Applications upgrade.",
+  "coverage_map": {
+    "offline engine/dictionary/checker failure": {
+      "reference": "docs/offline-proofreading.md",
+      "how_to": "docs/offline-proofreading.md Use",
+      "explanation": "docs/architecture.md",
+      "tests": "tests/proofreader.test.js, tests/proofreader-client.test.js, recorded offline Chromium verification"
+    },
+    "preview Apply alternatives Markdown Undo": {
+      "reference": "docs/article-workspace.md",
+      "how_to": "docs/offline-proofreading.md Use",
+      "explanation": "docs/offline-proofreading.md Offline implementation",
+      "tests": "recorded Chromium/native QA plus article and analysis integration tests"
+    },
+    "settings global prefs and article voice words": {
+      "reference": "docs/v1.2-release.md Compatibility and delivery",
+      "how_to": "docs/offline-proofreading.md Use",
+      "explanation": "docs/architecture.md",
+      "tests": "proofreader dialect/custom-word tests and settings integration evidence"
+    },
+    "Clear confirmation and no preferences resurrection": {
+      "reference": "docs/v1.2-release.md Changes",
+      "how_to": "docs/article-workspace.md Settings",
+      "explanation": "existing native acceptance report",
+      "tests": "transitions tests and recorded native confirmed-clear/postquit observations"
+    }
+  },
+  "documentation_debt": [
+    "No separate onboarding tutorial for proofreading; concise Use how-to and README entry cover discovery.",
+    "Some older release-specific test counts remain historical snapshots; current proofreader receipts are distinguished from final release evidence.",
+    "Final published tag/source/assets and Applications upgrade/writing preservation/cleanup receipts remain pending actual execution."
+  ],
+  "diagram_drift": "docs/architecture.md ASCII map and dataflow updated for src/proofreader, dedicated worker, bundled WASM/dictionary and esbuild.",
+  "blockers": [],
+  "decisions": [
+    "README grammar/non-goals contradiction corrected as a factual change authorized by the new feature.",
+    "THIRD_PARTY_NOTICES now identifies bundled Harper and correctly distinguishes shipped desktop shell from build-only tooling.",
+    "Known Windows/clean-Mac/AT/IME/representative-hardware/five-writer gaps retained.",
+    "No Git/index/version/CHANGELOG/TODOS/source mutation by this agent."
+  ]
+}

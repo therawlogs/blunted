@@ -26,12 +26,18 @@ class Node {
 }
 const article=(id,body='A saved article.')=>({id,title:id,body,createdAt:'2026-10-21T00:00:00Z',updatedAt:'2026-10-21T00:00:00Z'});
 const ticks=async()=>{for(let i=0;i<12;i++) await Promise.resolve();};
-async function harness({docs=[article('one'),article('two')],fail=false, deferred=false, portable=false,loadError=false,worker=false,savedPrefs=null,initialStorage=[],storageHooks={},engine={}}={}) {
+async function harness({docs=[article('one'),article('two')],fail=false, deferred=false, portable=false,loadError=false,worker=false,proofreader=null,undoableEdits=false,savedPrefs=null,initialStorage=[],storageHooks={},engine={}}={}) {
   const nodes=new Map(), listeners={},timers=new Map(), saved=[],files=[],prefsSaved=[]; let timer=0,hold=null;
-  const document={readyState:'loading',addEventListener(type,cb){(listeners[type]||=[]).push(cb);},getElementById(id){if(!nodes.has(id)){const n=this.createElement(id==='editor'?'textarea':'div');n.id=id;if(['workspaceDialog','preferencesDialog','metricsDialog','reviewOptionsDialog','leaveDialog','findingsView'].includes(id))n.hidden=true;nodes.set(id,n);}return nodes.get(id);},createElement(tag){const n=new Node(tag);n.document=this;return n;},createTextNode(t){const n=this.createElement('#text');n.textContent=t;return n;},createDocumentFragment(){return this.createElement('fragment');},querySelector(){return null;},querySelectorAll(){return [];},execCommand(){return false;}};
+  const document={readyState:'loading',addEventListener(type,cb){(listeners[type]||=[]).push(cb);},getElementById(id){if(!nodes.has(id)){const n=this.createElement(id==='editor'?'textarea':'div');n.id=id;if(['workspaceDialog','preferencesDialog','metricsDialog','reviewOptionsDialog','leaveDialog','findingsView'].includes(id))n.hidden=true;nodes.set(id,n);}return nodes.get(id);},createElement(tag){const n=new Node(tag);n.document=this;return n;},createTextNode(t){const n=this.createElement('#text');n.textContent=t;return n;},createDocumentFragment(){return this.createElement('fragment');},querySelector(){return null;},querySelectorAll(){return [];},execCommand(command, unused, replacement){
+    if(!undoableEdits || !['insertText','delete'].includes(command))return false;
+    const editor=this.getElementById('editor');editor.setRangeText(command==='delete'?'':replacement,editor.selectionStart,editor.selectionEnd);
+    for(const listener of editor.listeners.input||[])listener({target:editor});
+    return true;
+  }};
   document.body=document.createElement('body'); document.documentElement=document.createElement('html'); document.activeElement=document.body;
   const bridge={library:true,loadDoc:async()=>{if(loadError)throw Error('load failed');return {articles:structuredClone(docs),prefs:structuredClone(savedPrefs)};},saveDoc:async payload=>{if(fail)throw Error('disk full');if(deferred)await new Promise(r=>hold=r);saved.push(structuredClone(payload.doc));},savePrefs:async value=>{prefsSaved.push(structuredClone(value));},saveFile:async(name,content)=>{files.push({name,content});return true;},clearAll:async()=>{}};
   const window={BluntedEngine:{analyze,MODES,...writer,...engine},__BLUNTED_TAURI__:portable?null:bridge,addEventListener(type,cb){(listeners['window:'+type]||=[]).push(cb);},confirm(){return true;},prompt(){return 'Renamed';}};
+  if(proofreader)window.BluntedProofreader=proofreader;
   const workers=[];
   class WorkerStub { constructor(){this.requests=[];workers.push(this);} postMessage(request){this.requests.push(structuredClone(request));} }
   class BlobStub {}
@@ -124,4 +130,106 @@ test('portable article save acknowledgement is independent of preferences reject
  await h.input('editor','Article is durably stored despite preferences failure.');await h.timers(800);
  assert.equal(JSON.parse(h.storage.get(MAIN)).body,'Article is durably stored despite preferences failure.');
  assert.equal(h.get('statusSave').textContent,'Saved');assert.match(h.get('copyNote').textContent,/article was saved, but preferences could not/);
+});
+
+
+test('Clarity previews the exact replacement and Apply saves the edited writing', async()=>{
+ const h=await harness({docs:[article('one','We utilize this method.')],undoableEdits:true});
+ assert.match(h.get('issues').textContent,/OriginalutilizeProposeduse/);
+ const apply=buttons(h.get('issues')).find(b=>b.id==='applyNote');assert.ok(apply);
+ await apply.fire('click');await h.timers(800);
+ assert.equal(h.get('editor').value,'We use this method.');assert.equal(h.saved.at(-1).body,'We use this method.');
+ assert.match(h.get('copyNote').textContent,/Undo with Cmd\+Z/);
+});
+test('Structure uses the same preview and Apply path for heading gaps', async()=>{
+ const h=await harness({docs:[article('one','# Title\n\n  #### Café *birds* ###\n\nBody.')],undoableEdits:true});
+ h.get('reviewerSel').value='structure';await h.get('reviewerSel').fire('change');
+ assert.match(h.get('issues').textContent,/Original  #### Café \*birds\* ###Proposed  ## Café \*birds\* ###/);
+ await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');await h.timers(150);
+ assert.equal(h.get('editor').value,'# Title\n\n  ## Café *birds* ###\n\nBody.');
+ assert.equal(buttons(h.get('issues')).some(b=>b.id==='applyNote'),false);
+});
+test('old Apply closure cannot edit after unrelated writing changes', async()=>{
+ const h=await harness({docs:[article('one','We utilize this method.')],undoableEdits:true});
+ const apply=buttons(h.get('issues')).find(b=>b.id==='applyNote');
+ await h.input('editor','We utilize this method. More writing.');await apply.fire('click');
+ assert.equal(h.get('editor').value,'We utilize this method. More writing.');
+});
+test('unsupported undoable edit retains writing and restores selection', async()=>{
+ const h=await harness({docs:[article('one','We utilize this method.')]});
+ h.get('editor').setSelectionRange(1,3);h.get('editor').scrollTop=25;
+ await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');
+ assert.equal(h.get('editor').value,'We utilize this method.');assert.equal(h.get('editor').selectionStart,1);assert.equal(h.get('editor').selectionEnd,3);assert.equal(h.get('editor').scrollTop,25);
+ assert.match(h.get('copyNote').textContent,/could not apply an undoable change/);
+});
+test('Clarity deletion removes the previewed neighboring space', async()=>{
+ const h=await harness({docs:[article('one','We ran quickly today.')],undoableEdits:true});
+ assert.match(h.get('issues').textContent,/Proposed\(Remove this text\)/);
+ await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');
+ assert.equal(h.get('editor').value,'We ran today.');
+});
+
+test('a post-Apply analysis failure retains the corrected writing and saving', async()=>{
+ let fail=false;const h=await harness({docs:[article('one','We utilize this method.')],undoableEdits:true,engine:{analyze(req){if(fail)throw Error('analysis unavailable');return analyze(req);}}});
+ fail=true;await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');await h.timers(800);
+ assert.equal(h.get('editor').value,'We use this method.');assert.match(h.get('issues').textContent,/Review is unavailable/);
+ assert.equal(h.saved.at(-1).body,'We use this method.');
+});
+
+test('Apply cannot interrupt active IME composition', async()=>{
+ const h=await harness({docs:[article('one','We utilize this method.')],undoableEdits:true});
+ const apply=buttons(h.get('issues')).find(b=>b.id==='applyNote');
+ await h.get('editor').fire('compositionstart');await apply.fire('click');
+ assert.equal(h.get('editor').value,'We utilize this method.');
+ await h.get('editor').fire('compositionend');await apply.fire('click');
+ assert.equal(h.get('editor').value,'We use this method.');
+});
+
+
+const spellingIssue = text => ({from:text.indexOf('recieve'),to:text.indexOf('recieve')+7,exactText:'recieve',ruleId:'harper:SpellCheck',category:'spelling',explanation:'Possible misspelling.',fix:{replacement:'receive',replacements:['receive','relieve']}});
+test('asynchronous spelling checks cannot render stale notes after a new edit', async()=>{
+ const requests=[];const h=await harness({docs:[article('one','I recieve it.')],proofreader:{check:request=>new Promise((resolve,reject)=>requests.push({request,resolve,reject})),reset(){}}});
+ await h.input('editor','We receive it.');await h.timers(150);
+ requests[0].resolve([spellingIssue(requests[0].request.text)]);await ticks();assert.equal(h.get('issues').textContent,'');
+ requests[1].resolve([]);await ticks();assert.match(h.get('proofreadingStatus').textContent,/checked offline/);assert.doesNotMatch(h.get('issues').textContent,/recieve/);
+ requests[0].reject(Error('obsolete'));assert.equal(h.get('editor').value,'We receive it.');
+});
+test('spelling alternatives update the preview and Apply uses the selected replacement', async()=>{
+ const h=await harness({docs:[article('one','I recieve it.')],undoableEdits:true,proofreader:{check:async request=>request.text.includes('recieve')?[spellingIssue(request.text)]:[],reset(){}}});
+ const label=h.get('issues').children.find(n=>n.className==='correction-choice');assert.ok(label);
+ const choice=label.children[0];choice.value='relieve';await choice.fire('change');assert.match(h.get('issues').textContent,/Proposedrelieve/);
+ await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');assert.equal(h.get('editor').value,'I relieve it.');
+});
+test('Keep this word is article-scoped, saved with the article and never rewrites writing', async()=>{
+ const proofreader={check:async request=>request.personalWords.includes('recieve')?[]:[spellingIssue(request.text)],reset(){}};
+ const h=await harness({docs:[article('one','I recieve it.')],proofreader});
+ await buttons(h.get('issues')).find(b=>b.textContent==='Keep this word').fire('click');await h.timers(800);
+ assert.equal(h.get('editor').value,'I recieve it.');assert.ok(h.saved.at(-1).personalWords.includes('recieve'));assert.doesNotMatch(h.get('issues').textContent,/Possible misspelling/);
+});
+test('proofreading failure clears Apply but keeps writing, export and saving; editing retries', async()=>{
+ let fail=false;const h=await harness({docs:[article('one','I recieve it.')],proofreader:{check:async request=>{if(fail)throw Error('WASM unavailable');return request.text.includes('recieve')?[spellingIssue(request.text)]:[];},reset(){}}});
+ fail=true;await h.input('editor','I recieve it. More writing.');await h.timers(800);
+ assert.match(h.get('issues').textContent,/Review is unavailable/);assert.match(h.get('proofreadingStatus').textContent,/could not run/);assert.equal(buttons(h.get('issues')).some(b=>b.id==='applyNote'),false);
+ assert.equal(h.saved.at(-1).body,'I recieve it. More writing.');await h.click('btnDownload');assert.ok(h.files.at(-1).content.includes('More writing'));
+ fail=false;await h.input('editor','We receive it.');await h.timers(150);assert.doesNotMatch(h.get('issues').textContent,/unavailable/);
+});
+test('proofreading settings persist and switching both checks off keeps other reviews working', async()=>{
+ const requests=[];const h=await harness({proofreader:{check:async request=>{requests.push(request);return [];},reset(){}}});
+ h.get('proofreadingDialect').value='british';await h.get('proofreadingDialect').fire('change');await h.timers(200);
+ assert.equal(requests.at(-1).dialect,'british');assert.equal(h.prefsSaved.at(-1).proofreadingDialect,'british');
+ h.get('optSpelling').checked=false;await h.get('optSpelling').fire('change');h.get('optGrammar').checked=false;await h.get('optGrammar').fire('change');await h.timers(200);
+ assert.equal(h.prefsSaved.at(-1).spelling,false);assert.equal(h.prefsSaved.at(-1).grammar,false);assert.match(h.get('proofreadingStatus').textContent,/checks are off/);assert.equal(h.get('allNotes').disabled,false);
+});
+
+test('editing the title immediately invalidates a heading correction before analysis debounce', async()=>{
+ const original='### Section\n\nBody.';
+ const h=await harness({docs:[{...article('one',original),title:''}],undoableEdits:true});
+ h.get('reviewerSel').value='structure';await h.get('reviewerSel').fire('change');
+ assert.match(h.get('issues').textContent,/Proposed# Section/);
+ const oldApply=buttons(h.get('issues')).find(b=>b.id==='applyNote');assert.ok(oldApply);
+ await h.input('docTitle','An article title');await oldApply.fire('click');
+ assert.equal(h.get('editor').value,original,'the pre-title heading fix must not apply during the150ms debounce');
+ await h.timers(150);assert.match(h.get('issues').textContent,/Proposed## Section/);
+ await buttons(h.get('issues')).find(b=>b.id==='applyNote').fire('click');
+ assert.equal(h.get('editor').value,'## Section\n\nBody.');assert.equal(h.get('docTitle').value,'An article title');
 });

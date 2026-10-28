@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-27T06:30:05.348642+00:00",
+  "sourceCommit": "b839c9541380c66aebb93f81b6f99b66d2af2774",
+  "workingTreeUnreleased": true,
+  "htmlSha256": "3ce50d475a3a523c3bb6e65a23790f3a016d5aba7ab64302c31d1ed2f46514f2",
+  "htmlBytes": 27720936,
+  "harperVersion": "3.0.0",
+  "harperNpmIntegrity": "sha512-Dyj1Q/mk8zr8vzGOZ6RJpUOj2BYbYPHMOmO4pIzKgOza9M/VHHfwwnFohIxpchPxeCoH3K/UlEI2Jkt7d6OeiA==",
+  "esbuildVersion": "0.25.12",
+  "sourceFiles": {
+    "package.json": "2da16c0ac4940ff57d84ea15b290282e75fbe19eb1c5904c6caf85285b4d5a93",
+    "package-lock.json": "ef2d8f58579fcb4f6bb49a90046408030da20d6e52792c833030eb81c6632856",
+    "scripts/build.mjs": "13f56cc30027a1ce9f8f57965836274440ad4d08e1897a52a5f0171b3fe68a0b",
+    "src/ui/app.js": "e1bc1de920386ceee10774842b7852b63f89958bd561846d171d8277d1bc79a8",
+    "src/ui/shell.html": "85fc1fd7fc8dd53d0c94fe69b1b382b854d7366d44e3ee1e64bc1b98b48a62cf",
+    "src/ui/styles.css": "9984f5c3fe60b0805a7eed718da7a5396a9ecfbba63845d26d082e7d53f6f232",
+    "src/writer/article.js": "b534ae1b1ee6ef18e956a0b5d7f9658da0d50428ae96ea151b08c482e806bde4",
+    "src/proofreader/engine.js": "3840a0330f72c249b289835e58f744f065dde29fc43695f0181beef3be208359",
+    "src/proofreader/worker.js": "bb8ad5875f9eabc1333f13016cd1644a2a9de31eed24e5718e94367948f3cf9e",
+    "src/proofreader/client.js": "29a6d32c5b9133223c7a8335b176723d72612b369f16e6919bbe2001649c9419",
+    "licenses/Harper-APACHE-2.0.txt": "fbc8f1bffe04ab962340fabb1324d57d8b875070f67759d606516144ee53ac19"
+  },
+  "nodeTests": {
+    "passed": 132,
+    "failed": 0
+  },
+  "rustTests": {
+    "passed": 12,
+    "failed": 0
+  },
+  "deterministicBuild": true,
+  "published": false,
+  "applicationsAppModified": false,
+  "qaAppRemoved": true,
+  "qaLaunchServicesRecords": 0
+}

@@ -31,10 +31,10 @@
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     ruleOverrides: {}, ignoredRuleIds: [], ignoredTerms: [], personalWords: [],
   };
-  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "write", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, exportHeadline: true, workspace: { activeId: "", positions: {} }, activeProfile: "clear", profiles: {} };
+  var prefs = { theme: "system", fontSize: 16, fontFamily: "serif", lineHeight: 1.8, wpm: 200, review: "write", privateSession: false, autosave: true, includeQuotes: false, includeHeader: false, exportHeadline: true, workspace: { activeId: "", positions: {} }, activeProfile: "clear", profiles: {}, proofreadingDialect: "american", spelling: true, grammar: true };
   var articles = [], libraryReady = false, loadFailed = false, transitioning = false;
   var saveQueue = Promise.resolve(), pendingRestore = null, previewOpen = false;
-  var clearing = false, persistenceEpoch = 0, restoreReadRevision = 0, closePending = false, importing = false;
+  var clearing = false, persistenceEpoch = 0, restoreReadRevision = 0, closePending = false, importing = false, localDataCleared = false;
   var reviewer = "clarity", activeNote = null, findingsLimit = 50;
   var panelOpener = null, panelOpeners = {}, prefsTimer = null, leaveResolve = null, workspaceTimer = null;
   var dirty = false;            // unsaved changes vs storage
@@ -244,7 +244,7 @@
         if (d.rev !== lastWorkerRev || d.rev !== currentRev) return; // stale
         if (analysisFailureRev === d.rev) return;
         if (!d.ok) { failAnalysis(d.rev); return; }
-        try { renderAnalysis(d.result); } catch (err) { failAnalysis(d.rev); }
+        try { receiveAnalysis(d.result); } catch (err) { failAnalysis(d.rev); }
       };
       worker.onerror = function () {
         workerOK = false;
@@ -297,8 +297,36 @@
       var r = Engine.analyze(req);
       if (Engine.structureReport) r.structure = Engine.structureReport(req.text, r.config.paragraphWords, !!req.title);
       if (rev !== currentRev) return;
-      renderAnalysis(r);
+      receiveAnalysis(r);
     } catch (e) { failAnalysis(rev); }
+  }
+
+  var proofreadingRequestRev = -1;
+  function receiveAnalysis(r) {
+    if (r.textRevision !== currentRev || analysisFailureRev === currentRev) return;
+    if (!window.BluntedProofreader || !prefs.spelling && !prefs.grammar || r.metrics.language && r.metrics.language.englishLikely === false) {
+      $("proofreadingStatus").textContent = !window.BluntedProofreader ? "Spelling and grammar are unavailable in this build." : !prefs.spelling && !prefs.grammar ? "Spelling and grammar checks are off." : "English spelling and grammar checks are paused for this text.";
+      renderAnalysis(r); return;
+    }
+    if (proofreadingRequestRev === r.textRevision) return;
+    proofreadingRequestRev = r.textRevision;
+    var checkLabel = prefs.spelling && prefs.grammar ? "Spelling and grammar" : prefs.spelling ? "Spelling" : "Grammar";
+    $("proofreadingStatus").textContent = "Checking " + checkLabel.toLowerCase() + " offline…";
+    window.BluntedProofreader.check({text: editor.value, dialect: prefs.proofreadingDialect,
+      spelling: prefs.spelling, grammar: prefs.grammar, personalWords: (state.personalWords || []).slice(),
+      ignoredTerms: (state.ignoredTerms || []).slice(), ignoredRuleIds: (state.ignoredRuleIds || []).slice(), includeQuotes: prefs.includeQuotes,
+    }).then(function (issues) {
+      if (r.textRevision !== currentRev || analysisFailureRev === currentRev) return;
+      r.issues = r.issues.filter(function (existing) { return !issues.some(function (issue) {
+        return existing.from === issue.from && existing.to === issue.to && existing.fix && issue.fix && existing.fix.replacement === issue.fix.replacement;
+      }); }).concat(issues).sort(function (a, b) { return a.from - b.from || a.to - b.to; });
+      $("proofreadingStatus").textContent = checkLabel + " checked offline.";
+      renderAnalysis(r);
+    }).catch(function () {
+      if (r.textRevision !== currentRev) return;
+      $("proofreadingStatus").textContent = "Offline spelling and grammar could not run. Edit the article to retry, or turn these checks off in Settings.";
+      failAnalysis(r.textRevision);
+    });
   }
 
   function containsFocus(region, focused) {
@@ -497,6 +525,7 @@
   }
 
   var CAT_LABEL = {
+    spelling: "Spelling", grammar: "Grammar",
     sentence: "Sentence length", passive: "Passive voice", adverb: "Adverb",
     wordiness: "Wordiness", hedge: "Hedge", simpler: "Simpler word",
     repeated: "Repeated word", paragraph: "Paragraph", length: "Length",
@@ -540,13 +569,41 @@
       var explanation = document.createElement("p"); explanation.className = "note-explanation"; explanation.textContent = issue.explanation;
       issuesEl.appendChild(category); issuesEl.appendChild(excerpt); issuesEl.appendChild(explanation);
       var actions = document.createElement("div"); actions.className = "note-actions";
-      if (issue.fix && group !== "dismissed") {
+      var correction = Engine.correctionForIssue(editor.value, issue);
+      if (correction && group !== "dismissed") {
+        var preview = document.createElement("div"); preview.className = "correction-preview";
+        var beforeLabel = document.createElement("p"); beforeLabel.className = "muted"; beforeLabel.textContent = "Original";
+        var before = document.createElement("pre"); before.textContent = correction.expectedText;
+        var afterLabel = document.createElement("p"); afterLabel.className = "muted"; afterLabel.textContent = "Proposed";
+        var after = document.createElement("pre"); after.textContent = correction.replacement || "(Remove this text)";
+        preview.appendChild(beforeLabel); preview.appendChild(before); preview.appendChild(afterLabel); preview.appendChild(after);
+        issuesEl.appendChild(preview);
+        if (issue.fix.replacements && issue.fix.replacements.length > 1) {
+          var choiceLabel = document.createElement("label"); choiceLabel.className = "correction-choice"; choiceLabel.textContent = "Suggestion ";
+          var choice = document.createElement("select"); choice.id = "correctionChoice";
+          issue.fix.replacements.forEach(function (replacement) { var option = document.createElement("option"); option.value = replacement; option.textContent = replacement || "Remove this text"; choice.appendChild(option); });
+          choice.value = issue.fix.replacement;
+          choice.addEventListener("change", function () { if (lastAnalysis !== r || r.textRevision !== currentRev) return; issue.fix.replacement = choice.value; renderIssues(r); $("correctionChoice").focus(); });
+          choiceLabel.appendChild(choice); issuesEl.appendChild(choiceLabel);
+        }
         var apply = document.createElement("button"); apply.id = "applyNote"; apply.type = "button";
-        apply.textContent = issue.fix.replacement ? "Apply “" + issue.fix.replacement + "”" : "Remove phrase";
-        apply.addEventListener("click",function(){if(lastAnalysis === r) applyFix(issue);}); actions.appendChild(apply);
+        apply.textContent = "Apply change";
+        apply.addEventListener("click",function(){if(lastAnalysis === r) applyFix(issue, r.textRevision);}); actions.appendChild(apply);
       }
       var show = document.createElement("button"); show.type="button"; show.textContent="Show passage";
       show.addEventListener("click",function(){selectIssue(selectedIssue);}); actions.appendChild(show);
+      if (issue.category === "spelling" && /^[\p{L}]+(?:['’][\p{L}]+)*$/u.test(issue.exactText)) {
+        var keepWord = document.createElement("button"); keepWord.type = "button"; keepWord.textContent = "Keep this word";
+        keepWord.addEventListener("click", function () {
+          if (lastAnalysis !== r || r.textRevision !== currentRev || transitioning || closePending) return;
+          if ((state.personalWords || []).length >= 300 && !state.personalWords.includes(issue.exactText)) {
+            copyNote.textContent = "Your article already has 300 voice words. Edit the list in Settings → Review before adding another."; return;
+          }
+          state.personalWords = Array.from(new Set((state.personalWords || []).concat(issue.exactText)));
+          $("personalWords").value = state.personalWords.join(", "); dirty = true; scheduleSave(); runAnalysis();
+          issuesEl.focus();
+        }); actions.appendChild(keepWord);
+      }
       var dismiss = document.createElement("button"); dismiss.id="dismissNote"; dismiss.type="button"; dismiss.textContent = group === "dismissed" ? "Restore note" : "Dismiss";
       dismiss.addEventListener("click",function(){
         var key = noteKey(issue);
@@ -614,53 +671,28 @@
     var n=(selectedIssue+dir+list.length)%list.length;closeFindings();selectIssue(n);issuesEl.focus();
   }
 
-  // one-click fix: single undoable edit, rechecks exactText + revision.
-  // Empty replacements (adverb removals) also consume one adjacent space
-  // so "ran quickly today" becomes "ran today", not "ran  today".
-  function applyFix(issue, silent) {
-    if (transitioning || closePending) return false;
-    var revAtClick = currentRev;
-    var cur = editor.value;
-    if (!issue.fix || issue.fix.replacement == null) return false;
-    if (cur.slice(issue.from, issue.to) !== issue.exactText) {
-      if (!silent) copyNote.textContent = "Text changed — fix not applied. Review the issue again.";
+  // Both reviewers use the same guarded edit, through the native undo manager.
+  function applyFix(issue, revision) {
+    if (transitioning || closePending || composing) return false;
+    var correction = Engine.correctionForIssue(editor.value, issue);
+    if (revision !== currentRev || !correction) {
+      copyNote.textContent = "Text changed — change not applied. Review the passage again.";
       return false;
     }
-    var from = issue.from, to = issue.to, rep = issue.fix.replacement;
-    if (rep === "") {
-      if (cur[to] === " " || cur[to] === "\t") to += 1;
-      else if ((cur[from - 1] === " " || cur[from - 1] === "\t") && cur[to] !== "\n") from -= 1;
-    }
-    if (!silent) {
-      try {
-        editor.focus();
-        editor.setSelectionRange(from, to);
-      } catch (e) {}
-    }
+    var selection = {from: editor.selectionStart, to: editor.selectionEnd, scroll: editor.scrollTop};
+    editor.focus(); editor.setSelectionRange(correction.from, correction.to);
     var ok = false;
-    if (!silent) {
-      try { ok = document.execCommand("insertText", false, rep); } catch (e) { ok = false; }
-    }
-    if (!ok && editor.setRangeText) {
-      // setRangeText stays inside the browser's undo history (one step),
-      // unlike a value splice which breaks it.
-      try {
-        var wasFocused = (document.activeElement === editor);
-        editor.setRangeText(rep, from, to, "end");
-        if (!silent && !wasFocused) { /* keep focus where it was for bulk */ }
-        ok = true;
-      }
-      catch (e) { ok = false; }
-    }
+    try { ok = document.execCommand(correction.replacement ? "insertText" : "delete", false, correction.replacement); } catch (e) {}
     if (!ok) {
-      // last resort: value splice (undo grouping may not hold everywhere)
-      editor.value = cur.slice(0, from) + rep + cur.slice(to);
+      // setRangeText/value assignments do not reliably participate in native
+      // Undo. Retain the writing instead of promising an undoable replacement.
+      editor.setSelectionRange(selection.from, selection.to); editor.scrollTop = selection.scroll;
+      copyNote.textContent = "This editor could not apply an undoable change. You can edit the passage manually.";
+      return false;
     }
-    if (!silent) {
-      onTextInput();
-      copyNote.textContent = "Applied. Undo with " + (navigator.platform.indexOf("Mac") !== -1 ? "Cmd+Z" : "Ctrl+Z") + " if the meaning changed.";
-    }
-    void revAtClick;
+    // Native editing normally emits input synchronously; avoid processing twice.
+    if (revision === currentRev) onTextInput();
+    copyNote.textContent = "Applied. Undo with " + (navigator.platform.indexOf("Mac") !== -1 ? "Cmd+Z" : "Ctrl+Z") + " if the meaning changed.";
     return true;
   }
 
@@ -784,12 +816,18 @@
     } catch (e) {}
   }
 
-  function onTextInput() {
+  function invalidateAnalysis() {
     currentRev += 1; // invalidate in-flight worker results immediately, before debounce
     lastAnalysis = null;
     issuesEl.setAttribute("aria-busy", "true");
     var apply=$("applyNote"); if(apply) apply.disabled=true;
+    var choice=$("correctionChoice"); if(choice) choice.disabled=true;
+    $("proofreadingStatus").textContent = prefs.spelling || prefs.grammar ? "Review will update after this edit." : "Spelling and grammar checks are off.";
     $("articleOutline").setAttribute("aria-busy", "true");
+  }
+  function onTextInput() {
+    localDataCleared = false;
+    invalidateAnalysis();
     backdrop.textContent = editor.value;
     state.body = editor.value;
     state.updatedAt = new Date().toISOString();
@@ -943,43 +981,54 @@
 
   $("fontSize").addEventListener("input", function (e) {
     prefs.fontSize = parseInt(e.target.value, 10) || 16;
-    applyPrefs(); scheduleSave();
+    applyPrefs(); scheduleSave(); schedulePrefs();
   });
   $("fontFamily").addEventListener("change", function (e) {
     prefs.fontFamily = e.target.value || "serif";
-    applyPrefs(); scheduleSave();
+    applyPrefs(); scheduleSave(); schedulePrefs();
   });
   $("lineHeight").addEventListener("change", function (e) {
     var lh = parseFloat(e.target.value);
-    if (lh >= 1.2 && lh <= 2.5) { prefs.lineHeight = lh; applyPrefs(); scheduleSave(); }
+    if (lh >= 1.2 && lh <= 2.5) { prefs.lineHeight = lh; applyPrefs(); scheduleSave(); schedulePrefs(); }
     else e.target.value = String(prefs.lineHeight || 1.8);
   });
   $("optHeader").addEventListener("change", function (e) {
-    prefs.exportHeadline = e.target.checked; scheduleSave();
+    prefs.exportHeadline = e.target.checked; scheduleSave(); schedulePrefs();
   });
   $("wpm").addEventListener("change", function (e) {
     var v = parseInt(e.target.value, 10);
-    if (v >= 100 && v <= 400) { prefs.wpm = v; runAnalysis(); scheduleSave(); }
+    if (v >= 100 && v <= 400) { prefs.wpm = v; runAnalysis(); scheduleSave(); schedulePrefs(); }
     else e.target.value = prefs.wpm;
   });
   $("optQuotes").addEventListener("change", function (e) {
-    prefs.includeQuotes = e.target.checked; runAnalysis(); scheduleSave();
+    prefs.includeQuotes = e.target.checked; runAnalysis(); scheduleSave(); schedulePrefs();
   });
   $("optPrivate").addEventListener("change", function (e) {
     prefs.privateSession = e.target.checked;
     setSaveState(prefs.privateSession ? "Private session — not saved" : "—");
-    scheduleSave();
+    scheduleSave(); schedulePrefs();
   });
   $("optAutoSave").addEventListener("change", function (e) {
     prefs.autosave = e.target.checked;
     if (!prefs.autosave) setSaveState("Autosave off");
-    scheduleSave();
+    scheduleSave(); schedulePrefs();
   });
   $("themeSel").addEventListener("change", function (e) {
-    prefs.theme = e.target.value; applyPrefs(); scheduleSave();
+    prefs.theme = e.target.value; applyPrefs(); scheduleSave(); schedulePrefs();
+  });
+  ["spelling", "grammar"].forEach(function (key) {
+    $("opt" + key.charAt(0).toUpperCase() + key.slice(1)).addEventListener("change", function (e) {
+      prefs[key] = e.target.checked; runAnalysis(); schedulePrefs();
+    });
+  });
+  $("proofreadingDialect").addEventListener("change", function (e) {
+    if (["american", "british", "australian", "canadian", "indian"].indexOf(e.target.value) < 0) return;
+    prefs.proofreadingDialect = e.target.value; runAnalysis(); schedulePrefs();
   });
 
   function applyPrefs() {
+    $("optSpelling").checked = prefs.spelling; $("optGrammar").checked = prefs.grammar;
+    $("proofreadingDialect").value = prefs.proofreadingDialect;
     document.body.dataset.theme = prefs.theme;
     document.body.dataset.font = prefs.fontFamily || "serif";
     document.documentElement.style.setProperty("--ed-font", prefs.fontSize + "px");
@@ -1222,12 +1271,42 @@
   $("nextIssue").addEventListener("click", function () { stepIssue(1); });
 
   $("docTitle").addEventListener("input", function (e) {
+    localDataCleared = false;
+    invalidateAnalysis();
     state.title = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; setSaveState("Editing…"); scheduleSave(); scheduleAnalysis();
   });
 
-  $("btnClearData").addEventListener("click", async function () {
+  var clearConfirmationOpen = false, clearReturnToSettings = false;
+  function closeClearConfirmation() {
+    var dialog = $("clearConfirmDialog");
+    clearConfirmationOpen = false;
+    if (dialog.close && dialog.open) dialog.close();
+    dialog.hidden = true;
+    if (clearReturnToSettings) {
+      clearReturnToSettings = false;
+      var settings = $("preferencesDialog"); settings.hidden = false;
+      if (settings.showModal && !settings.open) settings.showModal();
+    }
+    if (!$("preferencesDialog").hidden) $("btnClearData").focus();
+    else $("viewWrite").focus();
+  }
+  $("btnClearData").addEventListener("click", function () {
+    if (transitioning || clearing || closePending || clearConfirmationOpen) return;
+    clearConfirmationOpen = true;
+    // WKWebView's accessibility tree can disappear with two stacked modals.
+    // Suspend Settings and restore it after the confirmation has closed.
+    var settings = $("preferencesDialog"); clearReturnToSettings = !settings.hidden;
+    if (clearReturnToSettings) { if (settings.close && settings.open) settings.close(); settings.hidden = true; }
+    var dialog = $("clearConfirmDialog"); dialog.hidden = false;
+    if (dialog.showModal && !dialog.open) dialog.showModal();
+    $("clearCancel").focus();
+  });
+  $("clearCancel").addEventListener("click", closeClearConfirmation);
+  $("clearConfirmDialog").addEventListener("cancel", function (e) { e.preventDefault(); closeClearConfirmation(); });
+  $("clearConfirm").addEventListener("click", async function () {
+    if (!clearConfirmationOpen) return;
+    closeClearConfirmation();
     if (transitioning || clearing || closePending) return;
-    if (!window.confirm("Clear all local blunted data on this device (all articles, trash, backups and preferences)? This cannot be undone. Download a copy first if needed.")) return;
     transitioning = true; clearing = true; persistenceEpoch++; restoreReadRevision++;
     clearTimeout(saveTimer); clearTimeout(prefsTimer); clearTimeout(workspaceTimer);
     setWorkspaceBusy(true);
@@ -1241,7 +1320,9 @@
         region.textContent = (result.status === "partial" || removed ? "Local data was partly cleared. " : "Local data could not be cleared. ") + removed + " removals completed; " + failed + " removals failed. " + ((result.unknown || []).length ? result.unknown.length + " storage locations could not be checked; no removal was attempted there. " : "") + "Your writing is unchanged in the editor; export it to keep a copy.";
         dirty = true; return;
       }
+      if (window.BluntedProofreader) window.BluntedProofreader.reset();
       articles = []; renderLibrary(); state = freshDoc(); loadDocIntoUI(); runAnalysis();
+      localDataCleared = true;
       region.textContent = "Local data cleared."; setSaveState("Local data cleared");
     } catch (e) {
       region.textContent = "Local data could not be completely cleared. Your writing is unchanged in the editor; some files may have been removed. Export your article to keep a copy.";
@@ -1557,13 +1638,14 @@
   });
   window.BluntedWorkspace = {
     prepareClose: async function () {
+      if (clearConfirmationOpen) { closeClearConfirmation(); return false; }
       if (transitioning || closePending) { copyNote.textContent = "Please wait for the current library operation to finish."; return false; }
       closePending = true;
       try {
         if (!await leaveArticle()) return false;
         var articleSnapshot = JSON.stringify(state);
         clearTimeout(prefsTimer); await saveQueue;
-        if (tauri() && tauri().savePrefs && !prefs.privateSession) {
+        if (tauri() && tauri().savePrefs && !prefs.privateSession && !localDataCleared) {
           for (;;) {
             var preferenceSnapshot = JSON.stringify(prefs), discardPreferences = false;
             try { await queueNativePreferences(JSON.parse(preferenceSnapshot)); }
@@ -1609,10 +1691,19 @@
   $("openArticles").addEventListener("click",function(){showNavigation("articles");openPanel("workspaceDialog",libraryReady?"librarySearch":"navOutline");});
   $("openOutline").addEventListener("click",function(){showNavigation("outline");openPanel("workspaceDialog","navOutline");});
   $("navArticles").addEventListener("click",function(){showNavigation("articles");});$("navOutline").addEventListener("click",function(){showNavigation("outline");});
-  $("openPreferences").addEventListener("click",function(){openPanel("preferencesDialog","themeSel");});
+  function showSettings(section) {
+    ["Appearance", "Review", "Library"].forEach(function (name) {
+      $("settings" + name + "Panel").hidden = name !== section;
+      $("settings" + name).setAttribute("aria-pressed", name === section ? "true" : "false");
+    });
+  }
+  ["Appearance", "Review", "Library"].forEach(function (section) {
+    $("settings" + section).addEventListener("click", function () { showSettings(section); });
+  });
+  $("openPreferences").addEventListener("click",function(){showSettings("Appearance");openPanel("preferencesDialog","themeSel");});
   $("openReviewMetrics").addEventListener("click",function(){openPanel("metricsDialog");});
   $("categoryFilter").addEventListener("change",function(){activeCatFilter=$("categoryFilter").value;activeNote=null;if(lastAnalysis){renderIssues(lastAnalysis);renderBackdrop(editor.value,lastAnalysis);}});
-  $("openRules").addEventListener("click",function(){openPanel("preferencesDialog","profileSel");});
+  $("openRules").addEventListener("click",function(){showSettings("Review");openPanel("preferencesDialog","profileSel");});
   $("openMetrics").addEventListener("click",function(){openPanel("metricsDialog");});
   $("reviewOptions").addEventListener("click",function(){openPanel("reviewOptionsDialog");});
   document.querySelectorAll("[data-close]").forEach(function(button){button.addEventListener("click",function(){closePanel(button.dataset.close);});});
@@ -1655,13 +1746,29 @@
     saveQueue = job.then(function () {}, function () {});
     return job;
   }
+  var preferencesStatusRevision = 0;
+  function preferenceStatus(message, failed) {
+    $("preferencesStatus").textContent = message;
+    $("preferencesStatus").setAttribute("data-failed", failed ? "true" : "false");
+  }
   function schedulePrefs() {
-    if(initializing || loadFailed || prefs.privateSession || clearing || importing || closePending) return;
-    var epoch = persistenceEpoch;
+    if (initializing) return;
+    if (prefs.privateSession) { preferenceStatus("Private session: changes are temporary and are not saved."); return; }
+    if (loadFailed) { preferenceStatus("Settings cannot be saved while the library is unavailable.", true); return; }
+    if (clearing || importing || closePending) return;
+    localDataCleared = false;
+    var epoch = persistenceEpoch, statusRevision = ++preferencesStatusRevision;
+    preferenceStatus("Saving settings…");
+    function saved() { if (!prefs.privateSession && epoch === persistenceEpoch && statusRevision === preferencesStatusRevision) preferenceStatus("Settings saved on this device."); }
+    function failed() {
+      if (prefs.privateSession || epoch !== persistenceEpoch || statusRevision !== preferencesStatusRevision) return;
+      preferenceStatus("Settings could not be saved. Try changing a setting again. Your article is kept separately.", true);
+      copyNote.textContent="Preferences could not be saved. Your article is kept separately.";
+    }
     clearTimeout(prefsTimer);prefsTimer=setTimeout(function(){
-      if (clearing || importing || closePending || epoch !== persistenceEpoch) return;
-      if(tauri() && tauri().savePrefs){ var job=saveQueue.then(function(){return tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}).catch(function(){copyNote.textContent="Preferences could not be saved. Your article is kept separately.";});saveQueue=job; }
-      else {try{localStorage.setItem(LS_PREFS,JSON.stringify(prefs));}catch(e){copyNote.textContent="Preferences could not be saved.";}}
+      if (prefs.privateSession || clearing || importing || closePending || epoch !== persistenceEpoch) return;
+      if(tauri() && tauri().savePrefs){ var job=saveQueue.then(function(){if (prefs.privateSession) return; return tauri().savePrefs(JSON.parse(JSON.stringify(prefs)));}).then(saved,failed);saveQueue=job; }
+      else {try{localStorage.setItem(LS_PREFS,JSON.stringify(prefs));saved();}catch(e){failed();}}
     },200);
   }
   function readingAnchor(){
@@ -1790,7 +1897,7 @@
   // Prefs from storage are untrusted input: keep known keys, sane ranges.
   function sanitizePrefs(p) {
     var out = {};
-    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "autosave", "includeQuotes", "includeHeader", "exportHeadline", "workspace", "activeProfile", "profiles"];
+    var allow = ["theme", "fontSize", "fontFamily", "lineHeight", "wpm", "review", "privateSession", "autosave", "includeQuotes", "includeHeader", "exportHeadline", "workspace", "activeProfile", "profiles", "proofreadingDialect", "spelling", "grammar"];
     for (var i = 0; i < allow.length; i++) {
       if (p[allow[i]] !== undefined) out[allow[i]] = p[allow[i]];
     }
@@ -1800,7 +1907,8 @@
     if (!Number.isFinite(out.lineHeight) || out.lineHeight < 1.2 || out.lineHeight > 2.5) delete out.lineHeight;
     if (!Number.isFinite(out.wpm) || out.wpm < 100 || out.wpm > 400) delete out.wpm;
     if (out.review !== "write" && out.review !== "review") delete out.review;
-    ["autosave", "privateSession", "includeQuotes", "includeHeader", "exportHeadline"].forEach(function (k) { if (typeof out[k] !== "boolean") delete out[k]; });
+    ["autosave", "privateSession", "includeQuotes", "includeHeader", "exportHeadline", "spelling", "grammar"].forEach(function (k) { if (typeof out[k] !== "boolean") delete out[k]; });
+    if (["american", "british", "australian", "canadian", "indian"].indexOf(out.proofreadingDialect) < 0) delete out.proofreadingDialect;
     if (out.activeProfile !== "clear" && out.activeProfile !== "essay") out.activeProfile = "clear";
     if (!out.profiles || typeof out.profiles !== "object" || Array.isArray(out.profiles)) out.profiles = {};
     ["clear", "essay"].forEach(function (id) {

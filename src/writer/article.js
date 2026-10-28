@@ -4,7 +4,8 @@ export function articleBlocks(text) {
   const lines = Array.from(text.matchAll(/[^\n]*(?:\n|$)/g)).filter(m => m[0]);
   let fence = null, code = null, frontmatter = false;
   for (const m of lines) {
-    const line = m[0].replace(/\n$/, ''), from = m.index, to = from + line.length;
+    const rawLine = m[0].replace(/\n$/, '');
+    const line = rawLine.replace(/\r$/, ''), from = m.index, to = from + rawLine.length;
     if (from === 0 && line === '---') { frontmatter = true; continue; }
     if (frontmatter) { if (line === '---') frontmatter = false; continue; }
     const f = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
@@ -52,7 +53,16 @@ export function structureReport(text, paragraphWords = 120, hasTitle = false) {
   let level = hasTitle ? 1 : 0;
   for (const b of blocks) {
     if (b.type === 'heading') {
-      if (b.level > level + 1) note(b, 'heading-gap', `Heading level ${b.level} skips level ${level + 1}. Consider a consistent hierarchy.`);
+      if (b.level > level + 1) {
+        note(b, 'heading-gap', `Heading level ${b.level} skips level ${level + 1}. Consider a consistent hierarchy.`);
+        const original = text.slice(b.from, b.to);
+        // Preserve heading text, indentation, closing markers and line endings.
+        // Setext level-two headings become level one by changing only the underline.
+        const replacement = /^ {0,3}#{1,6}[ \t]/.test(original)
+          ? original.replace(/^( {0,3})#{1,6}/, (_, indent) => indent + '#'.repeat(level + 1))
+          : original.replace(/(^|\n)( {0,3})(-+)([ \t\r]*)$/, (_, newline, indent, marks, tail) => newline + indent + '='.repeat(marks.length) + tail);
+        issues[issues.length - 1].fix = { replacement };
+      }
       level = b.level;
     }
     if (b.type === 'paragraph' && words(b.text) > paragraphWords) note(b, 'long-paragraph', `This paragraph has ${words(b.text)} words (profile threshold: ${paragraphWords}). Consider a break where the idea changes.`);
@@ -61,6 +71,23 @@ export function structureReport(text, paragraphWords = 120, hasTitle = false) {
   if (first) note(first, 'opening-prompt', 'Self-review prompt: does this opening tell your intended reader what the article will explore? This is a question, not a detected problem.', true);
   issues.sort((a,b) => a.from - b.from || a.to - b.to);
   return { headings, sections: sections.filter(s => s.words || s.title !== 'Opening'), issues };
+}
+
+// Shared edit contract for Clarity and Structure. Preview exactly the edit that
+// Apply will make, including a neighboring space removed with a deleted phrase.
+export function correctionForIssue(text, issue) {
+  if (!issue || !issue.fix || typeof issue.fix.replacement !== 'string' ||
+      !Number.isInteger(issue.from) || !Number.isInteger(issue.to) ||
+      issue.from < 0 || issue.to <= issue.from || issue.to > text.length ||
+      text.slice(issue.from, issue.to) !== issue.exactText) return null;
+  let {from, to} = issue;
+  const replacement = issue.fix.replacement;
+  if (replacement === '' && issue.fix.consumeAdjacentSpace !== false) {
+    if (text[to] === ' ' || text[to] === '\t') to++;
+    else if ((text[from - 1] === ' ' || text[from - 1] === '\t') && text[to] !== '\n') from--;
+  }
+  const expectedText = text.slice(from, to);
+  return expectedText === replacement ? null : {from, to, expectedText, replacement};
 }
 
 export function dismissalKey(issue, text) {

@@ -1,0 +1,38 @@
+{
+  "method": "Isolated unpacked extension calls chrome.tabs.setZoom(tabId,2); no CSS zoom or emulated page scale",
+  "metrics": {
+    "innerWidth": 680,
+    "outerWidth": 1360,
+    "devicePixelRatio": 2,
+    "visualScale": 1
+  },
+  "dialog": {
+    "width": 654,
+    "scrollWidth": 654,
+    "pageWidth": 680
+  },
+  "confirmedBrowserZoom200": true,
+  "sections": [
+    {
+      "section": "Appearance",
+      "viewport": 680,
+      "page": 680,
+      "width": 654,
+      "scrollWidth": 654
+    },
+    {
+      "section": "Review",
+      "viewport": 680,
+      "page": 680,
+      "width": 654,
+      "scrollWidth": 654
+    },
+    {
+      "section": "Library",
+      "viewport": 680,
+      "page": 680,
+      "width": 654,
+      "scrollWidth": 654
+    }
+  ]
+}
