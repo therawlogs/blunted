@@ -1,0 +1,22 @@
+{
+  "version": "1.2.1",
+  "installedPath": "/Applications/blunted.app",
+  "bundleIdentifier": "app.blunted.dev-preview",
+  "executableSha256": "25f1dcdd8565b03fe6ac0a00d13c10bf26dfdad478d6a9846be952277e123ed1",
+  "writingFilesComparedBeforeLaunch": 10,
+  "writingHashesUnchangedBeforeLaunch": true,
+  "originalWritingFilesCompared": 8,
+  "originalWritingHashesUnchanged": true,
+  "previousAppRecoverableInTrash": "blunted-1.2.0-before-v1.2.1-20261031T085842Z.app",
+  "nativeUiVerification": "Blocked: Mac remained locked at final availability check; post-upgrade native launch/About/autosave-reopen were not observed.",
+  "sourceCommit": "24fa3ab840f6afc7aac99a6306007e711dfc0ced",
+  "activeAppInventory": [
+    "/Applications/blunted.app"
+  ],
+  "launchServicesPaths": [
+    "/Applications/blunted.app"
+  ],
+  "installedFromVerifiedLocalDmg": true,
+  "writingPreservationBoundary": "Hashes compared before launch; post-upgrade native launch/persistence check is pending manual Mac unlock.",
+  "publishedDmgSha256": "db30192afc7298508ca1ec4383848c40db80bf6ed598765996a1d753f46eef43"
+}

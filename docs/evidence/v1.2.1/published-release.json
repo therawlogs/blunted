@@ -1,0 +1,46 @@
+{
+  "tag_name": "v1.2.1",
+  "html_url": "https://github.com/therawlogs/blunted/releases/tag/v1.2.1",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-10-31T09:11:25Z",
+  "target_commitish": "main",
+  "sourceCommit": "24fa3ab840f6afc7aac99a6306007e711dfc0ced",
+  "assets": [
+    {
+      "name": "blunted-win-x64-setup.zip",
+      "size": 228594514,
+      "digest": "sha256:2c3c3a33102e4465701cb60cac6e463a1b128a4948893359f99cdebaa4ba9a87",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/therawlogs/blunted/releases/download/v1.2.1/blunted-win-x64-setup.zip"
+    },
+    {
+      "name": "blunted_1.2.1_aarch64.dmg",
+      "size": 11027763,
+      "digest": "sha256:db30192afc7298508ca1ec4383848c40db80bf6ed598765996a1d753f46eef43",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/therawlogs/blunted/releases/download/v1.2.1/blunted_1.2.1_aarch64.dmg"
+    },
+    {
+      "name": "blunted_1.2.1_x64-setup.exe",
+      "size": 228543897,
+      "digest": "sha256:f7b9b74d0b12ab102a85959d1d203a296ae7114c70f692a8057abd04cf039056",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/therawlogs/blunted/releases/download/v1.2.1/blunted_1.2.1_x64-setup.exe"
+    },
+    {
+      "name": "index.html",
+      "size": 27721917,
+      "digest": "sha256:0cb5ee6290c450c7cc8d5506633a6e8bea5ccb4f243632b90ae532fd290be680",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/therawlogs/blunted/releases/download/v1.2.1/index.html"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 355,
+      "digest": "sha256:853f0c43e1581def6327fc3307b08e1358195b8f04c432e58b0b159df01fea89",
+      "state": "uploaded",
+      "browser_download_url": "https://github.com/therawlogs/blunted/releases/download/v1.2.1/SHA256SUMS.txt"
+    }
+  ]
+}

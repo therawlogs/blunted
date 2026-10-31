@@ -1,0 +1,31 @@
+{
+  "tag": "v1.2.1",
+  "sourceCommit": "24fa3ab840f6afc7aac99a6306007e711dfc0ced",
+  "provenance": {
+    "macDmg": "Verified local build used for Applications installation",
+    "windows": "Successful release-tag GitHub Actions run 41186673223",
+    "portable": "Byte-identical across local, Mac CI and Windows CI"
+  },
+  "assets": [
+    {
+      "name": "blunted-win-x64-setup.zip",
+      "size": 228594514,
+      "sha256": "2c3c3a33102e4465701cb60cac6e463a1b128a4948893359f99cdebaa4ba9a87"
+    },
+    {
+      "name": "blunted_1.2.1_aarch64.dmg",
+      "size": 11027763,
+      "sha256": "db30192afc7298508ca1ec4383848c40db80bf6ed598765996a1d753f46eef43"
+    },
+    {
+      "name": "blunted_1.2.1_x64-setup.exe",
+      "size": 228543897,
+      "sha256": "f7b9b74d0b12ab102a85959d1d203a296ae7114c70f692a8057abd04cf039056"
+    },
+    {
+      "name": "index.html",
+      "size": 27721917,
+      "sha256": "0cb5ee6290c450c7cc8d5506633a6e8bea5ccb4f243632b90ae532fd290be680"
+    }
+  ]
+}

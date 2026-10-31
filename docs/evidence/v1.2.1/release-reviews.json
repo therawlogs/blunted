@@ -17,6 +17,8 @@
     "In-host code and adversarial reviewers; no outside provider review",
     "Adversarial tests/fixtures reviewed summary-only",
     "No official bound gstack receipt; bookkeeping helpers outside writable workspace unavailable",
-    "Original live storage error not reproduced; no claim to repair underlying permission/disk failures"
-  ]
+    "Original live storage error not reproduced; no claim to repair underlying permission/disk failures",
+    "Documentation child audit preceded two additional preference-success cleanup lines; parent rechecked final descriptions, counts and publication/install limits."
+  ],
+  "finalDocumentationAudit": "Second/final read-only audit found no blocker; README release-status link correction applied. Post-upgrade UI remains explicitly blocked by locked Mac."
 }

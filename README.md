@@ -23,6 +23,10 @@ runtime download. These additions ship in v1.2.0.
 See [offline proofreading and verification](docs/offline-proofreading.md) and
 [v1.2.0 release status](docs/v1.2-release.md).
 
+v1.2.1 improves placeholder contrast, adds native whole-interface zoom, repairs
+Clear confirmation accessibility and removes stale autosave errors after recovery.
+See [v1.2.1 notes and verification limits](docs/v1.2.1-release.md).
+
 Find (Cmd/Ctrl+F), bold/italic (Cmd/Ctrl+B / Cmd/Ctrl+I), and next/previous
 review note (F2 / Shift+F2) work from the keyboard. New articles start in Write
 mode. Preferences remain available while drafting; reading scores stay secondary.
@@ -48,10 +52,10 @@ highlight means **review**, not wrong. See `docs/clarity.md`.
 
 ## Download & run
 
-Get [blunted v1.2.0](https://github.com/therawlogs/blunted/releases/tag/v1.2.0):
+Get [blunted v1.2.1](https://github.com/therawlogs/blunted/releases/tag/v1.2.1):
 Mac Apple Silicon DMG, Windows x64 installer, or portable `index.html`.
 Publication and local Applications-upgrade
-evidence are recorded in [its release status](docs/v1.2-release.md).
+evidence are recorded in [its release status](docs/v1.2.1-release.md).
 
 The Mac app is ad-hoc signed, without Developer ID signing or notarization.
 The Windows installer is unsigned. Compare downloads with the release's
