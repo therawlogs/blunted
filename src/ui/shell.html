@@ -91,6 +91,7 @@
 </dialog>
 <dialog id="preferencesDialog" aria-labelledby="preferencesHeading" aria-describedby="preferencesIntro" hidden>
   <div class="panel-head"><h2 id="preferencesHeading">Settings</h2><button type="button" data-close="preferencesDialog">Close</button></div>
+  <div id="settingsControls">
   <p id="preferencesIntro" class="muted settings-intro">Make this writing space your own. Changes stay on this device.</p>
   <div class="settings-layout">
     <nav class="settings-nav" aria-label="Settings sections">
@@ -145,11 +146,12 @@
     </div>
   </div>
   <p id="preferencesStatus" class="settings-status muted" role="status" aria-live="polite" aria-atomic="true">Changes save automatically on this device.</p>
-</dialog>
-<dialog id="clearConfirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="clearConfirmHeading" aria-describedby="clearConfirmMessage" hidden>
+  </div>
+<section id="clearConfirmDialog" role="group" aria-labelledby="clearConfirmHeading" aria-describedby="clearConfirmMessage" hidden>
   <h2 id="clearConfirmHeading">Clear all local data?</h2>
   <p id="clearConfirmMessage">This removes all blunted articles, trash, backups and preferences from this device. This cannot be undone. Cancel and export anything you want to keep first.</p>
   <div class="leave-actions"><button type="button" id="clearCancel" autofocus>Cancel</button><button type="button" id="clearConfirm">Clear all local data</button></div>
+</section>
 </dialog>
 <dialog id="metricsDialog" aria-labelledby="metricsHeading" hidden><div class="panel-head"><h2 id="metricsHeading">Article details</h2><button type="button" data-close="metricsDialog">Close</button></div>
 <p id="statusTime"></p><p id="statusSent"></p><p id="gradeMain"></p><span id="statusGrade" hidden></span><p id="gradeSub" class="muted"></p><dl id="detailsList" class="details"></dl>

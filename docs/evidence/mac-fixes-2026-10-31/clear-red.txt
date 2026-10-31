@@ -1,0 +1,55 @@
+✔ Clear portable removal rejection preserves writing and reports failure (32.67725ms)
+✔ final preferences failure keeps native close open (35.206375ms)
+✔ Clear drains prior save, blocks repeats and leaves no timer resurrection (2.857291ms)
+✔ partial native Clear reports counts and retains editor with controls unlocked (0.956541ms)
+✔ failed native Clear unlocks and deliberate panel closure keeps opener focus (1.082625ms)
+✔ confirmed import snapshots backup, choices and settings across pending article save (2.785792ms)
+✔ out-of-order backup readers and cancelled reads cannot replace the current selection (0.845916ms)
+✔ all-skipped and empty imports report exact outcomes (0.791708ms)
+✔ partial article import and preferences failure preserve actual counts (1.541ms)
+✔ preferences retry and explicit exit preserve article and reset later dialog mode (0.950375ms)
+✔ late writing during final preferences await prevents a preferences-only exit (0.743792ms)
+✔ repeated close requests cannot replace the pending resolver (1.250125ms)
+✔ Clear invalidates in-flight portable article and settings readers (0.804958ms)
+✔ portable Clear complete and already absent removals report completion without writes (0.904833ms)
+✔ deliberately closing Articles during import retains opener focus through completion (0.751708ms)
+✔ pending final preferences save owns transition and Clear cannot race or recreate data (1.524541ms)
+✔ confirmed preferences import invalidates pending preference timers and owns queued write (1.293875ms)
+✔ explicit preferences-only exit discards changed preferences without another save attempt (0.706209ms)
+✔ portable Clear does not count already absent keys as removed when sole main deletion fails (0.694541ms)
+✔ portable Clear truthfully reports unreadable storage without claiming unknown removals (0.656042ms)
+✔ grouped settings expose the requested section and keep keyboard focus on its opener (0.608ms)
+✔ grouped settings retain existing preferences and announce successful persistence (0.630917ms)
+✔ settings save failure is visible in its dialog and a subsequent change retries (0.762208ms)
+✔ settings save independently of article autosave and private sessions keep changes temporary (0.726708ms)
+✔ Clear requires explicit confirmation and Cancel or Escape leaves storage untouched (0.996542ms)
+✔ native close dismisses Clear confirmation and requires a separate close attempt (0.718375ms)
+✔ closing after complete Clear does not recreate cleared preferences (0.797917ms)
+✖ Clear keeps the existing Settings modal open and restores its controls after cancellation (1.112291ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 27
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.092667
+
+✖ failing tests:
+
+test at tests/transitions.test.js:194:1
+✖ Clear keeps the existing Settings modal open and restores its controls after cancellation (1.112291ms)
+  AssertionError [ERR_ASSERTION]: confirmation must not close the native modal
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/transitions.test.js:198:39)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

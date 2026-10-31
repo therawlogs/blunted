@@ -1,0 +1,82 @@
+✔ unavailable desktop library owns a persistent recovery strip and retries without adopting loaded writing (58.590042ms)
+✔ retry retains failure actions and only restores focus when Retry still owns focus (3.896792ms)
+✔ save failure keeps export reachable and unrelated notices cannot replace the warning (2.938167ms)
+✔ article acknowledgement stays distinct from a rejected preferences write (6.057916ms)
+✖ successful autosave clears its prior failure warning without deleting unrelated notices (5.9215ms)
+✔ Clear portable removal rejection preserves writing and reports failure (29.948458ms)
+✔ final preferences failure keeps native close open (23.347708ms)
+✔ Clear drains prior save, blocks repeats and leaves no timer resurrection (2.977083ms)
+✔ partial native Clear reports counts and retains editor with controls unlocked (1.654667ms)
+✔ failed native Clear unlocks and deliberate panel closure keeps opener focus (1.081916ms)
+✔ confirmed import snapshots backup, choices and settings across pending article save (3.44225ms)
+✔ out-of-order backup readers and cancelled reads cannot replace the current selection (1.176666ms)
+✔ all-skipped and empty imports report exact outcomes (0.93825ms)
+✔ partial article import and preferences failure preserve actual counts (2.238375ms)
+✔ preferences retry and explicit exit preserve article and reset later dialog mode (6.266792ms)
+✔ late writing during final preferences await prevents a preferences-only exit (4.135291ms)
+✔ repeated close requests cannot replace the pending resolver (5.990833ms)
+✔ Clear invalidates in-flight portable article and settings readers (1.74725ms)
+✔ portable Clear complete and already absent removals report completion without writes (2.015334ms)
+✔ deliberately closing Articles during import retains opener focus through completion (1.765166ms)
+✔ pending final preferences save owns transition and Clear cannot race or recreate data (3.084667ms)
+✔ confirmed preferences import invalidates pending preference timers and owns queued write (2.820167ms)
+✔ explicit preferences-only exit discards changed preferences without another save attempt (2.135ms)
+✔ portable Clear does not count already absent keys as removed when sole main deletion fails (1.817542ms)
+✔ portable Clear truthfully reports unreadable storage without claiming unknown removals (0.921292ms)
+✔ grouped settings expose the requested section and keep keyboard focus on its opener (0.867417ms)
+✔ grouped settings retain existing preferences and announce successful persistence (0.992833ms)
+✔ settings save failure is visible in its dialog and a subsequent change retries (4.788125ms)
+✔ settings save independently of article autosave and private sessions keep changes temporary (2.244667ms)
+✔ Clear requires explicit confirmation and Cancel or Escape leaves storage untouched (2.512375ms)
+✔ native close dismisses Clear confirmation and requires a separate close attempt (2.14525ms)
+✔ closing after complete Clear does not recreate cleared preferences (1.271084ms)
+✔ Clear keeps the existing Settings modal open and restores its controls after cancellation (0.955375ms)
+✖ preferences recovery clears only its stale storage warning (2.035667ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 32
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.645958
+
+✖ failing tests:
+
+test at tests/library-recovery.test.js:87:1
+✖ successful autosave clears its prior failure warning without deleting unrelated notices (5.9215ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Saving failed — export your article to keep a copy.'
+  - ''
+  
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/library-recovery.test.js:91:63)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Saving failed — export your article to keep a copy.',
+    expected: '',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/transitions.test.js:203:1
+✖ preferences recovery clears only its stale storage warning (2.035667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Preferences could not be saved. Your article is kept separately.'
+  - ''
+  
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/transitions.test.js:206:131)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Preferences could not be saved. Your article is kept separately.',
+    expected: '',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

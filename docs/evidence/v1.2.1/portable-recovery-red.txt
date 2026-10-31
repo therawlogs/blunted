@@ -1,0 +1,30 @@
+✖ portable autosave clears a recovered preferences warning after a successful preferences write (22.505875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.99775
+
+✖ failing tests:
+
+test at tests/transitions.test.js:209:1
+✖ portable autosave clears a recovered preferences warning after a successful preferences write (22.505875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Your article was saved, but preferences could not be saved.'
+  - ''
+  
+      at TestContext.<anonymous> (file:///Users/praveen/Documents/Products/blunted/tests/transitions.test.js:213:123)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Your article was saved, but preferences could not be saved.',
+    expected: '',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

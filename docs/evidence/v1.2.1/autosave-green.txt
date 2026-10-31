@@ -1,0 +1,44 @@
+✔ unavailable desktop library owns a persistent recovery strip and retries without adopting loaded writing (25.518167ms)
+✔ retry retains failure actions and only restores focus when Retry still owns focus (2.115333ms)
+✔ save failure keeps export reachable and unrelated notices cannot replace the warning (2.639375ms)
+✔ article acknowledgement stays distinct from a rejected preferences write (2.271541ms)
+✔ successful autosave clears its prior failure warning without deleting unrelated notices (1.244125ms)
+✔ native library actions clear a recovered preferences warning (1.144833ms)
+✔ Clear portable removal rejection preserves writing and reports failure (21.307666ms)
+✔ final preferences failure keeps native close open (5.345458ms)
+✔ Clear drains prior save, blocks repeats and leaves no timer resurrection (2.341416ms)
+✔ partial native Clear reports counts and retains editor with controls unlocked (0.973958ms)
+✔ failed native Clear unlocks and deliberate panel closure keeps opener focus (0.9065ms)
+✔ confirmed import snapshots backup, choices and settings across pending article save (2.006667ms)
+✔ out-of-order backup readers and cancelled reads cannot replace the current selection (0.845ms)
+✔ all-skipped and empty imports report exact outcomes (0.809542ms)
+✔ partial article import and preferences failure preserve actual counts (1.774083ms)
+✔ preferences retry and explicit exit preserve article and reset later dialog mode (1.034416ms)
+✔ late writing during final preferences await prevents a preferences-only exit (0.748083ms)
+✔ repeated close requests cannot replace the pending resolver (1.534542ms)
+✔ Clear invalidates in-flight portable article and settings readers (0.887208ms)
+✔ portable Clear complete and already absent removals report completion without writes (0.998208ms)
+✔ deliberately closing Articles during import retains opener focus through completion (0.770208ms)
+✔ pending final preferences save owns transition and Clear cannot race or recreate data (1.429125ms)
+✔ confirmed preferences import invalidates pending preference timers and owns queued write (1.1005ms)
+✔ explicit preferences-only exit discards changed preferences without another save attempt (0.63375ms)
+✔ portable Clear does not count already absent keys as removed when sole main deletion fails (0.669083ms)
+✔ portable Clear truthfully reports unreadable storage without claiming unknown removals (0.610458ms)
+✔ grouped settings expose the requested section and keep keyboard focus on its opener (0.579625ms)
+✔ grouped settings retain existing preferences and announce successful persistence (0.630875ms)
+✔ settings save failure is visible in its dialog and a subsequent change retries (0.646666ms)
+✔ settings save independently of article autosave and private sessions keep changes temporary (0.634542ms)
+✔ Clear requires explicit confirmation and Cancel or Escape leaves storage untouched (0.831625ms)
+✔ native close dismisses Clear confirmation and requires a separate close attempt (0.6245ms)
+✔ closing after complete Clear does not recreate cleared preferences (0.7405ms)
+✔ Clear keeps the existing Settings modal open and restores its controls after cancellation (0.595209ms)
+✔ preferences recovery clears only its stale storage warning (0.675375ms)
+✔ portable autosave clears a recovered preferences warning after a successful preferences write (1.032375ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.53175

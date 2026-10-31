@@ -1,0 +1,139 @@
+{
+  "at": "2026-10-31T08:54:22.838Z",
+  "builtHtmlSha256": "5cf8e6f721870c831dccc164dce53ffdf3118d4af773bd66c08de5d1a17696b0",
+  "builtHtmlBytes": 27721836,
+  "checks": {
+    "spelling": {
+      "preview": [
+        "recieve",
+        "receive"
+      ],
+      "applied": "I receive the package.",
+      "oneStepUndo": true
+    },
+    "agreement": {
+      "preview": [
+        "go",
+        "goes"
+      ],
+      "applied": "She goes home.",
+      "oneStepUndo": true
+    },
+    "article": {
+      "preview": [
+        "a",
+        "an"
+      ],
+      "applied": "This is an example.",
+      "oneStepUndo": true
+    },
+    "punctuation": {
+      "preview": [
+        ",",
+        ", "
+      ],
+      "applied": "Hello, world.",
+      "oneStepUndo": true
+    },
+    "markdown": {
+      "preview": [
+        "a",
+        "an"
+      ],
+      "applied": "This is **an example**.",
+      "oneStepUndo": true
+    },
+    "unicode": {
+      "preview": [
+        "recieve",
+        "receive"
+      ],
+      "applied": "😀 I receive the package.",
+      "oneStepUndo": true
+    },
+    "alternatives": {
+      "selected": "relieve",
+      "applied": "I relieve the package."
+    },
+    "keepWord": true,
+    "narrowSettings": {
+      "viewport": 375,
+      "page": 375,
+      "dialog": 349,
+      "dialogScroll": 349,
+      "panel": 317,
+      "panelScroll": 317
+    },
+    "dialectReload": "british",
+    "workerFailureAndRetry": true,
+    "placeholderStyles": [
+      {
+        "theme": "light",
+        "background": "rgb(250, 249, 247)",
+        "placeholders": [
+          {
+            "id": "docTitle",
+            "color": "rgb(107, 101, 91)",
+            "opacity": "1"
+          },
+          {
+            "id": "editor",
+            "color": "rgb(107, 101, 91)",
+            "opacity": "1"
+          }
+        ]
+      },
+      {
+        "theme": "dark",
+        "background": "rgb(25, 24, 22)",
+        "placeholders": [
+          {
+            "id": "docTitle",
+            "color": "rgb(177, 169, 156)",
+            "opacity": "1"
+          },
+          {
+            "id": "editor",
+            "color": "rgb(177, 169, 156)",
+            "opacity": "1"
+          }
+        ]
+      }
+    ],
+    "clearSingleModal": {
+      "modalOpen": true,
+      "labelledBy": "clearConfirmHeading",
+      "settingsHidden": true,
+      "focus": "clearCancel",
+      "cancelOutline": "2px",
+      "buttons": [
+        {
+          "id": "clearCancel",
+          "visible": true
+        },
+        {
+          "id": "clearConfirm",
+          "visible": true
+        }
+      ]
+    }
+  },
+  "network": [
+    "file:disposable-app",
+    "blob:packaged-worker",
+    "blob:packaged-worker",
+    "file:disposable-app",
+    "blob:packaged-worker",
+    "blob:packaged-worker",
+    "blob:packaged-worker"
+  ],
+  "limits": "Fresh headless Chromium profile on this development Mac; synthetic writing. Not native WKWebView, Windows or clean-machine acceptance.",
+  "networkDisabledBeforeFirstLoad": true,
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "HeadlessChrome/151.0.7922.34",
+    "revision": "@782af9cb30a53f54487e5d2e44738645a8ec457c",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.7922.34 Safari/537.36",
+    "jsVersion": "15.1.206.8"
+  }
+}

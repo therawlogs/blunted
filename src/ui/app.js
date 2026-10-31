@@ -12,6 +12,14 @@
   var statusWords = $("statusWords"), statusGrade = $("statusGrade"), statusSent = $("statusSent"),
       statusTime = $("statusTime"), statusSave = $("statusSave");
   var copyNote = $("copyNote"), srStatus = $("srStatus");
+  var storageNotice = null;
+  function showStorageNotice(message, kind) { storageNotice = {message:message, kind:kind}; copyNote.textContent = message; }
+  function clearStorageNotice(kind) {
+    if (storageNotice && storageNotice.kind === kind) {
+      if (copyNote.textContent === storageNotice.message) copyNote.textContent = "";
+      storageNotice = null;
+    }
+  }
 
   var MODES = Engine.MODES;
   var SINGLE_MODE = "clear";
@@ -136,10 +144,16 @@
           var i = articles.findIndex(function (a) { return a.id === payload.doc.id; });
           if (i < 0) articles.push(payload.doc); else articles[i] = payload.doc;
           if (state.id === payload.doc.id && JSON.stringify(state) === snapshot) { setSaveState("Saved"); dirty = false; }
-          if (result && result.preferencesSaved === false) copyNote.textContent = "Your article was saved, but preferences could not be saved.";
+          if (result && result.preferencesSaved === false) showStorageNotice("Your article was saved, but preferences could not be saved.", "preferences");
+          else clearStorageNotice("preferences");
           if (!$("workspaceDialog").hidden && document.activeElement === editor) renderLibrary();
           return true;
-        }, function () { setLibraryUnavailable(false); setSaveState("Saving failed — export your article to keep a copy."); return false; });
+        }, function (error) {
+          setLibraryUnavailable(false); setSaveState("Saving failed — export your article to keep a copy.");
+          var reason = typeof error === "string" ? error : error && error.message;
+          if (reason) $("libraryRecoveryMessage").textContent += " Details: " + String(reason).slice(0, 350);
+          return false;
+        });
         saveQueue = job.then(function () {});
         return job;
       }
@@ -160,8 +174,8 @@
           }
         } catch (e) { /* successful main replacement remains available */ }
         setSaveState("Saved"); dirty = false; storageOK = true; storageMsg = "";
-        try { localStorage.setItem(LS_PREFS, JSON.stringify(prefs)); }
-        catch (e) { copyNote.textContent = "Your article was saved, but preferences could not be saved."; }
+        try { localStorage.setItem(LS_PREFS, JSON.stringify(prefs)); clearStorageNotice("preferences"); }
+        catch (e) { showStorageNotice("Your article was saved, but preferences could not be saved.", "preferences"); }
         return Promise.resolve(true);
       } catch (e) {
         storageOK = false;
@@ -188,7 +202,8 @@
 
   function setSaveState(s) {
     statusSave.textContent = s; statusSave.dataset.failed = /failed|unavailable|unreadable/i.test(s) ? "true" : "false";
-    if(statusSave.dataset.failed === "true") copyNote.textContent = s;
+    if(statusSave.dataset.failed === "true") showStorageNotice(s, "article");
+    else if (s === "Saved") clearStorageNotice("article");
   }
 
   // Library availability owns a persistent surface, separate from save acknowledgements.
@@ -1276,29 +1291,25 @@
     state.title = e.target.value; state.updatedAt = new Date().toISOString(); dirty = true; setSaveState("Editing…"); scheduleSave(); scheduleAnalysis();
   });
 
-  var clearConfirmationOpen = false, clearReturnToSettings = false;
+  var clearConfirmationOpen = false;
   function closeClearConfirmation() {
-    var dialog = $("clearConfirmDialog");
     clearConfirmationOpen = false;
-    if (dialog.close && dialog.open) dialog.close();
-    dialog.hidden = true;
-    if (clearReturnToSettings) {
-      clearReturnToSettings = false;
-      var settings = $("preferencesDialog"); settings.hidden = false;
-      if (settings.showModal && !settings.open) settings.showModal();
-    }
+    $("clearConfirmDialog").hidden = true;
+    $("settingsControls").hidden = false;
+    $("preferencesDialog").setAttribute("aria-labelledby", "preferencesHeading");
+    $("preferencesDialog").setAttribute("aria-describedby", "preferencesIntro");
     if (!$("preferencesDialog").hidden) $("btnClearData").focus();
     else $("viewWrite").focus();
   }
   $("btnClearData").addEventListener("click", function () {
     if (transitioning || clearing || closePending || clearConfirmationOpen) return;
     clearConfirmationOpen = true;
-    // WKWebView's accessibility tree can disappear with two stacked modals.
-    // Suspend Settings and restore it after the confirmation has closed.
-    var settings = $("preferencesDialog"); clearReturnToSettings = !settings.hidden;
-    if (clearReturnToSettings) { if (settings.close && settings.open) settings.close(); settings.hidden = true; }
-    var dialog = $("clearConfirmDialog"); dialog.hidden = false;
-    if (dialog.showModal && !dialog.open) dialog.showModal();
+    // Keep a single native modal alive. Switching modal dialogs can leave
+    // WKWebView's accessibility tree without the confirmation controls.
+    $("settingsControls").hidden = true;
+    $("preferencesDialog").setAttribute("aria-labelledby", "clearConfirmHeading");
+    $("preferencesDialog").setAttribute("aria-describedby", "clearConfirmMessage");
+    $("clearConfirmDialog").hidden = false;
     $("clearCancel").focus();
   });
   $("clearCancel").addEventListener("click", closeClearConfirmation);
@@ -1454,7 +1465,8 @@
     if (prefs.privateSession) { $("libraryStatus").textContent = "Leave private session before changing the saved library."; return false; }
     var payload = JSON.parse(JSON.stringify(doc));
     var job = saveQueue.then(function () { return tauri().saveDoc({ doc: payload, prefs: JSON.parse(JSON.stringify(prefs)) }); }).then(function (result) {
-      if (result && result.preferencesSaved === false) copyNote.textContent = "Your article was saved, but preferences could not be saved.";
+      if (result && result.preferencesSaved === false) showStorageNotice("Your article was saved, but preferences could not be saved.", "preferences");
+      else clearStorageNotice("preferences");
       var index = articles.findIndex(function (a) { return a.id === payload.id; });
       if (index < 0) articles.push(payload); else articles[index] = payload;
       return true;
@@ -1680,7 +1692,7 @@
     var panel=$(id);panel.hidden=false;if(panel.showModal && !panel.open) panel.showModal();
     if(focusId) $(focusId).focus();
   }
-  function closePanel(id) {if (id === "workspaceDialog") { restoreReadRevision++; if (!transitioning) pendingRestore = null; $("importStatus").textContent = ""; } if (id === "preferencesDialog") $("clearStatus").textContent = ""; var panel=$(id);if(panel.close && panel.open) panel.close();panel.hidden=true;var opener=panelOpeners[id];if(opener && opener.focus && (!opener.checkVisibility || opener.checkVisibility()) && (!opener.getClientRects || opener.getClientRects().length)) opener.focus();else if(!initializing) $("viewWrite").focus();}
+  function closePanel(id) {if (id === "preferencesDialog" && clearConfirmationOpen) { closeClearConfirmation(); return; } if (id === "workspaceDialog") { restoreReadRevision++; if (!transitioning) pendingRestore = null; $("importStatus").textContent = ""; } if (id === "preferencesDialog") $("clearStatus").textContent = ""; var panel=$(id);if(panel.close && panel.open) panel.close();panel.hidden=true;var opener=panelOpeners[id];if(opener && opener.focus && (!opener.checkVisibility || opener.checkVisibility()) && (!opener.getClientRects || opener.getClientRects().length)) opener.focus();else if(!initializing) $("viewWrite").focus();}
   function showNavigation(tab) {
     $("libraryPanel").hidden=tab!=="articles" || !libraryReady;$("portableLibrary").hidden=tab!=="articles" || !!(tauri() && tauri().library);
     $("outlinePanel").hidden=tab!=="outline";
@@ -1759,11 +1771,11 @@
     localDataCleared = false;
     var epoch = persistenceEpoch, statusRevision = ++preferencesStatusRevision;
     preferenceStatus("Saving settings…");
-    function saved() { if (!prefs.privateSession && epoch === persistenceEpoch && statusRevision === preferencesStatusRevision) preferenceStatus("Settings saved on this device."); }
+    function saved() { if (!prefs.privateSession && epoch === persistenceEpoch && statusRevision === preferencesStatusRevision) { preferenceStatus("Settings saved on this device."); clearStorageNotice("preferences"); } }
     function failed() {
       if (prefs.privateSession || epoch !== persistenceEpoch || statusRevision !== preferencesStatusRevision) return;
       preferenceStatus("Settings could not be saved. Try changing a setting again. Your article is kept separately.", true);
-      copyNote.textContent="Preferences could not be saved. Your article is kept separately.";
+      showStorageNotice("Preferences could not be saved. Your article is kept separately.", "preferences");
     }
     clearTimeout(prefsTimer);prefsTimer=setTimeout(function(){
       if (prefs.privateSession || clearing || importing || closePending || epoch !== persistenceEpoch) return;

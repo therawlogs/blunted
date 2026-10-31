@@ -1,0 +1,30 @@
+{
+  "method": "WCAG relative luminance using actual computed placeholder foreground, opacity and body background from the final fresh Chromium fixture, both themes. Native WebKit visual smoke is separate.",
+  "builtHtmlSha256": "e7af9c06555a449cee6c6dacaa2732530ce197ac44e1f41a6aed16cdc3f55d54",
+  "checks": [
+    {
+      "theme": "light",
+      "target": "docTitle",
+      "ratio": 5.49,
+      "normalTextPass": true
+    },
+    {
+      "theme": "light",
+      "target": "editor",
+      "ratio": 5.49,
+      "normalTextPass": true
+    },
+    {
+      "theme": "dark",
+      "target": "docTitle",
+      "ratio": 7.62,
+      "normalTextPass": true
+    },
+    {
+      "theme": "dark",
+      "target": "editor",
+      "ratio": 7.62,
+      "normalTextPass": true
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-31",
+  "reviewers": [
+    "release_v121_review",
+    "release_v121_adversarial",
+    "release_v121_docs"
+  ],
+  "result": "No remaining production or documentation blocker after repair",
+  "findingResolved": "Portable prefs save and native library-action prefs success omitted stale-notice cleanup; repaired and covered by fail/recover regressions.",
+  "sourceSha256": {
+    "src/ui/app.js": "7cc74c218d80997bc2333e9a19eb32c6ec85df6093ece4f3a248133c5cfd0d8b",
+    "src/ui/shell.html": "095c995759e1001c8b6d64f6d47b9a2d58627fbd7bb476d99f61a7b230a6da6a",
+    "src/ui/styles.css": "f153adb2ba68c909076c35310353d867d4a804832ce3d5775ea2f5143b0d7e8f",
+    "src-tauri/src/main.rs": "481ce52c9ee3ec2751a7fdc6eee4e384a245059de87ddd8989a2256d98561036"
+  },
+  "limits": [
+    "In-host code and adversarial reviewers; no outside provider review",
+    "Adversarial tests/fixtures reviewed summary-only",
+    "No official bound gstack receipt; bookkeeping helpers outside writable workspace unavailable",
+    "Original live storage error not reproduced; no claim to repair underlying permission/disk failures"
+  ]
+}

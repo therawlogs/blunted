@@ -1,0 +1,47 @@
+{
+  "method": "WCAG relative luminance from shipped CSS tokens, with placeholder opacity composited against solid theme background; static CSS evidence, not full rendered native audit.",
+  "results": [
+    {
+      "theme": "light",
+      "target": "title placeholder",
+      "ratio": 2.7,
+      "normalText4_5": false,
+      "largeText3": false
+    },
+    {
+      "theme": "light",
+      "target": "editor placeholder",
+      "ratio": 2.96,
+      "normalText4_5": false,
+      "largeText3": false
+    },
+    {
+      "theme": "light",
+      "target": "muted text",
+      "ratio": 5.49,
+      "normalText4_5": true,
+      "largeText3": true
+    },
+    {
+      "theme": "dark",
+      "target": "title placeholder",
+      "ratio": 3.95,
+      "normalText4_5": false,
+      "largeText3": true
+    },
+    {
+      "theme": "dark",
+      "target": "editor placeholder",
+      "ratio": 4.38,
+      "normalText4_5": false,
+      "largeText3": true
+    },
+    {
+      "theme": "dark",
+      "target": "muted text",
+      "ratio": 7.62,
+      "normalText4_5": true,
+      "largeText3": true
+    }
+  ]
+}

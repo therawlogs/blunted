@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-31",
+  "baseCommit": "489cb79c462975c71a02e3fcaee657dab137f440",
+  "state": "Uncommitted local fixes, not published or installed in Applications",
+  "sourceSha256": {
+    "src/ui/app.js": "ce7bd2c7c786b5485d2d3fb518dfaa2ec58b3a371ad66a4d9d5b7028caedc197",
+    "src/ui/shell.html": "095c995759e1001c8b6d64f6d47b9a2d58627fbd7bb476d99f61a7b230a6da6a",
+    "src/ui/styles.css": "f153adb2ba68c909076c35310353d867d4a804832ce3d5775ea2f5143b0d7e8f",
+    "src-tauri/src/main.rs": "481ce52c9ee3ec2751a7fdc6eee4e384a245059de87ddd8989a2256d98561036"
+  },
+  "fixture": {
+    "mode": "release",
+    "identifier": "app.blunted.local-fixes-20261031",
+    "executableSha256": "5ca4e848a8d808174deb1a7085747118f33d16aaa33a30112e547e2e5030cc5b",
+    "embeddedFrontendSha256": "bee45f3f20e27bbf933a417459523d45e22986dff17a0636f43f90dbe72b99e7",
+    "isolation": "appDirectoriesOverride and selected folder under dist/mac-fixes-20261031"
+  },
+  "observations": {
+    "nativePageZoom": "PASS: native View > Zoom to 200% calls WebviewWindow.set_zoom(2.0); screenshot showed whole interface scaled. Appearance, Review and Library exposed controls, confirmation readable and controls operable. Cmd+0 restored actual size. Text-size preference stayed 16px. Bounded smoke, not exhaustive all-screen reflow. Zoom smoke preceded the final CSS-only Cancel focus-ring addition; Rust zoom handler, dialog markup and JavaScript were unchanged. Final build Clear AX/focus/deletion checks were rerun.",
+    "clearNativeAccessibility": "PASS for reproduced AX issue: final native tree exposed named confirmation group, warning, Cancel and Clear all local data; Cancel focused. No spoken VoiceOver result claimed.",
+    "initialFocusRing": "PASS: final screenshot showed visible blue ring on Cancel after mouse-opened confirmation. Browser computed 2px outline also passed.",
+    "clearDefaultCancel": "PASS in same implementation before focus-ring-only CSS adjustment: Return cancelled and returned focus to Clear.",
+    "clearEscapeAndWindowClose": "PASS final build: Escape and Cmd+W cancelled, original exact synthetic article remained persisted.",
+    "clearConfirmed": "PASS final build after explicit action-time user authorization: Tab focused destructive action; Return cleared data and focused result. Tab reached About.",
+    "clearPostQuitStorage": "PASS: both owned data and library roots have zero files after quit; no resurrection.",
+    "voiceOver": "NOT VERIFIED: Utility was available but native launch/control stalled; no speech or announcements captured. Both VoiceOver and Utility observed not running at cleanup.",
+    "ime": "NOT VERIFIED: only U.S. keyboard and character helpers configured; no composition IME exercised.",
+    "nativeLatencyAndIPC": "NOT VERIFIED: no precise native input-to-frame instrumentation or release invocation inspector was available."
+  }
+}
