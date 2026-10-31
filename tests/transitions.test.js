@@ -190,3 +190,25 @@ test('closing after complete Clear does not recreate cleared preferences',async(
  await h.click('openPreferences');await h.click('settingsLibrary');await confirmClear(h);assert.equal(persistedPreferences,false);assert.equal(h.get('clearStatus').textContent,'Local data cleared.');
  const before=writes;assert.equal(await h.window.BluntedWorkspace.prepareClose(),true);assert.equal(writes,before,'close must not save preferences after Clear');assert.equal(persistedPreferences,false);await h.timers(1000);assert.equal(persistedPreferences,false);
 });
+
+test('Clear keeps the existing Settings modal open and restores its controls after cancellation',async()=>{
+ const h=await harness();const settings=h.get('preferencesDialog');let closes=0;
+ settings.showModal=function(){this.open=true;};settings.close=function(){this.open=false;closes++;};
+ await h.click('openPreferences');assert.equal(settings.open,true);
+ await h.click('btnClearData');assert.equal(settings.open,true,'confirmation must not close the native modal');assert.equal(closes,0);assert.equal(settings.attrs['aria-labelledby'],'clearConfirmHeading');
+ assert.equal(h.get('settingsControls').hidden,true);assert.equal(h.get('clearConfirmDialog').hidden,false);assert.equal(h.document.activeElement,h.get('clearCancel'));
+ await settings.fire('cancel');assert.equal(settings.open,true);assert.equal(settings.attrs['aria-labelledby'],'preferencesHeading');assert.equal(h.get('settingsControls').hidden,false);assert.equal(h.get('clearConfirmDialog').hidden,true);assert.equal(h.document.activeElement,h.get('btnClearData'));
+});
+
+test('preferences recovery clears only its stale storage warning',async()=>{
+ const h=await harness();h.bridge.savePrefs=async()=>{throw Error('temporary permission failure');};
+ await h.click('openPreferences');h.get('themeSel').value='dark';await h.get('themeSel').fire('change');await h.timers(200);assert.match(h.get('copyNote').textContent,/Preferences could not be saved/);
+ h.bridge.savePrefs=async()=>{};h.get('themeSel').value='light';await h.get('themeSel').fire('change');await h.timers(200);assert.equal(h.get('copyNote').textContent,'');
+});
+
+test('portable autosave clears a recovered preferences warning after a successful preferences write',async()=>{
+ const h=await harness({portable:true});const original=h.context.localStorage.setItem;
+ h.context.localStorage.setItem=(key,value)=>{if(key==='blunted.prefs.v1')throw Error('quota');original(key,value);};
+ await h.input('editor','Article survives preferences quota error.');await h.timers(800);assert.match(h.get('copyNote').textContent,/preferences could not be saved/i);
+ h.context.localStorage.setItem=original;await h.input('editor','Recovered portable article.');await h.timers(800);assert.equal(h.get('copyNote').textContent,'');assert.equal(JSON.parse(h.storage.get('blunted.doc.v1')).body,'Recovered portable article.');
+});

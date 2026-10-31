@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-31",
+  "sourceCommit": "489cb79c462975c71a02e3fcaee657dab137f440",
+  "testedRuntimeSource": "v1.2.0; runtime source unchanged from tag",
+  "environment": {
+    "os": "macOS 27.2",
+    "build": "26B123",
+    "architecture": "arm64",
+    "hardware": "MacBook Pro Mac14,7; Apple M2 8 cores; 16 GB RAM"
+  },
+  "installedVersion": "1.2.0",
+  "installedExecutableSha256": "9ccda2109cdf16b7017476ee9328f2f3db3745c2f2068351830bfa6dd2f51e42",
+  "fixture": {
+    "mode": "release",
+    "identifier": "app.blunted.local-acceptance-20261031",
+    "executableSha256": "a6717323e06b9c65e0b6fc6dabe89816de3a1fc09a01a776edd0e8def2f0c9a6",
+    "frontendSha256": "18eba8c2456c8d56d4300ae5df60fad162603e854248b1e9f2e6bc555ae3496c",
+    "portableSha256": "b5a08c52018577740848872d1c57fad6bc1d9a026cb18a9439437e1bc91a8505",
+    "isolation": "appDirectoriesOverride and selected-folder config under dist/mac-acceptance-20261031; separate identifier. This is a rebuilt release-mode fixture, not the untouched installed binary."
+  },
+  "observations": {
+    "installedCrossViewUndo": "PASS: edited existing synthetic demo, Review \u2192 Read \u2192 Write, Cmd+Z restored exact original body",
+    "nativeStructureApplyUndo": "PASS: ### Skipped heading \u2192 ## Skipped heading; one Cmd+Z restored exact Markdown",
+    "missingFolder": "PASS: renamed owned library; recovery retained unsaved text; retry while absent reported unavailable; missing root was not recreated",
+    "recoveryExport": "PASS: native Save panel exported exact synthetic title/body Markdown",
+    "permissionDenied": "PASS: chmod 0500; independent write denied; native save failed visibly with text retained; restored 0700, retried and subsequent edit saved exact body",
+    "clearDefaultCancel": "PASS: initial Cancel focus ring visible; Return cancelled and focus returned to Clear local data",
+    "clearEscapeAndClose": "PASS: Escape and Cmd+W cancelled pending dialog, retained window and files",
+    "clearConfirmed": "PASS: explicit user confirmation in chat; Tab/Return activated Clear in isolated fixture; Local data cleared result received focus; Tab reached About",
+    "clearPostQuit": "PASS: app exited, both owned data/library directories had zero files, before deliberately starting second backup fixture",
+    "backupSeparateRestore": "PASS: native backup saved; selected separate empty restored-library; restore preview 1 article, 0 existing IDs; imported 1, skipped 0; exact synthetic body appeared and survived quit/relaunch; both libraries retained exact body",
+    "settingsKeyboard": "PASS bounded: opening Settings focuses Theme; Library then Tab focuses Autosave; settings save feedback visible",
+    "clearNativeAX": "INCONCLUSIVE accessibility concern: visible Cancel and destructive action not exposed in CUA AX snapshot. This does not prove VoiceOver failure or success.",
+    "nativeZoom": "BLOCKED product support: View exposes Increase/Decrease Font Size, not whole-interface zoom. Genuine native 200% not established.",
+    "voiceOver": "BLOCKED tool: Cmd+F5 did not establish activation; getApp VoiceOver timed out; subsequent process inventory found no VoiceOver process. No speech heard/verified, no pass.",
+    "ime": "NOT RUN: enabled sources are U.S. layout plus character/press-and-hold/emoji helpers, no composition IME. Needs configured composition source and native marked-text testing.",
+    "ipcRestrictions": "NOT RUN in untouched installed release: no runtime invocation inspector available. Capability source allows no arbitrary filesystem/shell/HTTP plugin permissions; static evidence is not runtime denial acceptance."
+  },
+  "limits": [
+    "No clean-machine/disconnected installation or Windows runtime evidence",
+    "No independent participant sessions",
+    "No native key-to-frame timing; CUA timing includes control and AX overhead",
+    "No full rendered native target/contrast/focus sweep; placeholder contrast static failure recorded separately",
+    "No official gstack bound evidence receipt; skill bookkeeping outside sandbox unavailable"
+  ]
+}

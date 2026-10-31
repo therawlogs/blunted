@@ -1,0 +1,62 @@
+{
+  "environment": {
+    "os": "macOS 27.2",
+    "build": "26B123",
+    "architecture": "arm64",
+    "hardware": "MacBook Pro Mac14,7; Apple M2 8 cores; 16 GB RAM"
+  },
+  "method": "10 CUA native key injections per synthetic document; time from pressKey start to returned AX snapshot; includes automation/AX overhead. Write mode, defaults after Clear, autosave and offline analysis enabled. Not input-to-frame or key-to-photon timing; no product latency pass/fail inferred.",
+  "results": [
+    {
+      "initialWords": 1000,
+      "samples": 10,
+      "roundTripMs": [
+        450,
+        443,
+        430,
+        610,
+        425,
+        427,
+        421,
+        424,
+        440,
+        561
+      ],
+      "maxMs": 610
+    },
+    {
+      "initialWords": 5000,
+      "samples": 10,
+      "roundTripMs": [
+        555,
+        551,
+        548,
+        554,
+        562,
+        554,
+        554,
+        543,
+        547,
+        699
+      ],
+      "maxMs": 699
+    },
+    {
+      "initialWords": 20000,
+      "samples": 10,
+      "roundTripMs": [
+        2579,
+        1237,
+        1288,
+        1248,
+        1285,
+        1236,
+        1262,
+        1285,
+        1412,
+        1216
+      ],
+      "maxMs": 2579
+    }
+  ]
+}

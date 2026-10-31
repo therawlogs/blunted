@@ -3,6 +3,17 @@
 All notable changes to blunted will be documented here. Format follows
 (loosely) Keep a Changelog.
 
+## [1.2.1] - 2026-10-31
+
+- Add genuine native whole-interface zoom, including 200% and Actual Size reset.
+- Improve placeholder contrast in light and dark themes.
+- Keep Clear confirmation in one accessible modal with a named warning, visible
+  Cancel focus and safe cancellation/focus restoration.
+- Clear stale autosave and preferences error notices after successful recovery,
+  preserve unrelated notices, and expose the underlying reason for save failures.
+- Expand the Mac acceptance ledger while keeping Windows, clean-Mac and
+  independent-writer requirements separate.
+
 ## [1.2.0] - 2026-10-27
 
 - Bundle Harper 3.0.0 for fully offline English spelling, grammar and punctuation

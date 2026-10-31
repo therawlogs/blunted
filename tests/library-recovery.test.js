@@ -83,3 +83,17 @@ test('article acknowledgement stays distinct from a rejected preferences write',
  assert.equal(h.get('statusSave').textContent,'Saved');assert.match(h.get('copyNote').textContent,/article was saved, but preferences could not/);
  h.get('copyNote').textContent='';await h.click('libraryNew');assert.equal(h.get('editor').value,'');assert.match(h.get('copyNote').textContent,/article was saved, but preferences could not/);
 });
+
+test('successful autosave clears its prior failure warning without deleting unrelated notices',async()=>{
+ const h=await harness({fail:true});await h.input('editor','Preserve newest writing.');await h.timers(800);
+ assert.match(h.get('copyNote').textContent,/Saving failed/);assert.match(h.get('libraryRecoveryMessage').textContent,/Details: disk full/);
+ h.setFail(false);await h.input('editor','Recovered and saved writing.');await h.timers(800);
+ assert.equal(h.get('statusSave').textContent,'Saved');assert.equal(h.get('copyNote').textContent,'');assert.equal(h.saved.at(-1).body,'Recovered and saved writing.');
+ h.get('copyNote').textContent='Unrelated export notice';await h.input('editor','Another saved edit.');await h.timers(800);assert.equal(h.get('copyNote').textContent,'Unrelated export notice');
+});
+
+test('native library actions clear a recovered preferences warning',async()=>{
+ const h=await harness();h.bridge.saveDoc=async payload=>{h.saved.push(structuredClone(payload.doc));return {preferencesSaved:false};};
+ await h.input('editor','Saved with preferences failure.');await h.timers(800);assert.match(h.get('copyNote').textContent,/preferences could not be saved/);
+ h.bridge.saveDoc=async payload=>{h.saved.push(structuredClone(payload.doc));return {preferencesSaved:true};};await h.click('libraryNew');assert.equal(h.get('copyNote').textContent,'');
+});

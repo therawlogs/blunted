@@ -1,0 +1,36 @@
+✔ Clear portable removal rejection preserves writing and reports failure (19.888875ms)
+✔ final preferences failure keeps native close open (5.120458ms)
+✔ Clear drains prior save, blocks repeats and leaves no timer resurrection (1.944834ms)
+✔ partial native Clear reports counts and retains editor with controls unlocked (0.961833ms)
+✔ failed native Clear unlocks and deliberate panel closure keeps opener focus (0.933375ms)
+✔ confirmed import snapshots backup, choices and settings across pending article save (1.955917ms)
+✔ out-of-order backup readers and cancelled reads cannot replace the current selection (0.8ms)
+✔ all-skipped and empty imports report exact outcomes (0.781083ms)
+✔ partial article import and preferences failure preserve actual counts (1.476792ms)
+✔ preferences retry and explicit exit preserve article and reset later dialog mode (0.921458ms)
+✔ late writing during final preferences await prevents a preferences-only exit (0.668375ms)
+✔ repeated close requests cannot replace the pending resolver (1.199584ms)
+✔ Clear invalidates in-flight portable article and settings readers (0.851792ms)
+✔ portable Clear complete and already absent removals report completion without writes (0.986791ms)
+✔ deliberately closing Articles during import retains opener focus through completion (0.703958ms)
+✔ pending final preferences save owns transition and Clear cannot race or recreate data (1.440208ms)
+✔ confirmed preferences import invalidates pending preference timers and owns queued write (1.082625ms)
+✔ explicit preferences-only exit discards changed preferences without another save attempt (0.632125ms)
+✔ portable Clear does not count already absent keys as removed when sole main deletion fails (0.682667ms)
+✔ portable Clear truthfully reports unreadable storage without claiming unknown removals (0.614125ms)
+✔ grouped settings expose the requested section and keep keyboard focus on its opener (0.57975ms)
+✔ grouped settings retain existing preferences and announce successful persistence (0.62125ms)
+✔ settings save failure is visible in its dialog and a subsequent change retries (0.641667ms)
+✔ settings save independently of article autosave and private sessions keep changes temporary (0.665417ms)
+✔ Clear requires explicit confirmation and Cancel or Escape leaves storage untouched (0.829541ms)
+✔ native close dismisses Clear confirmation and requires a separate close attempt (0.627334ms)
+✔ closing after complete Clear does not recreate cleared preferences (0.746625ms)
+✔ Clear keeps the existing Settings modal open and restores its controls after cancellation (0.573125ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.619458

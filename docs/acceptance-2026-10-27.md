@@ -1,5 +1,7 @@
 # v1.1 acceptance and local follow-up
 
+Follow-up, 31 October 2026: [local release-mode Mac observations, findings and environment requirements](mac-acceptance-2026-10-31.md). This dated ledger remains historical; the follow-up distinguishes passed functional probes from local accessibility findings and untested platforms.
+
 Update, 28 October 2026: the correction/settings work described below now ships in v1.2.0. See [the release and installed-upgrade evidence](v1.2-release.md). Historical v1.1 findings remain scoped to their original date; the open environment-dependent acceptance items remain open.
 
 Date: 27 October 2026. The published v1.1.0 source is

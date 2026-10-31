@@ -258,20 +258,19 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &MenuItem::with_id(app, "view-write", "Write Mode", true, None::<&str>)?,
             &MenuItem::with_id(app, "view-review", "Review Mode", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "font-inc", "Increase Font Size", true, None::<&str>)?,
+            &MenuItem::with_id(app, "font-dec", "Decrease Font Size", true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "zoom-in", "Zoom In", true, Some("CmdOrCtrl+Plus"))?,
+            &MenuItem::with_id(app, "zoom-out", "Zoom Out", true, Some("CmdOrCtrl+Minus"))?,
             &MenuItem::with_id(
                 app,
-                "font-inc",
-                "Increase Font Size",
+                "zoom-reset",
+                "Actual Size (100%)",
                 true,
-                Some("CmdOrCtrl+Plus"),
+                Some("CmdOrCtrl+0"),
             )?,
-            &MenuItem::with_id(
-                app,
-                "font-dec",
-                "Decrease Font Size",
-                true,
-                Some("CmdOrCtrl+Minus"),
-            )?,
+            &MenuItem::with_id(app, "zoom-200", "Zoom to 200%", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "theme-system", "System Appearance", true, None::<&str>)?,
             &MenuItem::with_id(app, "theme-light", "Light Appearance", true, None::<&str>)?,
@@ -302,7 +301,54 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     Menu::with_items(app, &[&file, &edit, &view, &help])
 }
 
+// Page zoom scales the complete WKWebView, including dialogs and controls.
+// It is session-only and never changes article font preferences.
+fn next_zoom(current: u32, action: &str) -> Option<u32> {
+    const LEVELS: [u32; 10] = [50, 67, 80, 90, 100, 110, 125, 150, 175, 200];
+    match action {
+        "zoom-in" => Some(
+            LEVELS
+                .into_iter()
+                .find(|level| *level > current)
+                .unwrap_or(200),
+        ),
+        "zoom-out" => Some(
+            LEVELS
+                .into_iter()
+                .rev()
+                .find(|level| *level < current)
+                .unwrap_or(50),
+        ),
+        "zoom-reset" => Some(100),
+        "zoom-200" => Some(200),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod zoom_tests {
+    use super::next_zoom;
+    #[test]
+    fn zoom_reaches_exact_200_and_resets() {
+        let mut zoom = 100;
+        for _ in 0..5 {
+            zoom = next_zoom(zoom, "zoom-in").unwrap();
+        }
+        assert_eq!(zoom, 200);
+        assert_eq!(next_zoom(zoom, "zoom-reset"), Some(100));
+        assert_eq!(next_zoom(50, "zoom-200"), Some(200));
+    }
+    #[test]
+    fn zoom_is_bounded_and_does_not_handle_font_actions() {
+        assert_eq!(next_zoom(200, "zoom-in"), Some(200));
+        assert_eq!(next_zoom(50, "zoom-out"), Some(50));
+        assert_eq!(next_zoom(100, "font-inc"), None);
+        assert_eq!(next_zoom(100, "zoom-out"), Some(90));
+    }
+}
+
 fn main() {
+    let zoom = std::sync::atomic::AtomicU32::new(100);
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -326,9 +372,19 @@ fn main() {
             }
         })
         .menu(build_menu)
-        .on_menu_event(|app, event| {
+        .on_menu_event(move |app, event| {
             if let Some(win) = app.get_webview_window("main") {
-                let _ = win.emit("blunted-menu", event.id.as_ref());
+                if let Some(percent) = next_zoom(
+                    zoom.load(std::sync::atomic::Ordering::Relaxed),
+                    event.id.as_ref(),
+                ) {
+                    match win.set_zoom(f64::from(percent) / 100.0) {
+                        Ok(()) => zoom.store(percent, std::sync::atomic::Ordering::Relaxed),
+                        Err(error) => eprintln!("Page zoom failed: {error}"),
+                    }
+                } else {
+                    let _ = win.emit("blunted-menu", event.id.as_ref());
+                }
             }
         })
         .build(tauri::generate_context!())
